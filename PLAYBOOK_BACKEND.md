@@ -1,17 +1,14 @@
 # PLAYBOOK_BACKEND.md — Backend architecture playbook
 
-Architecture contract for Heimdall's backend: **hexagonal architecture
-(ports & adapters) organized by vertical slices**. Language-agnostic: every
-rule is expressed in terms of folders, dependencies and contracts, not
-frameworks. Companion of `PLAYBOOK_URLS.md` (routes and authorization model).
+Architecture contract for the reference service's backend: **hexagonal
+architecture (ports & adapters) organized by vertical slices**.
+Language-agnostic: every rule is expressed in terms of folders, dependencies
+and contracts, not frameworks. Companion of `PLAYBOOK_URLS.md` (routes and
+authorization model).
 
-The runnable, machine-checkable companions are
-[beautifulgo](https://github.com/Facta-Dev/beautifulgo),
-[beautifulnodejs](https://github.com/Facta-Dev/beautifulnodejs),
-[beautifulpython](https://github.com/Facta-Dev/beautifulpython) and
-[beautifulrust](https://github.com/Facta-Dev/beautifulrust): three Agent Skills
-(write, review, port) and a drop-in linter config per language, enforcing this
-contract.
+The runnable, machine-checkable companions are the Go, Node.js, Python and
+Rust skill packs: three Agent Skills (write, review, port) and a drop-in
+linter config per language, enforcing this contract.
 
 The language-specific specialization for Java enterprise (J2EE / Jakarta EE)
 is `PLAYBOOK_JAVA_J2EE.md`.
@@ -35,14 +32,14 @@ The rules that carry the whole file:
 ### 1.1 What is a slice
 
 A slice is a cohesive business capability with its own language, data and
-lifecycle. Heimdall's initial slices (premise in `MEMORY.md`):
+lifecycle. The service's initial slices:
 
 | Slice | Responsibility |
 |---|---|
 | `identity` | Authentication, sessions, tokens, users, roles, RBAC permissions |
 | `tenants` | Organizations, membership, API key configuration |
 | `projects` | Projects and their configuration |
-| `extraction` | Apify extraction runs, raw results, normalization |
+| `extraction` | External-provider extraction runs, raw results, normalization |
 | `funnels` | Funnels, leads, stages, per-employee funnel view |
 | `campaigns` | Campaign definition, launch, calls/messages |
 | `usage` | Metering of runs, tokens, calls per tenant |
@@ -253,8 +250,8 @@ The same use case serves `/app` and `/admin` routes. The difference is the
 
 ## 5. Batch processes layer (inbound adapters + coordination)
 
-Batch work (Apify runs, enrichment, embedding, campaign dispatch, usage
-rollups, billing cycles, backfills) enters the slice through **inbound
+Batch work (external-provider runs, enrichment, embedding, campaign dispatch,
+usage rollups, billing cycles, backfills) enters the slice through **inbound
 adapters in `adapters/in/jobs`**, the same way HTTP does: it parses the
 message, builds a `RequestContext` (a system actor with explicit permissions)
 and calls a use case. Jobs contain no business logic.
@@ -281,7 +278,7 @@ and calls a use case. Jobs contain no business logic.
 | Idempotency of effects | Idempotency record in the **database** (`processed_jobs` table or a unique constraint on the natural key), written in the same transaction as the effect |
 | Crash recovery | Visibility timeout + reclaim of pending messages (`XAUTOCLAIM`) for jobs whose worker stopped heartbeating |
 | Poison messages | Max attempts → dead-letter stream + alert; never infinite retry |
-| Fairness and limits | Per-tenant concurrency cap and token-bucket rate limit (per API key for providers such as Apify) kept in Redis |
+| Fairness and limits | Per-tenant concurrency cap and token-bucket rate limit (per API key for external providers) kept in Redis |
 | Fallback without Redis | `SELECT ... FOR UPDATE SKIP LOCKED` on a jobs table for low-volume or critical jobs |
 
 ### 5.3 Rules for every job
@@ -310,13 +307,13 @@ and calls a use case. Jobs contain no business logic.
 ### 5.4 Key naming in Dragonfly/Redis
 
 ```text
-heimdall:{env}:{slice}:{purpose}:{id}
+{app}:{env}:{slice}:{purpose}:{id}
 
-heimdall:prod:extraction:lock:run:{runId}
-heimdall:prod:extraction:queue:runs                 # stream
-heimdall:prod:funnels:dedup:enrich:{leadId}:{hash}
-heimdall:prod:platform:scheduler:leader
-heimdall:prod:extraction:ratelimit:apify:{apiKeyId}
+app:prod:extraction:lock:run:{runId}
+app:prod:extraction:queue:runs                 # stream
+app:prod:funnels:dedup:enrich:{leadId}:{hash}
+app:prod:platform:scheduler:leader
+app:prod:extraction:ratelimit:provider:{apiKeyId}
 ```
 
 - Every key carries a TTL unless it is a stream with a trimming policy.
@@ -334,7 +331,7 @@ heimdall:prod:extraction:ratelimit:apify:{apiKeyId}
 
 | Type | Trigger | Example |
 |---|---|---|
-| Queue worker | Message on a stream | Execute an Apify run, enrich a lead, embed text |
+| Queue worker | Message on a stream | Execute an external-provider run, enrich a lead, embed text |
 | Scheduled | Leader enqueues on a cron tick | Hourly usage rollup, nightly billing close |
 | Event-driven | Domain event from another slice | `LeadCreated` → index embedding |
 | One-off / backfill | Operator command | Re-embed all leads with a new model |
@@ -407,9 +404,10 @@ select which controller group serves the route; it must never grant anything.
 ### 6.4 Other inbound protocols
 
 The same use cases can be exposed through other adapters without changing the
-core: gRPC for service-to-service calls, webhooks (Apify, payment provider)
-as `adapters/in/http/webhooks` with signature verification and idempotent
-processing, CLI for operations, WebSocket/SSE for live funnel updates.
+core: gRPC for service-to-service calls, webhooks (external provider, payment
+provider) as `adapters/in/http/webhooks` with signature verification and
+idempotent processing, CLI for operations, WebSocket/SSE for live funnel
+updates.
 
 ## 7. Connecting slices
 
@@ -478,9 +476,10 @@ selected by the entrypoint in `bootstrap/`:
 | `scheduler` | Leader-elected cron enqueuer (1 active, N standby) | Not scaled |
 | `migrate` | One-shot migrations | Run once per release |
 
-This isolates heavy batch load from interactive latency (a burst of Apify
-runs cannot slow the API) and lets `worker` pools be dedicated per queue,
-with no network boundary introduced and no distributed-system cost paid yet.
+This isolates heavy batch load from interactive latency (a burst of
+external-provider runs cannot slow the API) and lets `worker` pools be
+dedicated per queue, with no network boundary introduced and no
+distributed-system cost paid yet.
 
 ## 9. When to extract a slice into a microservice
 
@@ -526,11 +525,11 @@ Default: **modular monolith, multiple modes**. Extract only with evidence.
 4. Run both paths in parallel with comparison or shadow traffic, then cut over.
 5. Remove the in-process path.
 
-### 9.5 Heimdall candidates, in likely order
+### 9.5 Candidates for extraction, in likely order
 
-1. **`extraction`** — bursty, long-running, provider-bound (Apify), the
-   first one to isolate as a dedicated `worker` pool, and the first
-   candidate for a standalone service if load demands it.
+1. **`extraction`** — bursty, long-running, provider-bound (the external
+   provider), the first one to isolate as a dedicated `worker` pool, and the
+   first candidate for a standalone service if load demands it.
 2. **Vector indexing / similarity** (inside `funnels`) — move to a dedicated
    vector engine behind the same port before any service split.
 3. **`campaigns` dispatch** — external call/message providers, strict rate
@@ -553,7 +552,7 @@ them and they are cheap to run.
   the source of truth.
 - Jobs run as a **system actor** with the minimum permissions needed, and
   always carry the `tenantId` of the data they process.
-- Secrets (tenant API keys for Apify, providers) are stored encrypted,
+- Secrets (tenant API keys for external providers) are stored encrypted,
   decrypted only inside the outbound adapter that needs them, and never
   logged or returned in responses.
 
@@ -587,7 +586,7 @@ them and they are cheap to run.
 | Architecture | Dependency rules, no cross-slice imports | Runs on every PR |
 | Concurrency | Two workers on the same job, crash mid-job, duplicate delivery | Proves "no overlap, no duplicates" |
 
-## 11. Concrete example for Heimdall
+## 11. Concrete example
 
 Flow: the end user launches a campaign from a project.
 
@@ -604,8 +603,8 @@ POST /api/v1/app/projects/{projectId}/launch
    (`jobId = extraction:run:{runId}`, deduplicated by `SET NX`).
 4. `extraction` worker (any replica) claims the message through the consumer
    group, takes the lease `extraction:lock:run:{runId}`, checks the
-   per-API-key rate limit, calls Apify through its outbound adapter and
-   persists a checkpoint after every page.
+   per-API-key rate limit, calls the external provider through its outbound
+   adapter and persists a checkpoint after every page.
 5. Results are written idempotently (unique key on
    `tenantId + externalResultId`) and `LeadsExtracted` is published via the
    outbox.
@@ -638,7 +637,7 @@ heartbeat are re-enqueued by the scheduler sweeper from the database.
 - [ ] Every job is idempotent, has a deterministic `jobId`, a lease with
       heartbeat, a fencing/version check, retries with backoff and a DLQ.
 - [ ] Redis/Dragonfly holds coordination only; the database holds truth.
-- [ ] Redis keys follow `heimdall:{env}:{slice}:{purpose}:{id}` and have TTLs.
+- [ ] Redis keys follow `{app}:{env}:{slice}:{purpose}:{id}` and have TTLs.
 - [ ] Scheduled work uses leader election and enqueues small units.
 - [ ] Cross-slice calls go through `contracts/`; cross-slice writes go through
       outbox events.

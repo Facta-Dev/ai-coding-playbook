@@ -1,10 +1,9 @@
-# FACTA playbook — installation and bootstrap
+# The playbook — installation and bootstrap
 
 This is the runbook for a new machine (or a re-provisioned one) and for a fresh
-checkout of the working set: clone the playbook, install the user-scope kit,
-clone the repositories, configure each one, verify. Every step is a shell
-command, so the whole bootstrap costs zero model tokens; the model is only
-asked to make judgment calls.
+checkout: clone the playbook, install the user-scope kit, clone your project,
+configure it, verify. Every step is a shell command, so the whole bootstrap
+costs zero model tokens; the model is only asked to make judgment calls.
 
 **Entry point: `bash scripts/claude-kit/bootstrap.sh`** walks the decision
 tree — OS (Linux / macOS / WSL2, with native Windows stopped at the gate) and
@@ -24,7 +23,7 @@ contain) and [CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md](CLAUDE_CODE_ROUTING_MODELS_O
 
 | Step | Executed by | Model tokens |
 | --- | --- | --- |
-| Clone the playbook and the working set | shell (`clone-repos.sh`) | 0 |
+| Clone the playbook and your project | shell (`clone-repos.sh`) | 0 |
 | Install the user-scope kit | shell (`install-user-kit.sh`) | 0 |
 | Install the skill packs and the cost tracker | shell (`install-skill-packs.sh`, `install.sh`) | 0 |
 | Configure each repository | shell (`configure-repo.sh`) | 0 |
@@ -44,7 +43,7 @@ Target: a full bootstrap with **zero model calls**; at most one cheap-tier probe
    20,480 B, the ceiling `kit_check.py` enforces; `CLAUDE.md` stays under 200
    lines. Scope per-stack rules with `paths:` so they load only where needed.
 5. Never copy plugin components into user or project scope: plugins are
-   namespaced (`/ecc:*`, `ecc:*`, `/ponytail:*`). A user copy of a plugin
+   namespaced (`/ecc:*`, `ecc:*`, `/plugin-name:*`). A user copy of a plugin
    agent shadows it by name.
 6. Use the cheap tier for probes and mechanical work; escalate only for a
    design decision.
@@ -120,7 +119,23 @@ cloning anything private; `gh auth login` when it does not.
 
 ---
 
-## 3. Clone the working set
+## 3. Clone your project
+
+```bash
+git clone --depth 1 --single-branch https://github.com/<your-org>/my-app.git ~/work/my-app
+```
+
+Shallow, single-branch clones are for consumption. Use full history
+(`--depth 0`) only in the repositories you actually contribute to.
+
+`gh repo clone <your-org>/my-app ~/work/my-app -- --depth 1 --single-branch`
+is equivalent and required for private repositories (`gh auth login` first).
+Cloning is not the last step: the repository must be configured (§4) and, if
+it ships tooling, installed (§4.1).
+
+### 3.1 Cloning many repositories at once
+
+The helper clones every repository listed in the inventory, grouped:
 
 ```bash
 bash ~/ai-coding-playbook/scripts/claude-kit/clone-repos.sh --group=selected \
@@ -129,69 +144,27 @@ bash ~/ai-coding-playbook/scripts/claude-kit/clone-repos.sh --group=selected \
 
 | Flag | Meaning |
 | --- | --- |
-| `--group=` | `selected` (default — the install set), `core`, `products`, `tools`, `clients`, `reference`, `all` |
+| `--group=` | inventory group to clone (default: the install set); `all` takes every group |
 | `--dir=` | destination root (default `~/work`) |
 | `--depth=` | clone depth (default `1`) |
 | `--dry-run` | print the plan and the exact commands, clone nothing |
 
 Both `--flag=value` and `--flag value` are accepted.
 
-The inventory is `install/repos.txt` — one `group|org/repo|why` per line,
-derived from README §4. It is the single source of truth: add a repo there and
-in the README table, never in the script. A repo can appear in more than one
-group (`selected` repeats the install-set entries from `reference` and
-`tools`); the script clones it once per run.
-
-| Group | Repos (README §4) |
-| --- | --- |
-| `selected` (default) | The install set: `beautifulpython`, `beautifulrust`, `beautifulgo`, `beautifulnodejs`, `claude-code-cli-cost-tracker`, `skills`, `claude-skill`, `garden-skills`, `ponytail`, `ui-ux-pro-max-skill`, `superpowers`, `awesome-claude-skills` |
-| `core` | `ai-coding-playbook` (this repo) |
-| `products` | §4.1 + §4.2: `talos`, `deino`, `staxis`, `v0ss`, `enyo-platform`, `heimdall-platform`, `trustanova`, `ReachPilot`, `ReachPilotPro`, `package_builder`, `ei2`, the `zypho-*` suite, `nest`, `ctx0`, `facta_archetype`, `facta_frontend`, `blog-templates`, `3d-landings-pro`, `claude-skill`, `ai-job-search`, `agents-office`, `synthia_frontend` |
-| `tools` | `aws-ec2-setup`, `claude-code-cli-cost-tracker`, `terrain`, `OmniRoute`, `repomix` |
-| `clients` | `everythink_platform`, `everythiink_arxiv`, `everythink_android`, `everythink_ios`, `everythink_backend`, `transportation-bank`, `technorides_eu`, `technorides_web`, `technorides_web_premium`, `trustanova-platform` |
-| `reference` | skill and factory packs (§4.4) plus the upstream read-only clones (§4.6) |
-| `all` | every group above, each repo cloned once |
-
-`Facta-Dev/` owns the products and tooling; `contextzero/` owns `nest` and
-`ctx0`; `everythink-ai`, `Technorides` and `matiasbaglieri` own the client
-rebuilds. Shallow clones are for consumption. Use full history (`--depth 0`)
-only in the repositories you actually contribute to.
-
-### 3.1 Explicit clone commands (the `selected` set)
-
-The script above is the automation; these are the commands it runs. Use them
-by hand when you want to see or pick what lands on disk, or when the
-inventory is not available:
-
-```bash
-mkdir -p ~/work
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/beautifulpython.git ~/work/beautifulpython
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/beautifulrust.git ~/work/beautifulrust
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/beautifulgo.git ~/work/beautifulgo
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/beautifulnodejs.git ~/work/beautifulnodejs
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/claude-code-cli-cost-tracker.git ~/work/claude-code-cli-cost-tracker
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/skills.git ~/work/skills
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/claude-skill.git ~/work/claude-skill
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/garden-skills.git ~/work/garden-skills
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/ponytail.git ~/work/ponytail
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/ui-ux-pro-max-skill.git ~/work/ui-ux-pro-max-skill
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/superpowers.git ~/work/superpowers
-git clone --depth 1 --single-branch https://github.com/Facta-Dev/awesome-claude-skills.git ~/work/awesome-claude-skills
-```
-
-`gh repo clone Facta-Dev/<repo> ~/work/<repo> -- --depth 1 --single-branch` is
-equivalent and required for the private repos in the other groups
-(`gh auth login` first). Cloning is not the last step: the packs must be
-registered and installed (§4.1) and the cost tracker's `install.sh` run.
+The inventory is `install/repos.txt` — one `group|org/repo|why` per line. It
+is the single source of truth: add a repository there, never in the script.
+A repository can appear in more than one group; the script clones it once per
+run. The groups are yours to define — keep the inventory in your own fork of
+this repository.
 
 ---
 
 ## 4. Configure a repository
 
 ```bash
-bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/talos \
+bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app \
   --kit=golang --dry-run
-bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/talos --kit=golang
+bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app --kit=golang
 ```
 
 `--kit=` is one of `golang`, `nodejs`, `python`, `rust`, `java`, `extension`,
@@ -217,9 +190,9 @@ Per-script flags and the no-delete contract: [scripts/claude-kit/README.md](scri
 
 ### 4.1 Repositories that install something
 
-Cloning is not installing. A few working-set repos ship tooling that must be
-installed once per machine, after `clone-repos.sh` and before you rely on it.
-Everything here is idempotent.
+Cloning is not installing. Some repos ship tooling that must be installed
+once per machine, after the clone and before you rely on it. Everything here
+is idempotent.
 
 ```bash
 bash ~/ai-coding-playbook/scripts/claude-kit/install-skill-packs.sh --dry-run    # plan
@@ -230,28 +203,26 @@ bash ~/ai-coding-playbook/scripts/claude-kit/install-skill-packs.sh --self-test
 
 It is shell only (zero model tokens), registers each repo's marketplace and
 installs its plugins into **user scope**. An installed plugin is skipped. The
-marketplace comes from `Facta-Dev/<repo>` on GitHub by default; `--local`
-resolves it from the clone under `--dir` (default `~/work`) instead, so
-`git pull` updates the plugin.
+marketplace comes from the repo's own organization on GitHub by default;
+`--local` resolves it from the clone under `--dir` (default `~/work`) instead,
+so `git pull` updates the plugin.
+
+One row per repository, in this shape:
 
 | Repo | Marketplace | Plugins |
 | --- | --- | --- |
-| `beautifulpython` | `beautiful-python` | `beautiful-python` |
-| `beautifulrust` | `beautiful-rust` | `beautiful-rust` |
-| `beautifulgo` | `beautiful-go` | `beautiful-go` |
-| `beautifulnodejs` | `beautiful-nodejs` | `beautiful-nodejs` |
-| `skills` | `mattpocock` | `mattpocock-skills` |
-| `claude-skill` | `motionsites` | `motionsites-web-builder` |
-| `garden-skills` | `garden-skills` | `presentation-skills`, `web-design-skills`, `knowledge-base-skills`, `image-generation-skills`, `motion-showreel-skills`, `beautiful-article-skills` |
-| `ui-ux-pro-max-skill` | `ui-ux-pro-max-skill` | `ui-ux-pro-max` |
-| `superpowers` | `superpowers-dev` | `superpowers` |
-| `claude-code-cli-cost-tracker` | — (`install.sh`) | `bash ~/work/claude-code-cli-cost-tracker/install.sh` |
+| `<stack>-skills` | `<stack>-skills` | `<stack>-skills` |
+| `<skills-repo>` | `<marketplace>` | `<plugin-a>`, `<plugin-b>` |
+| `<cost-tracker>` | — (`install.sh`) | `bash ~/work/<cost-tracker>/install.sh` |
 
-`install.sh` runs the tracker's test suite, copies `cccost/`, `statusline.py`,
-`cccost.py`, `prices.json`, `commands/cccost.md` and `hooks/session_status.py`
-into `$CLAUDE_CONFIG_DIR` (default `~/.claude`), then prints the `statusLine`
-and per-event hook JSON to merge into `settings.json` by hand. It never edits
-your settings. On Linux it also installs `ccpanel` to `~/.local/bin`.
+The pack list lives in the script (`PACKS`), one row per repository:
+`repo|marketplace|comma-separated plugins`. That table is the source of truth
+for what the installer installs.
+
+`install.sh` runs the tool's own test suite, copies its package, status-line
+script, price table and command/hook files into `$CLAUDE_CONFIG_DIR` (default
+`~/.claude`), then prints the `statusLine` and per-event hook JSON to merge
+into `settings.json` by hand. It never edits your settings.
 
 Rules:
 
@@ -259,21 +230,21 @@ Rules:
   shadow a namespaced plugin skill and bill its description every turn; the
   marketplace entry plus `enabledPlugins` is the only install path.
 - The marketplace name comes from the repo's `.claude-plugin/marketplace.json`,
-  not from the repository name (`beautifulgo` → `beautiful-go`, `skills` →
-  `mattpocock`). `--self-test` fails when the table drifts from the clones.
+  not from the repository name (`my-skills-repo` → `my-skills`). `--self-test`
+  fails when the table drifts from the clones.
 - Equivalent manual path, per plugin: `/plugin marketplace add <org>/<repo>`
   then `/plugin install <plugin>@<marketplace>`. The settings form is
   `extraKnownMarketplaces.<name>.source = {"source": "github", "repo": "<org>/<repo>"}`
   plus `enabledPlugins["<plugin>@<marketplace>"] = true`; keep those edits human.
-- `ponytail` is not installed by the script: the baseline already enables
-  `ponytail@ponytail` from upstream `DietrichGebert/ponytail`, and the
-  Facta-Dev fork shares the marketplace name. `awesome-claude-skills` has no
-  marketplace manifest — clone and read it.
+- A pack the baseline already enables is not installed by the script: the
+  baseline enables `<plugin>@<marketplace>` from upstream, and your fork
+  shares the marketplace name. A repo without a marketplace manifest is
+  clone-only — clone it and read it.
 - A repo without an `install.sh` and without `.claude-plugin/` is consumed as
   source: clone, `configure-repo.sh`, done. That is the default for products
   and for forks you only inspect.
-- After installing tooling, re-run `kit_check.py` and `/cccost` to confirm the
-  tracker is wired.
+- After installing tooling, re-run `kit_check.py` and the tool's own status
+  command to confirm it is wired.
 
 ---
 
@@ -286,7 +257,7 @@ All zero-token, except one cheap-tier probe.
 python3 ~/ai-coding-playbook/scripts/claude-kit/kit_check.py; echo "exit=$?"
 
 # 2. per repo: nothing to write, nothing missing
-bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/talos --check
+bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app --check
 
 # 3. always-loaded bytes, inside a session
 #    /context        -> reports the always-loaded footprint
@@ -324,7 +295,7 @@ Accepted gap: the deny list covers `Read`, so `cat .env` through Bash is **not**
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | Clone fails with 403/404 | not authenticated or missing repo scope | `gh auth status`; `gh auth login`; add the repo to the org |
-| Clone fails with `repository not found` | wrong org prefix | Products and tooling are `Facta-Dev/`, clients are `everythink-ai/` / `Technorides/` / `matiasbaglieri/` |
+| Clone fails with `repository not found` | wrong org prefix | Check the owner in the clone URL: `https://github.com/<your-org>/<repo>.git` |
 | `install-user-kit.sh` refuses to overwrite | destination is user-owned | That is the contract; use `--force` only for installer-owned files. A `settings.json` merge conflict is resolved from the backup at `~/.claude/backups/install-<UTC timestamp>/settings.json`; only `permissions.deny` is merged |
 | `kit_check.py` exits 2 | findings with level `error` | Read the `area` field: `agents`, `skills`, `rules`, `claude-md`, `settings`, `commands`, `links` |
 | Deny probe passes through | project-relative pattern at user scope | User-scope denies must anchor `//` or `~/` (`Read(//**/.env)`), never `./.env` |

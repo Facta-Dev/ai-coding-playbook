@@ -684,7 +684,7 @@ Not features. Fix deliberately or leave documented.
 - No `src/gen/` client: the only committed generated artifact is
   `specs/openapi.yaml`, exported from the app by `scripts/export_openapi.py`.
   The pydantic request/response models are hand-written.
-- The stack deltas vs beautifulpython's published digest (SQLAlchemy Core
-  `text()` and not ORM entities, DB outbox and not Celery/Redis, constructor
-  injection, stdlib `logging` and not a logging library) are intentional.
-  Swap an adapter; do not change the contract.
+- The stack deltas vs the companion Python skill pack's published digest
+  (SQLAlchemy Core `text()` and not ORM entities, DB outbox and not
+  Celery/Redis, constructor injection, stdlib `logging` and not a logging
+  library) are intentional. Swap an adapter; do not change the contract.

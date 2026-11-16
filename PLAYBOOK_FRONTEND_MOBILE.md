@@ -20,10 +20,9 @@ permission model), `PLAYBOOK_BACKEND.md` (slices, realtime, idempotency),
 `PLAYBOOK_CLAUDE_CODE.md`, and reuses patterns from `PLAYBOOK_CHROME_EXTENSION.md` and
 `PLAYBOOK_DESKTOP_QT.md` (managed config, kill switch, diagnostics, realtime).
 
-The runnable, machine-checkable companion is
-[beautifulreactnative](https://github.com/Facta-Dev/beautifulreactnative): three
-Agent Skills (write, review, port) and a drop-in eslint config that enforces
-this contract.
+The runnable, machine-checkable companion is the **React Native skill pack**:
+three Agent Skills (write, review, port) and a drop-in eslint config that
+enforces this contract.
 
 The rules that carry the whole file:
 
@@ -514,7 +513,7 @@ Decisions:
   "v": 1,
   "type": "market.order.shipped",
   "category": "transactional",
-  "deepLink": "heimdall://app/market/orders/ord_123",
+  "deepLink": "app://app/market/orders/ord_123",
   "correlationId": "…",
   "collapseKey": "order:ord_123",
   "ttl": 86400,
@@ -1194,13 +1193,13 @@ avatar-provider loss (switch provider), voice/LLM provider outage (degrade to te
 import type { ExpoConfig } from 'expo/config';
 
 const VARIANTS = {
-  game:   { name: 'Heimdall Go',     slug: 'heimdall-game',   id: 'com.example.heimdall.game',
+  game:   { name: 'Mobile Go',      slug: 'mobile-game',    id: 'com.example.mobile.game',
             plugins: ['./plugins/with-maplibre', './plugins/with-godot', 'expo-location'],
             permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS'] },
-  market: { name: 'Heimdall Market', slug: 'heimdall-market', id: 'com.example.heimdall.market',
+  market: { name: 'Mobile Market',  slug: 'mobile-market',  id: 'com.example.mobile.market',
             plugins: ['@stripe/stripe-react-native', 'expo-camera'],
             permissions: ['CAMERA', 'POST_NOTIFICATIONS'] },
-  avatar: { name: 'Heimdall Avatar', slug: 'heimdall-avatar', id: 'com.example.heimdall.avatar',
+  avatar: { name: 'Mobile Avatar',  slug: 'mobile-avatar',  id: 'com.example.mobile.avatar',
             plugins: ['react-native-filament', 'expo-audio', '@livekit/react-native-expo-plugin'],
             permissions: ['RECORD_AUDIO', 'CAMERA', 'POST_NOTIFICATIONS'] },
 } as const;

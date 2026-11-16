@@ -576,6 +576,6 @@ Not features. Fix deliberately or leave documented.
 - No coverage threshold, mutation testing, secret scan, SBOM or image scan.
 - `POST /api/v1/auth/upgrade-to-admin` is unauthenticated and gated only by
   `ALLOWED_ADMIN_EMAILS`; remove it after bootstrap.
-- The stack deltas vs beautifulnodejs's published digest (Kysely not Drizzle,
-  DB outbox not BullMQ/Redis, constructor DI not tsyringe) are intentional.
-  Swap an adapter; do not change the contract.
+- The stack deltas vs the companion Node.js skill pack's published digest
+  (Kysely not Drizzle, DB outbox not BullMQ/Redis, constructor DI not
+  tsyringe) are intentional. Swap an adapter; do not change the contract.

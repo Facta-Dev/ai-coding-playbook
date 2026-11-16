@@ -12,10 +12,9 @@ stay consistent with `PLAYBOOK_URLS.md` (routes and authorization),
 `PLAYBOOK_TESTS.md` (the proof), `PLAYBOOK_SECURITY.md` and
 `PLAYBOOK_AUDIT.md`.
 
-The runnable, machine-checkable companion is
-[beautiful-j2ee](https://github.com/Facta-Dev/beautiful-j2ee): three Agent
-Skills (write, review, port) and a drop-in Checkstyle config that enforces
-this contract.
+The runnable, machine-checkable companion is the J2EE skill pack: three Agent
+Skills (write, review, port) and a drop-in Checkstyle config that enforces this
+contract.
 
 The rules that carry the whole file:
 

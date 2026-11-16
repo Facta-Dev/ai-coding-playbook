@@ -18,9 +18,9 @@ skills, hooks, multi-session patterns), `PLAYBOOK_DESKTOP_QT.md` (realtime
 state machine, policy, updater) and the mobile playbooks (device-code style
 sign-in is new here; push is not applicable).
 
-The runnable, machine-checkable companion is
-[beautifulcli](https://github.com/Facta-Dev/beautifulcli): three Agent Skills
-(write, review, port) and a drop-in eslint config that enforces this contract.
+The runnable, machine-checkable companion is the CLI skill pack: three Agent
+Skills (write, review, port) and a drop-in eslint config that enforces this
+contract.
 
 The rules that carry the whole file:
 
@@ -81,7 +81,7 @@ The rules that carry the whole file:
 | D12 | Updates | Signed manifest, channels (`stable`/`latest`/`canary`), staged rollout, atomic swap, rollback; admin can disable, pin or mirror | Section 12 |
 | D13 | Supported platforms | Derive from the runtime's support matrix and your fleet: example floor used by a reference product is macOS 13+, Windows 10 1809+, Ubuntu 20.04+, Debian 10+, Alpine 3.19+ **(verify and document in `docs/support-matrix.md`)**; architectures x64 and arm64 on all three OSes; glibc and musl on Linux | Alpine/musl needs its own artifact |
 | D14 | Shell execution | **Shell adapters per OS** (bash/zsh, PowerShell, cmd); no hard dependency on Git Bash on Windows | Reference products have required Git for Windows; avoid that coupling unless justified |
-| D15 | Binary name | Short, unique, non-conflicting (check package managers and PATH collisions); example `hmd` | Collisions break installs |
+| D15 | Binary name | Short, unique, non-conflicting (check package managers and PATH collisions); example `myapp` | Collisions break installs |
 
 ---
 
@@ -93,9 +93,9 @@ The rules that carry the whole file:
 |---|---|---|
 | **Interactive (TUI/REPL)** | TTY on stdin+stdout and no print flag | Conversation/command session, streaming transcript, slash commands, permission dialogs, status line |
 | **Print / headless** | `-p, --print` (prompt or piped stdin) | Runs once and exits; `--output-format text\|json\|stream-json`, `--input-format text\|stream-json`, `--max-turns`, `--max-budget`, `--json-schema`, `--no-session-persistence` |
-| **Resource subcommands** | `hmd <module> <resource> <verb>` | Deterministic CRUD and actions against the backend; table/JSON output; no TUI |
-| **Serve (RPC)** | `hmd serve` | Headless engine over stdio JSON-RPC/NDJSON or a local socket for IDEs and other frontends |
-| **MCP server (optional)** | `hmd mcp serve` | Expose selected capabilities as MCP tools **(verify product need)** |
+| **Resource subcommands** | `myapp <module> <resource> <verb>` | Deterministic CRUD and actions against the backend; table/JSON output; no TUI |
+| **Serve (RPC)** | `myapp serve` | Headless engine over stdio JSON-RPC/NDJSON or a local socket for IDEs and other frontends |
+| **MCP server (optional)** | `myapp mcp serve` | Expose selected capabilities as MCP tools **(verify product need)** |
 | **Maintenance** | `doctor`, `update`, `install <channel\|version>`, `config`, `completion`, `version`, `auth login\|logout\|status` | Health, lifecycle and config |
 
 `auth status` exits 0 when signed in and non-zero otherwise (scriptable).
@@ -103,14 +103,14 @@ The rules that carry the whole file:
 ### 2.2 Command taxonomy (aligned with `PLAYBOOK_URLS.md`)
 
 ```text
-hmd [global flags] <module> <resource> <verb> [args]          # app experience (default userType)
-hmd admin <module> <resource> <verb> --tenant <id> [args]     # admin experience (authorized server-side)
-hmd partner <module> …                                        # partner experience
+myapp [global flags] <module> <resource> <verb> [args]          # app experience (default userType)
+myapp admin <module> <resource> <verb> --tenant <id> [args]     # admin experience (authorized server-side)
+myapp partner <module> …                                        # partner experience
 
-hmd funnels leads get <leadId>              ↔ GET   /api/v1/app/funnels/leads/{leadId}
-hmd funnels leads list --stage won --limit 50 ↔ GET /api/v1/app/funnels/leads?stage=won&limit=50
-hmd projects launch <projectId>             ↔ POST  /api/v1/app/projects/{projectId}/launch   (202 → --wait)
-hmd admin tenants users suspend <tenantId> <userId> ↔ POST /api/v1/admin/tenants/{tenantId}/users/{userId}/suspend
+myapp funnels leads get <leadId>              ↔ GET   /api/v1/app/funnels/leads/{leadId}
+myapp funnels leads list --stage won --limit 50 ↔ GET /api/v1/app/funnels/leads?stage=won&limit=50
+myapp projects launch <projectId>             ↔ POST  /api/v1/app/projects/{projectId}/launch   (202 → --wait)
+myapp admin tenants users suspend <tenantId> <userId> ↔ POST /api/v1/admin/tenants/{tenantId}/users/{userId}/suspend
 ```
 
 Rules: commands are **generated from the route table and OpenAPI**, then wrapped with UX (flags, output shaping); the `admin` prefix never grants access, the backend validates token,
@@ -204,7 +204,7 @@ CLI slices mirror backend slices and URL modules: `auth`, `config`, `projects`, 
 
 * **Never** write progress bars, spinners or color to stdout when it is not a TTY. Progress goes to stderr only if stderr is a TTY; otherwise emit plain periodic lines or nothing.
 * Respect `NO_COLOR`, `FORCE_COLOR`, `--no-color`, `--color=auto|always|never`.
-* Read piped stdin when present (`cat log | hmd -p "summarize"`), with size limits and streaming.
+* Read piped stdin when present (`cat log | myapp -p "summarize"`), with size limits and streaming.
 
 ### 4.2 Flags and environment
 
@@ -222,7 +222,7 @@ CLI slices mirror backend slices and URL modules: `auth`, `config`, `projects`, 
 | `--debug [categories]`, `--verbose`, `--quiet` | Diagnostics |
 | `--config <path>`, `--settings <file>` | Config overrides |
 | `--permission-mode`, `--allowedTools`, `--disallowedTools` | Permission control (agentic mode) |
-| `HMD_TOKEN`, `HMD_API_URL`, `HMD_PROFILE` | Auth/config via env (token never printed) |
+| `MYAPP_TOKEN`, `MYAPP_API_URL`, `MYAPP_PROFILE` | Auth/config via env (token never printed) |
 | `HTTP_PROXY/HTTPS_PROXY/NO_PROXY`, `SSL_CERT_FILE`/`NODE_EXTRA_CA_CERTS` | Corporate networking |
 
 ### 4.3 Exit codes (stable contract; documented in `--help`)
@@ -256,11 +256,11 @@ Scripts rely on these; changing them is a breaking change.
 
 ### 4.5 Help, completions and docs
 
-Generated `--help` (usage, examples, flags, env vars, exit codes, links), `hmd completion bash|zsh|fish|powershell`, man pages/markdown reference generated from the command registry, "did you mean" suggestions, concise errors with next steps and a docs URL.
+Generated `--help` (usage, examples, flags, env vars, exit codes, links), `myapp completion bash|zsh|fish|powershell`, man pages/markdown reference generated from the command registry, "did you mean" suggestions, concise errors with next steps and a docs URL.
 
 ### 4.6 Accessibility and localization
 
-`--accessible`/`HMD_ACCESSIBLE=1` mode: no spinners/animations, stable linear output, descriptive text instead of glyphs; no color-only meaning; ASCII fallback for box-drawing/emoji when the terminal or locale can't render them;
+`--accessible`/`MYAPP_ACCESSIBLE=1` mode: no spinners/animations, stable linear output, descriptive text instead of glyphs; no color-only meaning; ASCII fallback for box-drawing/emoji when the terminal or locale can't render them;
 message keys with `Intl`-based formatting; correct width for CJK/emoji (grapheme-aware); RTL awareness for text output where applicable; honor `LANG/LC_*` and UTF-8 requirements (Windows code page handled).
 
 ---
@@ -308,7 +308,7 @@ Never assume a feature; **detect, then enable, then fall back**.
 | Mouse | Opt-in | Click/scroll in fullscreen | Keyboard only |
 | Multiplexers (tmux/screen/zellij), SSH, containers | `TMUX`, `STY`, `ZELLIJ`, `SSH_TTY` | Conservative feature set | Disable risky protocols |
 
-Rules: queries have **short timeouts (≈100–200 ms)** and never block; never query when not a TTY; cache the result; allow overrides (`HMD_TERMINAL_CAPS=…`) and a `doctor` report; support documentation of known-bad terminals. Terminal support claims vary across sources and versions, so keep a **tested matrix** instead of trusting tables.
+Rules: queries have **short timeouts (≈100–200 ms)** and never block; never query when not a TTY; cache the result; allow overrides (`MYAPP_TERMINAL_CAPS=…`) and a `doctor` report; support documentation of known-bad terminals. Terminal support claims vary across sources and versions, so keep a **tested matrix** instead of trusting tables.
 
 ### 5.3 Terminal lifecycle guard (mandatory)
 
@@ -380,7 +380,7 @@ treat Windows drive/UNC specially. Atomic writes (temp file + rename), `0600`/`0
 * HTTP: keep-alive, HTTP/2 where available, explicit timeouts, abort on Ctrl+C, proxy env support, custom CA bundle support, TLS verification always on.
 * **Pagination**: cursor-based; `--all` streams pages with bounded memory and a hard cap; backpressure-aware writes to stdout (`EPIPE` handled when piped into `head`).
 * **Long operations** (`202`): `--wait` polls or subscribes to realtime until a terminal state with backoff and `--timeout`; progress to stderr; `Ctrl+C` stops waiting without cancelling the server operation unless `--cancel-on-interrupt`.
-* **Version gate**: `upgrade-required` → exit 11 with a message and (if allowed) offer `hmd update`.
+* **Version gate**: `upgrade-required` → exit 11 with a message and (if allowed) offer `myapp update`.
 
 ### 7.2 Authentication flows
 
@@ -388,7 +388,7 @@ treat Windows drive/UNC specially. Atomic writes (temp file + rename), `0600`/`0
 |---|---|---|
 | **Device authorization (RFC 8628)** | SSH, containers, no browser/TTY-limited | Print URL + user code; poll with `interval`, back off on `slow_down`; QR optional |
 | **Auth code + PKCE with loopback (RFC 8252)** | Local desktop sessions | Random port on `127.0.0.1`, single-use state, short timeout, system browser (never an embedded webview) |
-| **API token / service account** | CI | `HMD_TOKEN` env or `--token-file`; scoped, revocable; **never echo or log**; prefer OIDC federation in CI when available |
+| **API token / service account** | CI | `MYAPP_TOKEN` env or `--token-file`; scoped, revocable; **never echo or log**; prefer OIDC federation in CI when available |
 | **SSO/enterprise** | Managed fleets | IdP issuer/client from managed policy |
 
 * Tokens live in the **OS keystore** (`SecretStorePort`); if none exists, require an explicit opt-in to an encrypted file with restrictive permissions and show a warning in `doctor`.
@@ -397,12 +397,12 @@ treat Windows drive/UNC specially. Atomic writes (temp file + rename), `0600`/`0
 
 ### 7.3 Realtime in the CLI
 
-`hmd events tail`, `hmd runs watch <id>`, live `--wait` use the same transports and state machine as `PLAYBOOK_DESKTOP_QT.md` §8 (SSE via streaming `fetch`, WebSocket, polling fallback), snapshot + stream, dedupe by event ID, resume (`Last-Event-ID`), heartbeats,
+`myapp events tail`, `myapp runs watch <id>`, live `--wait` use the same transports and state machine as `PLAYBOOK_DESKTOP_QT.md` §8 (SSE via streaming `fetch`, WebSocket, polling fallback), snapshot + stream, dedupe by event ID, resume (`Last-Event-ID`), heartbeats,
 backoff with jitter, bounded buffers, output coalescing so a burst never floods the terminal. Parse SSE from the raw byte stream with a spec-compliant parser; token in the `Authorization` header only.
 
 ### 7.4 Offline and caching
 
-Optional read cache with TTL for slow lookups (`--no-cache`, `hmd cache clear`); never cache secrets; outbox for mutations is **not** the default in a CLI (fail fast with a clear message) unless a spec requires it.
+Optional read cache with TTL for slow lookups (`--no-cache`, `myapp cache clear`); never cache secrets; outbox for mutations is **not** the default in a CLI (fail fast with a clear message) unless a spec requires it.
 
 ---
 
@@ -411,14 +411,14 @@ Optional read cache with TTL for slow lookups (`--no-cache`, `hmd cache clear`);
 ### 8.1 Layers and precedence
 
 ```text
-managed policy (OS-level; can lock keys)  >  CLI flags  >  environment  >  project local (.hmd/settings.local.json, gitignored)
-   >  project (.hmd/settings.json, committed)  >  user (config dir)  >  defaults
+managed policy (OS-level; can lock keys)  >  CLI flags  >  environment  >  project local (.myapp/settings.local.json, gitignored)
+   >  project (.myapp/settings.json, committed)  >  user (config dir)  >  defaults
 ```
 
-* Schema-validated (JSON Schema/zod), versioned with migrations, `hmd config list|get|set|unset|path|edit` showing the **source layer** of each effective value.
+* Schema-validated (JSON Schema/zod), versioned with migrations, `myapp config list|get|set|unset|path|edit` showing the **source layer** of each effective value.
 * **No secrets in config files**; tokens only in the keystore or env.
 * **Project config is untrusted until trusted**: hooks, plugins, MCP servers, custom commands and shell-executing settings from a repository require a **workspace trust** confirmation (remembered per path/hash); `-p` mode must not silently trust arbitrary repos (explicit `--trust-workspace` or a policy).
-* Instruction files for the product's own assistant features (`HMD.md`, `.hmd/rules/*.md`) follow `PLAYBOOK_CLAUDE_CODE.md`: short, scoped, versioned.
+* Instruction files for the product's own assistant features (`MYAPP.md`, `.myapp/rules/*.md`) follow `PLAYBOOK_CLAUDE_CODE.md`: short, scoped, versioned.
 
 ### 8.2 State and housekeeping
 
@@ -430,13 +430,13 @@ managed policy (OS-level; can lock keys)  >  CLI flags  >  environment  >  proje
 | Update staging | data dir | Cleaned after apply |
 | Locks/PIDs | runtime dir | Auto-cleaned (stale detection) |
 
-`hmd purge`/`hmd project purge` remove local state for a project; atomic writes; file locks make **multiple simultaneous CLI instances** safe (see `PLAYBOOK_CLAUDE_CODE.md` multi-session patterns).
+`myapp purge`/`myapp project purge` remove local state for a project; atomic writes; file locks make **multiple simultaneous CLI instances** safe (see `PLAYBOOK_CLAUDE_CODE.md` multi-session patterns).
 
 ### 8.3 Managed settings (enterprise)
 
 Policy keys (examples): `apiBaseUrl` (allowlisted patterns), `idp` (issuer/clientId), `updates` (`disabled`, `channel`, `pinnedVersion`, `mirrorUrl`, `window`), `telemetry` (`off|errors|full`), `allowedPlugins`/`allowedMcpServers`/`deniedMcpServers`,
 `permissions` (deny rules that users can't override), `disableBypassPermissionsMode`, `allowManagedHooksOnly`, `proxy`, `caBundle`, `killSwitch`, `featureFlags`, `retentionDays`, `supportContact`. Delivered by MDM/GPO/config management;
-`hmd status`/`doctor` shows active sources. Managed settings **win over** user and project settings for the keys they set.
+`myapp status`/`doctor` shows active sources. Managed settings **win over** user and project settings for the keys they set.
 
 ---
 
@@ -544,9 +544,9 @@ Signing happens in a **dedicated CI job** with isolated credentials and approval
 
 ### 12.3 Updates
 
-* **Channels**: `stable` (default), `latest`, `canary`; `hmd install <channel|version>` pins a specific version; staged rollout by cohort with halt on regression.
+* **Channels**: `stable` (default), `latest`, `canary`; `myapp install <channel|version>` pins a specific version; staged rollout by cohort with halt on regression.
 * **Manifest**: signed (Ed25519), lists version, channel, platform/arch/libc, URLs, hashes, size, min OS, release notes, `minSupportedVersion`, cohort; clients verify signature, hash and **monotonic version** before applying.
-* **Mechanism**: background check (throttled, opt-out by policy), download to a staging dir, verify, **atomic swap**; on Windows swap on next launch or via a small helper because a running executable can't be replaced; keep the previous version for **rollback** (`hmd update --rollback`); never update while a long operation is running without consent.
+* **Mechanism**: background check (throttled, opt-out by policy), download to a staging dir, verify, **atomic swap**; on Windows swap on next launch or via a small helper because a running executable can't be replaced; keep the previous version for **rollback** (`myapp update --rollback`); never update while a long operation is running without consent.
 * **Admin controls**: `updates.disabled`, `pinnedVersion`, `channel`, `mirrorUrl` (internal artifact server), update windows; air-gapped bundles with offline verification.
 * **No update without trust**: unsigned, mismatched or downgrade manifests are rejected and reported.
 * **Uninstall**: documented per channel; leaves user data unless `--purge`.
@@ -561,10 +561,10 @@ Publish `docs/support-matrix.md`: OS and minimum version, architectures, libc, t
 
 | Signal | Implementation |
 |---|---|
-| `hmd doctor` | Checks: version/channel, install method and path, PATH shadowing, runtime, auth state, API reachability (proxy/TLS/CA), config validity and sources, terminal capabilities report, shell detection, dir permissions, disk space, update status, plugin/MCP health; exit non-zero on failures; machine-readable `--json` |
+| `myapp doctor` | Checks: version/channel, install method and path, PATH shadowing, runtime, auth state, API reachability (proxy/TLS/CA), config validity and sources, terminal capabilities report, shell detection, dir permissions, disk space, update status, plugin/MCP health; exit non-zero on failures; machine-readable `--json` |
 | Debug logging | `--debug [categories]` (`api`, `mcp`, `render`, `permissions`, `updater`), written to a rotating file (path printed), redacted; never to stdout |
 | Crash handling | Terminal guard + friendly message with log path and correlation ID; optional crash report upload (opt-in, scrubbed) |
-| Diagnostics bundle | `hmd bug-report` (user-initiated): version, OS, terminal, caps, effective config (secrets removed), recent logs, last errors with correlation IDs |
+| Diagnostics bundle | `myapp bug-report` (user-initiated): version, OS, terminal, caps, effective config (secrets removed), recent logs, last errors with correlation IDs |
 | Metrics (opt-in) | Startup time, first-frame time, render stalls, API latency/error rates, realtime reconnects, update outcomes, command usage counts (no arguments/content) |
 | Tracing | `X-Correlation-Id` per command/turn, printed on errors and included in logs |
 | Server-side | Error rates by CLI version/OS, `upgrade-required` rates, update failures, auth failures |
@@ -717,7 +717,7 @@ Per `PLAYBOOK_CLAUDE_CODE.md`:
 
 ```text
 apps/cli/
-├── bin/hmd.ts                      # fast path: --version/--help; lazy-loads the rest
+├── bin/myapp.ts                      # fast path: --version/--help; lazy-loads the rest
 ├── src/
 │   ├── app/                        # composition root, mode router (interactive | print | subcommand | serve)
 │   ├── shared-kernel/              # Result, ids, errors, time, branded types
@@ -740,7 +740,7 @@ docs/{adr,support-matrix.md,admin-guide.md,runbooks/,permissions-register.md}
 ## Appendix B — Fast-path entrypoint and mode router (sketch)
 
 ```ts
-// bin/hmd.ts — keep imports minimal so --version/--help stay instant
+// bin/myapp.ts — keep imports minimal so --version/--help stay instant
 const argv = process.argv.slice(2);
 if (argv[0] === '--version' || argv[0] === '-v') { process.stdout.write(`${VERSION}\n`); process.exit(0); }
 
@@ -798,7 +798,7 @@ export const toSafeTerminalText = (s: string): string =>
 
 ```ts
 export async function deviceLogin(idp: IdpPort, ui: UiPort, clock: ClockPort): Promise<Tokens> {
-  const d = await idp.deviceAuthorize({ scope: 'openid offline_access hmd.api' });          // POST …/device_authorization
+  const d = await idp.deviceAuthorize({ scope: 'openid offline_access myapp.api' });          // POST …/device_authorization
   ui.info(`Open ${d.verificationUri} and enter code: ${d.userCode}`);
   let interval = d.interval ?? 5;
   const deadline = clock.now() + d.expiresIn * 1000;
@@ -828,8 +828,8 @@ export function resolveConfig(layers: { managed: Cfg; flags: Cfg; env: Cfg; proj
 ```json
 {
   "apiBaseUrl": "https://acme.example.com",
-  "idp": { "issuer": "https://login.acme.example/", "clientId": "hmd-cli" },
-  "updates": { "channel": "stable", "disabled": false, "mirrorUrl": "https://mirror.acme.example/hmd" },
+  "idp": { "issuer": "https://login.acme.example/", "clientId": "myapp-cli" },
+  "updates": { "channel": "stable", "disabled": false, "mirrorUrl": "https://mirror.acme.example/myapp" },
   "telemetry": "errors",
   "permissions": { "deny": ["Shell(curl * | sh*)", "Read(./.env)"] },
   "allowManagedHooksOnly": true,
@@ -845,11 +845,11 @@ export function resolveConfig(layers: { managed: Cfg; flags: Cfg; env: Cfg; proj
 {
   "v": 1, "channel": "stable", "version": "1.8.2", "minSupportedVersion": "1.6.0", "rollout": { "cohort": "stable", "percent": 25 },
   "artifacts": [
-    { "os": "linux", "arch": "x64", "libc": "glibc", "url": "https://dl.example.com/hmd/1.8.2/hmd-linux-x64.tar.gz", "sha256": "…", "size": 62914560 },
-    { "os": "darwin", "arch": "arm64", "url": "https://dl.example.com/hmd/1.8.2/hmd-darwin-arm64.zip", "sha256": "…", "size": 60817408 },
-    { "os": "win32", "arch": "x64", "url": "https://dl.example.com/hmd/1.8.2/hmd-win32-x64.zip", "sha256": "…", "size": 66060288 }
+    { "os": "linux", "arch": "x64", "libc": "glibc", "url": "https://dl.example.com/myapp/1.8.2/myapp-linux-x64.tar.gz", "sha256": "…", "size": 62914560 },
+    { "os": "darwin", "arch": "arm64", "url": "https://dl.example.com/myapp/1.8.2/myapp-darwin-arm64.zip", "sha256": "…", "size": 60817408 },
+    { "os": "win32", "arch": "x64", "url": "https://dl.example.com/myapp/1.8.2/myapp-win32-x64.zip", "sha256": "…", "size": 66060288 }
   ],
-  "notes": "https://example.com/hmd/changelog#1.8.2",
+  "notes": "https://example.com/myapp/changelog#1.8.2",
   "signature": "<ed25519 over canonical JSON>"
 }
 ```
