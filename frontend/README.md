@@ -92,3 +92,9 @@ and never renames directories.
 Install the `.claude` plane into a target repository with
 `bash scripts/install-claude-runtime.sh --targets=claude,claude-project --dest=<repo>`,
 or via the root `scripts/claude-kit/configure-repo.sh --kit=frontend`.
+
+A capture harness ships at `scripts/shoot.py` (Playwright, headless Chrome as
+fallback): desktop and mobile screenshots plus an early frame, with a JSON QA
+report (console errors, failed requests, overflow, broken images, fonts, video
+readiness). Adapted from the MotionSites claude-skill repository; MIT, see the
+header in the file. It backs the `visual-review` skill.
