@@ -136,7 +136,7 @@ Six backend contracts ship next to this file:
 | `PLAYBOOK_CLAUDE_CODE.md` | The Claude Code kit, SDD + TDD loop, multi-session governance |
 
 The `.claude/` layer ships 11 agents across four divisions (`core`, `backend`,
-`security`, `testing`), 14 skills with 1:1 slash commands (`/add-handler`,
+`security`, `testing`), 18 skills with 1:1 slash commands (`/add-handler`,
 `/add-module`, `/ownership-author`, `/depguard-guard`, `/review`, `/spec`,
 `/plan`, `/learn`, `/ship`), schema-driven linters in `scripts/`, a
 `PreToolUse` Bash guard, and a `manifest.json` target matrix for installing the

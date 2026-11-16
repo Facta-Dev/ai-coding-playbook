@@ -31,7 +31,7 @@ and print a visible `SKIP` elsewhere.
 │       └── UI/                #   SwiftUI screens + @Observable model
 ├── evals/                     # the .claude contract tests (node --test) + live tier
 ├── scripts/                   # rename · verify-template · check-architecture · native-gates · linters
-├── .claude/                   # 11 agents · 14 skills/commands · schemas · hooks
+├── .claude/                   # 11 agents · 19 skills/commands · schemas · hooks
 ├── docs/                      # 00–14 · adr/ · admin-guide · data-flows · dependency-register
 ├── PLAYBOOK_*.md              # seven local contracts — read on demand
 ├── project.yml                # XcodeGen: one app target, six local packages
@@ -89,7 +89,7 @@ ISO 27001 / ISO 9001 programs) and `PLAYBOOK_CLAUDE_CODE.md` (the kit,
 SDD + TDD loop, governance).
 
 The `.claude/` layer ships 11 agents across four divisions (`core`, `client`,
-`security`, `testing`), 14 skills with 1:1 slash commands (`/add-slice`,
+`security`, `testing`), 19 skills with 1:1 slash commands (`/add-slice`,
 `/add-package`, `/add-route`, `/add-port`, `/review`, `/spec`, `/plan`,
 `/learn`, `/ship`), schema-driven linters in `scripts/`, a `PreToolUse` Bash
 guard, and a `manifest.json` target matrix for installing the kit into other
