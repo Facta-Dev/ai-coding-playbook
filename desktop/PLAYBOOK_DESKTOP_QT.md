@@ -24,10 +24,9 @@ It builds on and must stay consistent with:
 | `PLAYBOOK_CHROME_EXTENSION.md` | Enterprise policy, kill switch, diagnostics bundle, release governance patterns reused here |
 | `PLAYBOOK_CLAUDE_CODE.md` | SDD + TDD workflow, roles and kit for AI-assisted development |
 
-The runnable, machine-checkable companion is
-[beautifulqt](https://github.com/Facta-Dev/beautifulqt): three Agent Skills
-(write, review, port), a drop-in clang-tidy/clang-format config and a compiled
-example.
+The runnable, machine-checkable companion is the **companion Qt skill pack**:
+three Agent Skills (write, review, port), a drop-in clang-tidy/clang-format
+config and a compiled example.
 
 The rules that carry the whole file:
 
@@ -480,7 +479,7 @@ These must be added to the backend playbook/specs (new spec per slice) before cl
 |---|---|
 | Realtime capabilities | `GET /api/v1/app/realtime/capabilities` → supported transports, heartbeat interval, max message size, resume window, topic catalog version |
 | SSE stream | `GET /api/v1/app/realtime/stream?topics=…` (`text/event-stream`), supports `Last-Event-ID` |
-| WebSocket | `GET /api/v1/app/realtime/socket` (upgrade), subprotocol `heimdall.v1` |
+| WebSocket | `GET /api/v1/app/realtime/socket` (upgrade), subprotocol `app.v1` |
 | Admin variants | `/api/v1/admin/tenants/{tenantId}/realtime/…` for cross-tenant monitoring (admin permission checked server-side) |
 | Device/session registration (optional) | `POST /api/v1/app/devices` (client version, OS, arch, channel) for audit and targeted notices |
 | Update manifest | Static signed manifest on a CDN (preferred) or `GET /api/v1/public/desktop/updates/{channel}/{os}/{arch}` (`/public` = session-less) |
@@ -524,7 +523,7 @@ The desktop uses the **same path grammar** as the web and mobile clients:
 
 ### 6.3 Deep links and OS integration
 
-* Custom protocol (`heimdall://app/funnels/leads/{leadId}`) and, where useful, associated web URLs,
+* Custom protocol (`app://app/funnels/leads/{leadId}`) and, where useful, associated web URLs,
   registered per OS (registry/URL scheme, `Info.plist`, `.desktop` MIME handler).
 * Incoming deep links, file-open events and second-launch arguments arrive through the
   **single-instance IPC** (`QLocalServer`/`QLockFile`), are parsed by a strict parser (allowlist of
@@ -626,7 +625,7 @@ implement an adapter with a **spec-compliant parser**:
 ### 8.5 WebSocket transport
 
 * Qt WebSockets (`QWebSocket`): connect with a request carrying `Authorization`, subprotocol
-  `heimdall.v1`, origin/client headers; set maximum incoming frame/message sizes; use app-level
+  `app.v1`, origin/client headers; set maximum incoming frame/message sizes; use app-level
   heartbeat messages in addition to protocol pings.
 * Messages: JSON envelope `{v, type, id, ts, topic, payload}` with a command set
   (`subscribe`, `unsubscribe`, `ack`, `ping`, `auth.refresh`) validated by schema; unknown types ignored
@@ -1129,7 +1128,7 @@ Per `PLAYBOOK_CLAUDE_CODE.md`:
 
 ```cmake
 cmake_minimum_required(VERSION 3.25)
-project(heimdall_desktop LANGUAGES CXX VERSION 1.0.0)
+project(app_desktop LANGUAGES CXX VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -1146,10 +1145,10 @@ add_library(desktop_application STATIC ...)              # links: desktop_domain
 add_library(desktop_infrastructure STATIC ...)           # links: application, Qt6::Network, Qt6::Sql, Qt6::WebSockets
 add_library(desktop_platform STATIC ...)                 # OS specifics via if(WIN32)/APPLE/UNIX
 add_library(desktop_presentation STATIC ...)             # links: application, Qt6::Widgets, ui_kit
-add_executable(heimdall WIN32 MACOSX_BUNDLE src/app/main.cpp)
-target_link_libraries(heimdall PRIVATE desktop_presentation desktop_infrastructure desktop_platform)
+add_executable(app WIN32 MACOSX_BUNDLE src/app/main.cpp)
+target_link_libraries(app PRIVATE desktop_presentation desktop_infrastructure desktop_platform)
 
-target_compile_definitions(heimdall PRIVATE
+target_compile_definitions(app PRIVATE
   QT_NO_CAST_FROM_ASCII QT_NO_CAST_TO_ASCII QT_NO_URL_CAST_FROM_STRING QT_NO_FOREACH
   QT_DISABLE_DEPRECATED_UP_TO=0x060800)
 ```

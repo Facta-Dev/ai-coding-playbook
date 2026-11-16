@@ -32,7 +32,7 @@
 #
 # Usage:
 #   bash scripts/claude-kit/bootstrap.sh [--provider=ollama|anthropic|auto]
-#        [--group=selected|core|products|tools|clients|reference|all]
+#        [--group=selected|core|tools|reference|all]
 #        [--dir=DIR] [--dry-run]
 #     --provider=   force the provider branch (default: auto-detect Ollama)
 #     --group=      clone-repos group (default: selected)

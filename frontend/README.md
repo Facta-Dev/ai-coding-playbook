@@ -34,6 +34,11 @@ evals/           the native contract harness for the .claude layer
                  (node --test, zero dependencies) plus the frozen fixtures
 scripts/         the pure-bash install, lint, leak-guard and verify machinery
 .claude/         agents, skills, commands and schemas for the playbook
+docs/            the numbered handbook (00-14) plus two ADRs
+AGENTS.md        agent-agnostic instructions; CLAUDE.md is a symlink to it
+MEMORY.md        the durable premise: layers, ports, the SDK, the gates
+.env.example     the build-time VITE_ variables (shape only, no values)
+PLAYBOOK_*.md    six local contracts, byte-identical to the de-branded root
 ```
 
 The one feature shipped end to end is the **lead detail** screen (the
@@ -41,6 +46,44 @@ PLAYBOOK_FRONTEND section 8 example): `sdk.app.funnels.leads` mirrors
 `/api/v1/app/funnels/leads`, the ViewModel exposes the `loading`, `ready`,
 `forbidden`, `not-found` and `error` statuses, and the View renders all of
 them.
+
+## The kit files
+
+- **`AGENTS.md`** is the agent-agnostic instruction file (Claude Code, Codex,
+  Cursor, Aider ...): the hard rules, the layer table, the gates, the TDD
+  loop and the playbook loading rules. `CLAUDE.md` is a relative symlink to
+  it, exactly like the sibling kits.
+- **`MEMORY.md`** is the durable premise for every session: the layers, the
+  ports, the SDK namespace, the example feature, the test tiers and the
+  gates.
+- **`.env.example`** names the one build-time variable (`VITE_API_BASE_URL`)
+  and no values. Only `VITE_`-prefixed names reach the bundle; no secret is
+  baked in - the access token arrives at runtime through the `TokenStore`
+  port.
+- **`docs/`** is the numbered handbook: chapters 00-14 plus a README index
+  and two ADRs (Vite as the build; npm and the committed lockfile). The
+  extension-specific topics that do not apply to a web SPA (the service
+  worker, the manifest, the message protocol, the storage layer, the admin
+  policy) each state that explicitly rather than being deleted.
+- **`PLAYBOOK_*.md`** are six local contracts copied byte-identical from the
+  de-branded root: `PLAYBOOK_FRONTEND.md` (the class specialty),
+  `PLAYBOOK_TESTS.md`, `PLAYBOOK_SECURITY.md`, `PLAYBOOK_URLS.md`,
+  `PLAYBOOK_AUDIT.md` and `PLAYBOOK_CLAUDE_CODE.md`. They are restrictions,
+  not suggestions, and they load on demand through path-scoped rules, never
+  via `@`-import.
+
+## The .claude plane
+
+`.claude/agents/` ships the roster across four divisions (`core`, `client`,
+`security`, `testing`), including the two core explorers and guides
+(`code-explorer`, `tdd-guide`). `.claude/skills/` + `.claude/commands/` ship
+the workflows 1:1: the five SDD core skills (`spec`, `plan`, `review`,
+`ship`, `learn`) plus the frontend-specific ones (`add-slice`, `add-route`,
+`sdk-contract`, `state-contract`, `tdd`, `claim-check`, `clean-room-rebuild`,
+`corpus-retrieval`, `diagnosing-bugs`, `domain-modeling`, `grilling`,
+`research`, `verified-status`, `visual-review`). Every command is a thin shim
+delegating to the skill of the same slug; new slugs are discovered by walking
+the tree.
 
 ## Gates
 

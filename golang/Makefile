@@ -7,7 +7,7 @@ GOOSE_DSN ?= postgres://postgres:postgres@localhost:5432/<app>?sslmode=disable
 
 .DEFAULT_GOAL := help
 .PHONY: help tidy build fmt-check vet lint test test-int accept generate gen-check \
-        migrate-up migrate-down migrate-add run ci vuln
+        migrate-up migrate-down migrate-add run ci vuln verify
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-16s %s\n",$$1,$$2}'
@@ -73,3 +73,6 @@ ci: ## The gate: fmt + vet + lint + gen-check + tests
 	$(MAKE) lint
 	$(MAKE) gen-check
 	$(MAKE) test
+
+verify: ## Staged renamed copy + full factory smoke
+	bash scripts/verify-template.sh

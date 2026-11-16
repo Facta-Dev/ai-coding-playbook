@@ -11,10 +11,9 @@ It extends `PLAYBOOK_FRONTEND.md` (MVVM + SDK, extension section),
 `PLAYBOOK_TESTS.md`, `PLAYBOOK_AUDIT.md` and `PLAYBOOK_CLAUDE_CODE.md`. It is
 project-agnostic: replace `<product>`, `<tenant>` and `<api>` with your own.
 
-The runnable, machine-checkable companion is
-[beautifulextension](https://github.com/Facta-Dev/beautifulextension): three
-Agent Skills (write, review, port) and a drop-in eslint config that enforces
-this contract.
+The runnable, machine-checkable companion is the Chrome extension skill pack:
+three Agent Skills (write, review, port) and a drop-in eslint config that
+enforces this contract.
 
 The rules that carry the whole file:
 

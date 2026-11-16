@@ -12,6 +12,14 @@ selected|Facta-Dev/beautifulpython|Python backend skill pack
 selected|Facta-Dev/beautifulrust|Rust skill pack
 selected|Facta-Dev/beautifulgo|Go skill pack
 selected|Facta-Dev/beautifulnodejs|Node.js skill pack
+selected|Facta-Dev/beautiful-j2ee|Java/J2EE backend skill pack
+selected|Facta-Dev/beautifulextension|Chrome extension skill pack
+selected|Facta-Dev/beautifulqt|Qt desktop skill pack
+selected|Facta-Dev/beautifulreactnative|React Native skill pack
+selected|Facta-Dev/beautifulandroid|Android skill pack
+selected|Facta-Dev/beautifulios|iOS skill pack
+selected|Facta-Dev/beautifulreact|React skill pack
+selected|Facta-Dev/beautifulcli|CLI skill pack
 selected|Facta-Dev/claude-code-cli-cost-tracker|Cost tracking for the claude CLI
 selected|Facta-Dev/skills|Engineering skill pack
 selected|Facta-Dev/claude-skill|Cinematic landing-page skill

@@ -12,7 +12,8 @@
 #        [--check] [--dry-run]
 #     <repo-path   repository root (must be a git work tree)
 #     --kit=NAME   also install that stack kit: golang|nodejs|python|rust|java|
-#                  extension|desktop|frontend-mobile|mobile-android|mobile-ios
+#                  extension|desktop|frontend-mobile|mobile-android|mobile-ios|
+#                  frontend|cli
 #     --check      verify the repo, write nothing; exit 1 on drift
 #     --dry-run    print the diff it would apply, write nothing
 #

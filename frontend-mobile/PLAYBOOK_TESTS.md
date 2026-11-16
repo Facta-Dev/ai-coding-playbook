@@ -1,7 +1,7 @@
 # PLAYBOOK_TESTS.md — Testing & compliance-evidence playbook
 
-Testing contract for Heimdall. It follows the same **vertical slicing** as
-`PLAYBOOK_BACKEND.md` and `PLAYBOOK_FRONTEND.md`, uses the route and
+Testing contract for the reference service. It follows the same **vertical
+slicing** as `PLAYBOOK_BACKEND.md` and `PLAYBOOK_FRONTEND.md`, uses the route and
 permission model of `PLAYBOOK_URLS.md`, and is designed so that the test
 suite doubles as **audit evidence for SOC 2 and ISO/IEC 27001**.
 
@@ -67,7 +67,7 @@ tests/
         http/                      # provider verification against OpenAPI
         events/                    # event schemas, consumer-driven
         slice/                     # contracts/ package between slices
-        external/                  # Apify, payment, messaging providers
+        external/                  # external, payment, messaging providers
       concurrency/                 # duplicate delivery, two workers, crash mid-job
       migration/
       security/                    # authz, IDOR, input handling for this slice
@@ -169,7 +169,7 @@ database.
 | `contract/http` | Backend ↔ SDK/clients | Provider verification of responses against the OpenAPI spec; breaking-change detection (spec diff) fails the build unless a new version is created |
 | `contract/events` | Producer slice ↔ consumer slices | Schema registry/JSON Schema tests; consumer-driven expectations; backward compatibility checks (additive only) |
 | `contract/slice` | Slice `contracts/` package ↔ its callers | Callers compile and run against the published contract; no deep imports (also enforced by architecture tests) |
-| `contract/external` | Heimdall ↔ Apify, payment, messaging providers | Recorded/consumer contracts for PR runs; **scheduled live smoke** against sandboxes to detect provider drift; 429/5xx/timeout behavior simulated |
+| `contract/external` | The service ↔ external providers, payment and messaging providers | Recorded/consumer contracts for PR runs; **scheduled live smoke** against sandboxes to detect provider drift; 429/5xx/timeout behavior simulated |
 
 Contract tests of a slice must pass **before** that slice is extracted into a
 service (readiness checklist in `PLAYBOOK_BACKEND.md`).
@@ -249,7 +249,7 @@ Maps to MVVM + SDK in `PLAYBOOK_FRONTEND.md`.
 | Client | Tooling (examples) | Notes |
 |---|---|---|
 | Web | Playwright | Per `{userType}` projects (`app`, `admin`, `partner`, `public`); verify layout, guard redirects and that a forged `/admin` URL with an `/app` token is denied by the **backend**, not only hidden |
-| Native | Maestro or Detox | Deep links (`heimdall://app/funnels/leads/{leadId}`) resolve to the right screen; background/foreground token refresh |
+| Native | Maestro or Detox | Deep links (`app://app/funnels/leads/{leadId}`) resolve to the right screen; background/foreground token refresh |
 | Extension | Playwright with the unpacked extension in a persistent context | Content-script capture → service worker → SDK; tokens never visible to the content script; MV3 service-worker restart resumes work |
 
 ### 4.5 Quality gates
@@ -527,7 +527,7 @@ approver outside the owning team. Expired waivers fail the build.
 | Dependency and base-image refresh | Continuous, reviewed monthly | Update PRs, SLA dashboard |
 | Review of this playbook and control map | Annual | Versioned change log |
 
-## 11. Concrete example for Heimdall: updating a lead's stage
+## 11. Concrete example: updating a lead's stage
 
 Feature: `PATCH /api/v1/app/funnels/leads/{leadId}` (permission
 `funnels.leads.update`).
@@ -561,7 +561,7 @@ evidence: JUnit entry linked in traceability-matrix for control CC6.1
 
 Campaign-launch flow adds: `queue` and `concurrency` suites in `extraction`
 (duplicate delivery, lease expiry, Redis flush), a `contract/external` suite
-for Apify with a nightly live-sandbox smoke, and the
+for the external provider with a nightly live-sandbox smoke, and the
 `_journeys/launch-campaign-to-billing` end-to-end.
 
 ## 12. The client kits' own gates

@@ -102,4 +102,8 @@ fi
 while IFS= read -r hook; do bash -n "$hook"; done < <(find "$TMP/scripts/hooks" -name '*.sh' 2>/dev/null)
 (cd "$TMP/evals" && go test ./...) && echo "verify-template: evals OK"
 
+# run-live.sh must be a no-op without EVALS=1 — it costs API budget and needs
+# a live claude CLI, neither of which belongs in the default gate.
+(cd "$TMP" && bash evals/run-live.sh) && echo "verify-template: run-live no-op guard OK"
+
 echo "verify-template: OK (temp copy discarded; the working tree was never mutated)."

@@ -1,6 +1,6 @@
 # PLAYBOOK_SECURITY.md — Backend cybersecurity playbook
 
-Security contract for every Heimdall backend, whatever the language. The
+Security contract for every backend, whatever the language. The
 **core rules are language-agnostic**; section 16 gives **profiles for
 Node.js, Python, Go and Rust**, the four languages used. It hardens the
 architecture in `PLAYBOOK_BACKEND.md`, enforces the authorization model of
@@ -68,9 +68,9 @@ OWASP Top 10:2025 → where it is handled here:
 
 | Assets (by priority) | Threat actors |
 |---|---|
-| Tenant lead data (personal data), tenant provider API keys (Apify, telephony, LLM), credentials and tokens, session store, embeddings, billing data, source code and CI secrets, signing keys | External attacker, credential stuffer/bot, malicious or compromised tenant user, malicious tenant (cross-tenant), compromised vendor or dependency, insider, compromised employee device, hostile content source (scraped pages/leads) |
+| Tenant lead data (personal data), tenant provider API keys (external providers, telephony, LLM), credentials and tokens, session store, embeddings, billing data, source code and CI secrets, signing keys | External attacker, credential stuffer/bot, malicious or compromised tenant user, malicious tenant (cross-tenant), compromised vendor or dependency, insider, compromised employee device, hostile content source (scraped pages/leads) |
 
-### 2.2 Heimdall-specific threats
+### 2.2 Service-specific threats
 
 | Threat | Why it matters here |
 |---|---|
@@ -255,9 +255,9 @@ useCase.execute(ctx, input):
 
 ### 6.2 Scraped and third-party content is untrusted
 
-- Lead fields extracted via Apify or any source are **data, never code**: no
-  templating, no evaluation, no HTML rendering without sanitization, no use as
-  filenames, query fragments or URLs without validation.
+- Lead fields extracted via an external provider or any source are **data,
+  never code**: no templating, no evaluation, no HTML rendering without
+  sanitization, no use as filenames, query fragments or URLs without validation.
 - Sanitize on output for each sink (UI, email, CSV export — neutralize formula
   prefixes `=`, `+`, `-`, `@` for spreadsheet exports).
 - Enforce length and charset limits at ingestion; store the raw payload
@@ -280,9 +280,9 @@ short-lived, scoped URLs.
 Applies to webhooks, scraping targets, "fetch this URL" features, image and
 avatar fetchers, provider callbacks and redirects.
 
-1. **Prefer allow-lists** of destination hosts (Apify API, payment provider,
-   telephony, LLM, object storage). For tenant-supplied URLs (webhooks), use a
-   strict validator plus the network controls below.
+1. **Prefer allow-lists** of destination hosts (external provider API, payment
+   provider, telephony, LLM, object storage). For tenant-supplied URLs
+   (webhooks), use a strict validator plus the network controls below.
 2. **Validate after DNS resolution**: resolve the hostname, reject private,
    loopback, link-local, multicast, carrier-grade NAT and metadata ranges
    (IPv4 and IPv6, including IPv4-mapped IPv6 and `169.254.169.254`), then
@@ -403,7 +403,7 @@ avatar fetchers, provider callbacks and redirects.
 ## 10. Batch, queue and event security
 
 - **Authenticate and authorize broker access** per service: Redis/Dragonfly
-  ACL users per slice limited to their key prefix (`heimdall:{env}:{slice}:*`)
+  ACL users per slice limited to their key prefix (`{app}:{env}:{slice}:*`)
   and to the commands they need, where the engine supports key-pattern ACLs;
   TLS on connections; never exposed to the internet; dangerous commands
   (`FLUSHALL`, `FLUSHDB`, `CONFIG`, `DEBUG`, `KEYS`, scripting if unused)
@@ -784,7 +784,7 @@ maintains.
 - Release builds: `panic` strategy chosen deliberately, symbols stripped in
   images, static or distroless runtime.
 
-## 17. Security requirements by slice (Heimdall)
+## 17. Security requirements by slice
 
 | Slice | Top threats | Required controls beyond the baseline |
 |---|---|---|
@@ -795,7 +795,7 @@ maintains.
 | `funnels` | IDOR on leads, stored XSS, CSV injection, vector cross-tenant leakage | Tenant+owner predicates, output encoding, export neutralization, tenant-scoped vector queries (impossible to omit via the port), deletion cascades |
 | `campaigns` | Abuse (spam/harassment/fraud), webhook forgery, unauthorized launch | `campaigns.launch` permission + step-up, rate/volume caps, opt-out/suppression enforcement, signed provider webhooks with replay protection, anomaly alerts |
 | `usage` | Tampering with metering | Append-only metering events, server-side computation only |
-| `billing` | Webhook forgery, price tampering, invoice IDOR | Signature verification, server-side pricing, tenant-scoped invoices, payment data never touches Heimdall (hosted fields/redirect) |
+| `billing` | Webhook forgery, price tampering, invoice IDOR | Signature verification, server-side pricing, tenant-scoped invoices, payment data never touches the service (hosted fields/redirect) |
 | `platform` (shared) | Misconfiguration, secret leakage, log exposure | Config validation at startup, secrets manager only, log redaction, hardened base images |
 
 ## 18. Starting baseline values
@@ -839,10 +839,11 @@ Tune with threat modeling and measurements.
 Control IDs for audit evidence follow `PLAYBOOK_AUDIT.md` (domains `ACC`,
 `CRY`, `SDL`, `VUL`, `LOG`, `INC`, `BCP`, `VND`).
 
-## 20. Concrete example for Heimdall: Apify run-completion webhook
+## 20. Concrete example: external-provider run-completion webhook
 
-Feature: Apify calls `POST /api/v1/app/projects/{projectId}/runs/{runId}/complete`
-(or a platform-level webhook route) when an extraction run finishes.
+Feature: the external provider calls
+`POST /api/v1/app/projects/{projectId}/runs/{runId}/complete` (or a
+platform-level webhook route) when an extraction run finishes.
 
 1. **Edge**: WAF + rate limit per source; TLS 1.2+; body ≤ 1 MiB.
 2. **Authentication**: verify the HMAC signature over the raw body with the
@@ -855,8 +856,9 @@ Feature: Apify calls `POST /api/v1/app/projects/{projectId}/runs/{runId}/complet
 4. **Authorization**: the handler runs as a **system actor** with only
    `extraction.runs.update` for that tenant.
 5. **Processing**: `202` immediately; enqueue a job carrying only IDs; the
-   worker fetches results from Apify using the tenant key resolved inside the
-   outbound adapter, through the SSRF-safe client with timeouts and size caps.
+   worker fetches results from the external provider using the tenant key
+   resolved inside the outbound adapter, through the SSRF-safe client with
+   timeouts and size caps.
 6. **Content handling**: scraped fields are length-limited, sanitized,
    stored as data, written idempotently (unique key on
    `tenantId + externalResultId`); embeddings indexed per tenant.

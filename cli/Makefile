@@ -7,7 +7,7 @@
 NPM ?= npm
 
 .DEFAULT_GOAL := help
-.PHONY: help install build lint test evals ci
+.PHONY: help install build lint test evals ci verify
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-12s %s\n",$$1,$$2}'
@@ -29,3 +29,6 @@ evals: ## Native contract evals over the .claude layer (node --test)
 
 ci: ## The gate: lint + test + evals + build
 	$(NPM) run ci
+
+verify: ## Template verification script (stages a renamed copy)
+	bash scripts/verify-template.sh

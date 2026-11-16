@@ -23,10 +23,9 @@ variants, contracts, budgets, device tiers and flows), `PLAYBOOK_FRONTEND.md`
 `PLAYBOOK_DESKTOP_QT.md` (realtime state machine, quality governor) and
 `PLAYBOOK_CHROME_EXTENSION.md` (managed config, kill switch, diagnostics).
 
-The runnable, machine-checkable companion is
-[beautifulandroid](https://github.com/Facta-Dev/beautifulandroid): three Agent
-Skills (write, review, port) and a drop-in detekt/ktlint config that enforces
-this contract.
+The runnable, machine-checkable companion is the **Android skill pack**: three
+Agent Skills (write, review, port) and a drop-in detekt/ktlint config that
+enforces this contract.
 
 The rules that carry the whole file:
 
@@ -942,11 +941,11 @@ class AndroidAppConventionPlugin : Plugin<Project> {
 
 ```kotlin
 // feature/market/cart/domain/build.gradle.kts  (PURE KOTLIN)
-plugins { id("heimdall.jvm.library") }
+plugins { id("mobile.jvm.library") }
 dependencies { implementation(projects.core.kernel); implementation(libs.kotlinx.coroutines.core) }
 
 // feature/market/cart/ui/build.gradle.kts
-plugins { id("heimdall.android.library"); id("heimdall.compose"); id("heimdall.hilt") }
+plugins { id("mobile.android.library"); id("mobile.compose"); id("mobile.hilt") }
 dependencies { implementation(projects.feature.market.cart.domain); implementation(projects.core.designsystem); implementation(projects.core.uiCore) }
 ```
 

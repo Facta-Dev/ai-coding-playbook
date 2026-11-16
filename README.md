@@ -5,9 +5,8 @@ governs each kind of implementation, and which repositories make up the
 working set.** Product-facing conventions (identity, launches, copy) stay in
 their own repos; this one is about how the work gets done.
 
-The playbooks were written for **[Heimdall](https://github.com/Facta-Dev/heimdall-platform)** and are language-agnostic —
-Heimdall is the reference implementation; every other project adopts them by
-adapting the stack profiles, not the rules.
+The playbooks are language-agnostic — every project adopts them by adapting
+the stack profiles, not the rules.
 
 ---
 
@@ -167,6 +166,8 @@ covers every `PLAYBOOK_*.md` file in the repository.
 | [`frontend-mobile/`](frontend-mobile/) | [`PLAYBOOK_FRONTEND_MOBILE.md`](frontend-mobile/PLAYBOOK_FRONTEND_MOBILE.md), [`PLAYBOOK_FRONTEND.md`](frontend-mobile/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](frontend-mobile/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](frontend-mobile/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](frontend-mobile/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](frontend-mobile/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](frontend-mobile/PLAYBOOK_CLAUDE_CODE.md) |
 | [`mobile-android/`](mobile-android/) | [`PLAYBOOK_MOBILE_ANDROID_KOTLIN.md`](mobile-android/PLAYBOOK_MOBILE_ANDROID_KOTLIN.md), [`PLAYBOOK_FRONTEND.md`](mobile-android/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](mobile-android/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](mobile-android/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](mobile-android/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](mobile-android/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](mobile-android/PLAYBOOK_CLAUDE_CODE.md) |
 | [`mobile-ios/`](mobile-ios/) | [`PLAYBOOK_MOBILE_IOS_SWIFT.md`](mobile-ios/PLAYBOOK_MOBILE_IOS_SWIFT.md), [`PLAYBOOK_FRONTEND.md`](mobile-ios/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](mobile-ios/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](mobile-ios/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](mobile-ios/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](mobile-ios/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](mobile-ios/PLAYBOOK_CLAUDE_CODE.md) |
+| [`frontend/`](frontend/) | [`PLAYBOOK_FRONTEND.md`](frontend/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](frontend/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](frontend/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](frontend/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](frontend/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](frontend/PLAYBOOK_CLAUDE_CODE.md) |
+| [`cli/`](cli/) | [`PLAYBOOK_CLI.md`](cli/PLAYBOOK_CLI.md), [`PLAYBOOK_TESTS.md`](cli/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](cli/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](cli/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](cli/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](cli/PLAYBOOK_CLAUDE_CODE.md) |
 
 ### 3.1 User-scope kit and install path
 
@@ -211,8 +212,8 @@ Every kit also carries nine adapted MIT skills, each with a 1:1 command and a
 | [`frontend-mobile/`](frontend-mobile/) | Runnable React Native + Expo template (SDK 58, React 19.3, RN 0.88, plain App entry, device tiers + quality governor, typed route table, MVVM notes slice, vitest architecture tests, Metro export gate) + [`docs/`](frontend-mobile/docs/) 00–14, [`AGENTS.md`](frontend-mobile/AGENTS.md), [`MEMORY.md`](frontend-mobile/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready |
 | [`mobile-android/`](mobile-android/) | Runnable native Android template (Gradle 9.6, AGP 9.5, Kotlin 2.4, Compose, one Gradle module per layer, Navigation 3 typed NavKey, UDF notes slice, JVM tests, Gradle kit evals) + [`docs/`](mobile-android/docs/) 00–14, [`AGENTS.md`](mobile-android/AGENTS.md), [`MEMORY.md`](mobile-android/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, JVM contract evals | Ready |
 | [`mobile-ios/`](mobile-ios/) | Runnable native iOS template (Swift 6, SwiftUI, iOS 18, XcodeGen `project.yml`, one SwiftPM package per layer, typed `NotesRoute` enum, UDF notes slice, Swift Testing, node contract evals, native gates that SKIP off macOS) + [`docs/`](mobile-ios/docs/) 00–14, [`AGENTS.md`](mobile-ios/AGENTS.md), [`MEMORY.md`](mobile-ios/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready (native gates pending macOS/CI) |
-| [`frontend/`](frontend/) | Runnable React 19 + Vite template (TypeScript strict, MVVM layering with ESLint and vitest architecture walls, lead-detail slice with react-dom/server tests, node contract evals, staged verify gate) + 8 agents, 14 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
-| [`cli/`](cli/) | Runnable Node CLI template (TypeScript strict, headless core over ports, versioned exit-code and JSON envelope contracts, stdout/stderr split, vitest plus architecture tests, node contract evals, staged verify gate) + 8 agents, 14 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
+| [`frontend/`](frontend/) | Runnable React 19 + Vite template (TypeScript strict, MVVM layering with ESLint and vitest architecture walls, lead-detail slice with react-dom/server tests, node contract evals, staged verify gate) + 10 agents, 19 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
+| [`cli/`](cli/) | Runnable Node CLI template (TypeScript strict, headless core over ports, versioned exit-code and JSON envelope contracts, stdout/stderr split, vitest plus architecture tests, node contract evals, staged verify gate) + 9 agents, 19 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
 
 The [Go directory](golang/) is the reference implementation for the backend kits; the
 [extension kit](extension/) is the reference for the client kits.

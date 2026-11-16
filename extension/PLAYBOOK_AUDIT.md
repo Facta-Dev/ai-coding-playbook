@@ -1,6 +1,6 @@
 # PLAYBOOK_AUDIT.md — Audit, certification & compliance playbook
 
-Operating contract for how Heimdall prepares for, passes and sustains audits:
+Operating contract for how a team prepares for, passes and sustains audits:
 **SOC 2, ISO/IEC 27001, ISO 9001** and the other software-relevant
 certifications and regulations. It consumes the other playbooks as *control
 implementations* and *evidence sources*:
@@ -65,7 +65,7 @@ The rules that carry the whole file:
   digital elements"; pure hosted SaaS is treated differently. Get counsel's
   view.
 
-### 1.3 Recommended roadmap for Heimdall
+### 1.3 Recommended roadmap
 
 Overlap between SOC 2 and ISO 27001 is high, so they share one control
 library and one evidence stream.
@@ -92,16 +92,16 @@ architecture change.
   vector, Dragonfly/Redis), observability, support tooling, corporate IT
   (identity provider, endpoints, ticketing, code host).
 - **Boundary and data flows**: diagrams of trust boundaries, tenant isolation
-  model, external connections (Apify, payment, telephony/messaging, LLM
-  providers, email), data stores by classification.
+  model, external connections (external providers, payment, telephony/messaging,
+  LLM providers, email), data stores by classification.
 - **Data classification**: Public / Internal / Confidential / Restricted
-  (tenant lead data, credentials, provider API keys, personal data). Each class
-  has handling rules (encryption, access, retention, logging).
-- **Subservice organizations**: cloud provider, Apify, payment processor, LLM
-  and telephony vendors, Redis/Dragonfly hosting. Choose **carve-out** (their
-  controls excluded, ours monitored) or **inclusive** method per SOC 2; document
-  complementary subservice-organization controls (CSOCs) and the
-  complementary user-entity controls (CUECs) we require from customers.
+  (tenant lead data, credentials, provider API keys, personal data). Each
+  class has handling rules (encryption, access, retention, logging).
+- **Subservice organizations**: cloud provider, external provider, payment
+  processor, LLM and telephony vendors, Redis/Dragonfly hosting. Choose
+  **carve-out** (their controls excluded, ours monitored) or **inclusive** method
+  per SOC 2; document complementary subservice-organization controls (CSOCs)
+  and the complementary user-entity controls (CUECs) we require from customers.
 - **Exclusions** are written down with a reason. Anything claimed in marketing
   or a questionnaire must be inside the scope statement.
 
@@ -143,10 +143,10 @@ the named approver, with version, owner and next-review date in front matter.
 ### 4.1 Control definition
 
 Each control is a file in `compliance/controls/` with a stable ID
-`HMD-<DOMAIN>-<NN>`.
+`CTL-<DOMAIN>-<NN>`.
 
 ```yaml
-id: HMD-ACC-03
+id: CTL-ACC-03
 title: Quarterly user access review
 objective: Detect and remove inappropriate or stale access to production systems and tenant data.
 owner: security-lead
@@ -185,7 +185,7 @@ SOC 2 = 2017 Trust Services Criteria; ISO 27001 = 2022 Annex A / clauses;
 ISO 9001 clause references follow the 2015 structure and should be re-checked
 against the 2026 text.
 
-| Domain | Typical Heimdall control | Implementing playbook | SOC 2 | ISO 27001 | ISO 9001 |
+| Domain | Typical control | Implementing playbook | SOC 2 | ISO 27001 | ISO 9001 |
 |---|---|---|---|---|---|
 | GOV | Policies approved and reviewed annually; roles assigned; management review | this file | CC1.1–CC1.5, CC2.1, CC5.3 | 5.2, 5.3, 9.3; A.5.1, A.5.2, A.5.4 | 5.1–5.3, 9.3 |
 | RSK | Annual and event-driven risk assessment; treatment plan; Statement of Applicability | this file | CC3.1–CC3.4, CC9.1 | 6.1.2, 6.1.3, 8.2, 8.3 | 6.1 |
@@ -218,12 +218,12 @@ against the 2026 text.
 - **Statement of Applicability**: generated from the control library and
   register (every Annex A control marked applicable / not applicable with
   justification and implementation status).
-- **Top risks to track for Heimdall**: cross-tenant data exposure; leak of
+- **Top risks to track**: cross-tenant data exposure; leak of
   tenant provider API keys; unlawful processing of scraped personal data;
-  duplicate or lost batch effects; provider (Apify, telephony) outage or
-  policy change; abuse of outreach features (spam/harassment); insider access
-  to tenant data; supply-chain compromise in dependencies or the extension
-  store listing.
+  duplicate or lost batch effects; provider (scraping provider, telephony)
+  outage or policy change; abuse of outreach features (spam/harassment); insider
+  access to tenant data; supply-chain compromise in dependencies or the
+  extension store listing.
 
 ## 6. Policy set
 
@@ -262,7 +262,7 @@ review date.
 compliance/
   scope/                 # system description, data-flow diagrams, inventory, classification
   policies/  standards/  procedures/
-  controls/              # HMD-*.yaml control library
+  controls/              # CTL-*.yaml control library
   frameworks/            # soc2.yaml, iso27001.yaml, iso9001.yaml, gdpr.yaml ...
                          #   requirement/criterion → control IDs
   risk/                  # methodology, register, treatment plans
@@ -417,7 +417,7 @@ output.
 ISO 9001 is process- and customer-focused, so it complements the security
 frameworks. Map the QMS onto what already exists:
 
-| QMS element | Heimdall implementation |
+| QMS element | Reference implementation |
 |---|---|
 | Context, interested parties, scope (4) | `compliance/scope/`, customers, regulators, partners, vendors |
 | Leadership, quality policy, roles (5) | Policy set, RACI, management review; quality culture and ethical behavior as an explicit leadership duty (2026 edition) |
@@ -449,9 +449,9 @@ security maturity (see section 14).
 - **Register** (`compliance/vendors/register.yaml`): vendor, service, data
   processed and classification, tier, owner, contract and DPA link,
   certifications and reports, sub-processors, region, last review, exit plan.
-- **Tiering**: *Critical* (cloud, Apify, payment, LLM/telephony providers with
-  tenant data), *Important*, *Low*. Tier sets due-diligence depth and review
-  frequency.
+- **Tiering**: *Critical* (cloud, external provider, payment, LLM/telephony
+  providers with tenant data), *Important*, *Low*. Tier sets due-diligence depth
+  and review frequency.
 - **Due diligence before onboarding**: SOC 2 report or ISO certificate
   (check scope, period, exceptions and CUECs), security questionnaire,
   pen-test summary, data-processing agreement, breach-notification terms,
@@ -467,18 +467,19 @@ security maturity (see section 14).
 - **Customer visibility**: published sub-processor list with change
   notification.
 
-## 13. Privacy and product-compliance for Heimdall
+## 13. Privacy and product compliance
 
-Heimdall extracts and enriches lead data and supports outreach, which makes
-privacy and responsible-use controls central. Frameworks and laws to review
-with counsel include GDPR/UK GDPR where EU/UK data subjects are involved,
-Argentina's personal data protection law (Ley 25.326) and its authority
-(AAIP), Brazil LGPD, US state laws (for example CCPA/CPRA), and the
+The product extracts and enriches lead data and supports outreach,
+which makes privacy and responsible-use controls central. Frameworks and laws
+to review with counsel include GDPR/UK GDPR where EU/UK data subjects are
+involved, Argentina's personal data protection law (Ley 25.326) and its
+authority (AAIP), Brazil LGPD, US state laws (for example CCPA/CPRA), and the
 communication rules for the markets where customers operate.
 
-- **Roles**: normally the tenant is the controller of lead data and Heimdall
-  the processor (DPA with each tenant); Heimdall is controller of its own
-  account, billing and usage data. Document the role per data category.
+- **Roles**: normally the tenant is the controller of lead data and the
+  organization the processor (DPA with each tenant); the organization is
+  controller of its own account, billing and usage data. Document the role per
+  data category.
 - **Records of processing**, **DPIA** for extraction/enrichment, similarity
   search (vector embeddings are personal data when derived from personal
   data) and any profiling or AI scoring.
@@ -490,9 +491,9 @@ communication rules for the markets where customers operate.
   `PLAYBOOK_TESTS.md` privacy suite).
 - **International transfers**: mechanisms and transfer assessments for each
   sub-processor and region.
-- **Scraping and provider terms**: review the terms of the sources and of
-  Apify actors used; keep a register of permitted sources and prohibit
-  categories (for example sensitive data) at the product level.
+- **Scraping and provider terms**: review the terms of the sources and of the
+  external provider's data products used; keep a register of permitted sources
+  and prohibit categories (for example sensitive data) at the product level.
 - **Outreach compliance guardrails**: consent and opt-out handling, do-not-call
   and do-not-contact lists, call-recording consent rules, sending limits,
   abuse detection and a documented acceptable-use policy tenants accept. These
@@ -509,10 +510,10 @@ communication rules for the markets where customers operate.
 Pursue only what customers, regulators or the market demand; reuse the
 control library.
 
-| Item | Type | Relevance to Heimdall | Notes |
+| Item | Type | Relevance to the product | Notes |
 |---|---|---|---|
 | **SOC 2 (+ SOC 3)** | Attestation report (SOC 3 = public summary) | Core for B2B SaaS | SOC 3 is a public marketing version of a clean SOC 2 |
-| **SOC 1 (SSAE 18 / ISAE 3402)** | Attestation on controls relevant to customers' financial reporting | Only if customers rely on Heimdall for financial-reporting processes (for example billing); usually not | |
+| **SOC 1 (SSAE 18 / ISAE 3402)** | Attestation on controls relevant to customers' financial reporting | Only if customers rely on the product for financial-reporting processes (for example billing); usually not | |
 | **ISO/IEC 27001:2022** | Certificate | Core | |
 | **ISO 9001** | Certificate | Quality and enterprise-procurement signal | 2026 edition, see 1.2 |
 | **ISO/IEC 27701** | Certificate (privacy information management) | Strong fit given lead data; extends the ISMS to a PIMS | Verify the current edition and whether it is pursued standalone or as an extension to 27001 |
@@ -522,7 +523,7 @@ control library.
 | **ISO/IEC 20000-1** | IT service management certificate | Rare for SaaS startups | |
 | **CSA STAR** (CAIQ, Level 1/2) | Self-assessment / third-party assessment | Frequently requested in questionnaires | Cheap, reuses control library |
 | **HITRUST / HIPAA** | Certification / US regulation (no official HIPAA certificate) | Only with healthcare data | Heavy; avoid unless required |
-| **PCI DSS (v4.0.1)** | Standard with attestation | Only if card data is handled | **Avoid scope**: use the payment provider's hosted fields/redirect so card data never reaches Heimdall (lowest SAQ) |
+| **PCI DSS (v4.0.1)** | Standard with attestation | Only if card data is handled | **Avoid scope**: use the payment provider's hosted fields/redirect so card data never reaches the service (lowest SAQ) |
 | **FedRAMP / GovRAMP** | US government authorization | Only for US public sector | Very heavy |
 | **TISAX** | Automotive information security assessment | If customers are automotive | |
 | **BSI C5** | German cloud attestation | If selling to German public sector or regulated entities | |
@@ -531,7 +532,7 @@ control library.
 | **OWASP ASVS / SAMM, SLSA** | Application security verification and maturity, supply-chain levels | Directly improves the engineering controls | ASVS levels map to the security tests; SLSA to build provenance |
 | **WCAG 2.2 AA / VPAT (ACR) / EN 301 549** | Accessibility conformance | Enterprise and public-sector procurement | Covered by the a11y suite |
 | **GDPR / UK GDPR / LGPD / Ley 25.326 / CCPA** | Laws | Section 13 | Codes of conduct and certification mechanisms exist but are optional |
-| **NIS2, DORA** | EU regulations | Customers in scope will flow requirements down to Heimdall as an ICT supplier (contracts, audit rights, incident timelines) | |
+| **NIS2, DORA** | EU regulations | Customers in scope will flow requirements down to the organization as an ICT supplier (contracts, audit rights, incident timelines) | |
 | **EU Cyber Resilience Act** | EU regulation | Possibly the extension and mobile app; reporting duties from 11 Sep 2026 | See 1.2 |
 | **EU AI Act** | EU regulation | If AI features fall in scope | Check applicable timelines at the time |
 
@@ -601,14 +602,14 @@ quarterly summary to management review.
 Align actual dates to the SOC 2 period and the certification body's
 schedule.
 
-## 19. Concrete example for Heimdall: quarterly access review (`HMD-ACC-03`)
+## 19. Concrete example: quarterly access review (`CTL-ACC-03`)
 
 1. **Trigger**: scheduler creates a ticket on the first business day of the
    quarter, assigned to the system owners.
 2. **Collection**: collector exports permissions from the identity provider,
    cloud IAM, code host, production datastores and the admin console
    (`/admin` users and their granular permissions, as defined in
-   `PLAYBOOK_URLS.md`) into `evidence/HMD-ACC-03/{quarter}/`.
+   `PLAYBOOK_URLS.md`) into `evidence/CTL-ACC-03/{quarter}/`.
 3. **Comparison**: the export is diffed against the expected role→permission
    matrix used by `_platform/authz-matrix`; unexpected grants are flagged.
 4. **Review**: each owner approves or marks removals; removals are executed

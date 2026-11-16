@@ -1,13 +1,12 @@
 # PLAYBOOK_FRONTEND.md — Frontend architecture playbook
 
-Architecture contract for every Heimdall client: **React (web SPA)**,
-**React Native (mobile)** and **Chrome extension (MV3)**. All three use
+Architecture contract for every client of the reference service: **React (web
+SPA)**, **React Native (mobile)** and **Chrome extension (MV3)**. All three use
 **MVVM + a shared SDK**, and all three adapt to the route contract in
 `PLAYBOOK_URLS.md`. Companion of `PLAYBOOK_BACKEND.md` (slices, permissions,
 error envelope).
 
-The runnable, machine-checkable companion is
-[beautifulreact](https://github.com/Facta-Dev/beautifulreact): three Agent
+The runnable, machine-checkable companion is the React skill pack: three Agent
 Skills (write, review, port) and a drop-in eslint config that enforces this
 contract.
 
@@ -345,8 +344,8 @@ Native has no address bar, but it keeps the same paths as its **navigation
 and deep-link contract**:
 
 ```text
-heimdall://app/funnels/leads/{leadId}
-https://heimdall.example/app/funnels/leads/{leadId}   # universal / app link
+app://app/funnels/leads/{leadId}
+https://app.example.com/app/funnels/leads/{leadId}   # universal / app link
 ```
 
 - Navigators are split by `{userType}` (App stack, Admin stack, Partner stack)
@@ -384,8 +383,8 @@ Rules:
 - The service worker is ephemeral (MV3): no in-memory state as the source of
   truth. Persist in `chrome.storage`, schedule with `chrome.alarms`, and
   resume idempotently.
-- Minimal permissions: declare the narrowest `host_permissions` (the Heimdall
-  API origin and only the sites the feature needs), prefer
+- Minimal permissions: declare the narrowest `host_permissions` (the API
+  origin and only the sites the feature needs), prefer
   `activeTab`/optional permissions, no remote code, strict extension CSP.
 - Extension UI is the `/app` experience (employee). `admin` and `partner`
   routes are not shipped in the extension unless a requirement says so.
@@ -432,9 +431,9 @@ const run = await sdk.app.projects.launch(projectId, input);   // 202 + runId
 
 ### 6.3 Secrets and sensitive data
 
-- Tenant provider keys (for example Apify) are **write-only in the UI**: the
-  admin can set or rotate them, the API never returns them, and the UI shows
-  only a masked tail and last-updated time.
+- Tenant provider keys (for example a third-party provider) are **write-only in
+  the UI**: the admin can set or rotate them, the API never returns them, and
+  the UI shows only a masked tail and last-updated time.
 - No secrets, API keys or signing material in the bundle, `.env` shipped to
   the client, or extension manifest.
 - Never log tokens or PII. Redact in the analytics and error-reporting
@@ -494,7 +493,7 @@ const run = await sdk.app.projects.launch(projectId, input);   // 202 + runId
 A ViewModel test must run without DOM, native runtime or `chrome` APIs. If it
 needs them, a platform concern leaked into the ViewModel.
 
-## 8. Concrete example for Heimdall: lead detail
+## 8. Concrete example: lead detail
 
 Same feature on the three clients.
 
@@ -508,7 +507,7 @@ Permission (UI hint): funnels.leads.update
 | Client | Entry | View |
 |---|---|---|
 | Web | `/app/funnels/leads/:leadId` inside `AppLayout` + `(authenticated)` guard | `apps/web/.../LeadDetailView` (DOM) |
-| Native | `heimdall://app/funnels/leads/{leadId}` in the App stack | `apps/mobile/.../LeadDetailScreen` (RN) |
+| Native | `app://app/funnels/leads/{leadId}` in the App stack | `apps/mobile/.../LeadDetailScreen` (RN) |
 | Extension | Side panel memory route `/app/funnels/leads/:leadId`; the content script sends `lead-captured` to the service worker, which creates the lead with the SDK and opens the panel on the new route | `apps/extension/.../LeadDetailView` (DOM) |
 
 Admin variant: `/admin/tenants/{tenantId}/funnels/leads/{leadId}` calls

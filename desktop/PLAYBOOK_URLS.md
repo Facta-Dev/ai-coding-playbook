@@ -1,10 +1,11 @@
 # PLAYBOOK_URLS.md — URL / route naming playbook
 
-Route-naming contract for Heimdall's backend API and SPA routes, adapted from
-the enterprise multi-tenant URL convention. Owner-provided template
-(2026-11-06), normalized to Heimdall's actors. The one rule that carries the
-whole file: **the user-type segment never authorizes** — it is an experience
-namespace; permissions are validated by session, token and RBAC in the backend.
+Route-naming contract for the reference service's backend API and SPA routes,
+adapted from the enterprise multi-tenant URL convention. Owner-provided
+template (2026-11-06), normalized to the service's actors. The one rule that
+carries the whole file: **the user-type segment never authorizes** — it is an
+experience namespace; permissions are validated by session, token and RBAC in
+the backend.
 
 ## Enterprise template
 
@@ -78,11 +79,11 @@ X-Tenant-Id: tenant_123
 Even though the route says `/admin`, the backend must check the token belongs
 to a user with `tenant.users.read` for that `tenantId`.
 
-Heimdall mapping (premise in `MEMORY.md`): the admin configures API keys,
-creates employee users and monitors one funnel per employee — so the admin
-console lives under `/admin`, each employee's funnel view under `/app/funnels`,
-and every cross-employee or cross-tenant read is an admin permission checked
-in the backend, never a URL assumption.
+Reference mapping: the admin configures API keys, creates employee users and
+monitors one funnel per employee — so the admin console lives under `/admin`,
+each employee's funnel view under `/app/funnels`, and every cross-employee or
+cross-tenant read is an admin permission checked in the backend, never a URL
+assumption.
 
 ## Multi-tenant structure
 
@@ -158,7 +159,7 @@ Forbidden response shape:
 - Guards redirect to `/login`, `/403` or the allowed dashboard; hiding a
   button is never the actual protection.
 
-## Concrete example for Heimdall
+## Concrete example
 
 ```text
 Frontend
@@ -170,7 +171,7 @@ Frontend
 /admin/tenants/{tenantId}/billing
 
 API
-GET  /api/v1/app/projects/{projectId}/runs            # Apify extraction runs
+GET  /api/v1/app/projects/{projectId}/runs            # external extraction runs
 POST /api/v1/app/projects/{projectId}/launch          # launch the campaign
 GET  /api/v1/app/funnels/leads/{leadId}
 GET  /api/v1/admin/tenants/{tenantId}/users

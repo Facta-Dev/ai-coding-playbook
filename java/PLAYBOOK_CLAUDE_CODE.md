@@ -228,10 +228,11 @@ Required sections (skeleton in Appendix A):
 8. **Never list**: ≤ 10 hard prohibitions (also encoded as controls).
 9. **Pointers** to deeper docs (playbooks, ADRs) *without* `@`-importing them.
    An import loads the whole file on every turn and saves nothing. Measured
-   failure mode (enyo, 2026-11-11): the harness keeps the first **40,000 chars**
-   of a file and caps the whole always-on set at **120,000 chars**; importing
-   the seven playbooks reached 283k, silently truncated the two largest and
-   warned on every session. Load a playbook through a path-scoped rule that
+   failure mode (observed on a production service, 2026-11-11): the harness
+   keeps the first **40,000 chars** of a file and caps the whole always-on set
+   at **120,000 chars**; importing the seven playbooks reached 283k, silently
+   truncated the two largest and warned on every session. Load a playbook
+   through a path-scoped rule that
    names it; `@`-import only a small digest when a conformance gate must hold
    in every session. `scripts/instruction-budget.sh` enforces this.
 
@@ -1326,7 +1327,7 @@ ownership files before generalizing.
 ### Installation
 - [ ] `install-user-kit.sh` ran; `kit_check.py` exits 0, or 1 with known warnings.
 - [ ] `settings.json` is `chmod 600` and holds no plaintext secret.
-- [ ] The working set was cloned by group (`clone-repos.sh --group=...`).
+- [ ] Your repositories were cloned by group (`clone-repos.sh --group=...`).
 - [ ] Skill packs were registered and installed (`install-skill-packs.sh`), and the cost tracker's `install.sh` ran.
 - [ ] Every active repo passes `configure-repo.sh --check`.
 
@@ -1657,81 +1658,47 @@ If the project follows hexagonal vertical slicing with companion playbooks:
 
 ---
 
-## Appendix C — Facta-Dev companion repositories
+## Appendix C — Companion skill packs (optional)
 
-Companion repositories that plug into this kit: Agent Skill packs per stack,
-a cost tracker for the metrics plane, and skill packs for the capability plane.
+Companion skill packs are **optional**: the kit works without them. They add
+stack-specific Agent Skills, lint configs and cost reporting — nothing the
+playbooks depend on. Use the ones your stack needs and skip the rest.
+
 Treat every clone as external code: review, pin and allowlist it (§6.6, §14.1),
 and accept workspace trust deliberately (§14.3).
 
-### C.1 Stack kits and cost tracking
+### C.1 Clone and install a pack
 
 ```bash
-gh repo clone Facta-Dev/beautifulpython              # Python backend
-gh repo clone Facta-Dev/beautifulrust                # Rust
-gh repo clone Facta-Dev/beautifulgo                  # Go
-gh repo clone Facta-Dev/beautifulnodejs              # Node.js + TypeScript
-gh repo clone Facta-Dev/claude-code-cli-cost-tracker # agent cost tracking
+gh repo clone <your-org>/<skill-pack> ~/work/<skill-pack>
 ```
 
-| Repository | Stack / concern | What it provides | Upstream |
-|---|---|---|---|
-| `beautifulpython` | Python backend | Agent Skills plus a lint config that teach agents to write, review, port and enforce idiomatic Python | main project |
-| `beautifulrust` | Rust | Agent Skills plus a tested clippy config for idiomatic Rust | `morganlinton/BeautifulRust` (fork) |
-| `beautifulgo` | Go | Agent Skills for idiomatic Go | main project |
-| `beautifulnodejs` | Node.js + TypeScript | Agent Skills plus lint config for a Fastify/Zod/tsyringe/Drizzle/BullMQ/Pino/OTel stack | main project |
-| `claude-code-cli-cost-tracker` | Cost tracking | Reports what agent work actually costs; feeds the cost metrics (§13.5) and session budgets (§8.7) | main project |
-
-Language kits install as project or user skills (`.claude/skills/`,
-`~/.claude/skills/`); `paths`-scoped skills auto-activate on matching files
-(§6.4). Their lint config belongs to project tooling, not to a rule file.
-
-### C.2 Skill packs
-
-```bash
-gh repo clone Facta-Dev/skills
-gh repo clone Facta-Dev/claude-skill
-gh repo clone Facta-Dev/garden-skills
-gh repo clone Facta-Dev/ponytail
-gh repo clone Facta-Dev/ui-ux-pro-max-skill
-gh repo clone Facta-Dev/superpowers
-gh repo clone Facta-Dev/awesome-claude-skills
-```
-
-Cloning is not installing. Register each pack's marketplace and install its
+Cloning is not installing. Register the pack's marketplace and install its
 plugins into user scope with one shell-only, idempotent command:
 
 ```bash
 bash scripts/claude-kit/install-skill-packs.sh --dir ~/work
 ```
 
-It covers `beautifulpython`, `beautifulrust`, `beautifulgo`,
-`beautifulnodejs`, `skills`, `claude-skill`, `garden-skills` (six plugins),
-`ui-ux-pro-max-skill` and `superpowers`; the exact marketplace and plugin
-names are listed in [PLAYBOOK_INSTALL.md §4.1](PLAYBOOK_INSTALL.md#41-repositories-that-install-something).
-`awesome-claude-skills` ships no plugin manifest (clone and read it), and
-`ponytail` stays on the baseline upstream marketplace `ponytail@ponytail`.
+The marketplace name comes from the pack's `.claude-plugin/marketplace.json`,
+not from the repository name (`my-skills-repo` → `my-skills`); a pack without
+that manifest is clone-only — clone it and read it. The packs the installer
+manages are listed in its own table (one row per repository:
+`repo|marketplace|plugins`); the install path is documented in
+[PLAYBOOK_INSTALL.md §4.1](PLAYBOOK_INSTALL.md#41-repositories-that-install-something).
 
-| Repository | Content | Upstream (fork) |
-|---|---|---|
-| `skills` | "Skills for Real Engineers": small, composable engineering skills | `mattpocock/skills` |
-| `claude-skill` | MotionSites Web Builder: cinematic landing pages | `Motionsites-AI/claude-skill` |
-| `garden-skills` | Curated production-ready skills: web design, knowledge retrieval, image generation | `ConardLi/garden-skills` |
-| `ponytail` | Lazy-senior-dev behavior rules: the best code is the code never written | `DietrichGebert/ponytail` |
-| `ui-ux-pro-max-skill` | Design intelligence for professional UI/UX across platforms | `nextlevelbuilder/ui-ux-pro-max-skill` |
-| `superpowers` | Agentic skills framework and software-development methodology | `obra/superpowers` |
-| `awesome-claude-skills` | Curated index of Claude Skills, resources and tools (default branch `master`) | `ComposioHQ/awesome-claude-skills` |
+Language kits install as project or user skills (`.claude/skills/`,
+`~/.claude/skills/`); `paths`-scoped skills auto-activate on matching files
+(§6.4). Their lint config belongs to project tooling, not to a rule file.
 
-### C.3 Fork handling
+### C.2 Fork handling
 
-The seven skill repositories above plus `beautifulrust` are Facta-Dev forks
-with an `upstream` remote configured; `beautifulpython`, `beautifulgo`,
-`beautifulnodejs` and `claude-code-cli-cost-tracker` are the main projects.
-To refresh a fork that has no local commits:
+When a pack is a fork of an upstream project, keep an `upstream` remote
+configured. To refresh a fork that has no local commits:
 
 ```bash
 git fetch --all --prune
-git merge --ff-only upstream/main        # master for awesome-claude-skills
+git merge --ff-only upstream/main
 ```
 
 If a fork has local commits, integrate upstream through a PR; never rewrite or

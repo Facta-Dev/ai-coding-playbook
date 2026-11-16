@@ -27,10 +27,9 @@ of slices, ports and budgets), `PLAYBOOK_FRONTEND.md` (MVVM + SDK),
 from `PLAYBOOK_DESKTOP_QT.md` (realtime state machine) and
 `PLAYBOOK_CHROME_EXTENSION.md` (managed config, kill switch, diagnostics).
 
-The runnable, machine-checkable companion is
-[beautifulios](https://github.com/Facta-Dev/beautifulios): three Agent Skills
-(write, review, port) and a drop-in SwiftLint/swift-format config that enforces
-this contract.
+The runnable, machine-checkable companion is the **iOS skill pack**: three
+Agent Skills (write, review, port) and a drop-in SwiftLint/swift-format config
+that enforces this contract.
 
 The rules that carry the whole file:
 
@@ -203,7 +202,7 @@ custom effects by tier, and honor Reduce Transparency. Apple provided an Info.pl
 ### 4.1 Layers mapped to Swift packages and targets
 
 ```text
-App target (per variant)   Heimdall Game | Heimdall Market | Heimdall Avatar     (composition root, @main App, navigation root)
+App target (per variant)   Game | Market | Avatar                                (composition root, @main App, navigation root)
   │
   ├── Features/<Variant>/<Slice>/   (one Swift package per slice)
   │     ├── <Slice>Contracts   public cross-slice API (protocols, events, route keys)
@@ -310,7 +309,7 @@ ios/
 ├── Tuist/ or project.yml            # text project manifest (Tuist Project.swift / XcodeGen) — the .xcodeproj is generated, git-ignored
 ├── Config/                          # Base.xcconfig, Debug/Staging/Release.xcconfig, Game|Market|Avatar.xcconfig, *.entitlements
 ├── Apps/
-│   ├── Game/   Sources/ HeimdallGameApp.swift  AppEnvironment+Game.swift   Resources/ PrivacyInfo.xcprivacy
+│   ├── Game/   Sources/ GameApp.swift  AppEnvironment+Game.swift   Resources/ PrivacyInfo.xcprivacy
 │   ├── Market/ …
 │   └── Avatar/ …
 ├── Packages/
@@ -896,11 +895,11 @@ func app(_ name: String, bundleId: String, features: [TargetDependency], entitle
 }
 
 let project = Project(
-    name: "Heimdall",
+    name: "Mobile",
     targets: [
-        app("Game",   bundleId: "com.example.heimdall.game",   features: [.package(product: "GameMapUI")],  entitlements: "Config/Game.entitlements"),
-        app("Market", bundleId: "com.example.heimdall.market", features: [.package(product: "CartUI")],     entitlements: "Config/Market.entitlements"),
-        app("Avatar", bundleId: "com.example.heimdall.avatar", features: [.package(product: "AvatarSessionUI")], entitlements: "Config/Avatar.entitlements"),
+        app("Game",   bundleId: "com.example.mobile.game",   features: [.package(product: "GameMapUI")],  entitlements: "Config/Game.entitlements"),
+        app("Market", bundleId: "com.example.mobile.market", features: [.package(product: "CartUI")],     entitlements: "Config/Market.entitlements"),
+        app("Avatar", bundleId: "com.example.mobile.avatar", features: [.package(product: "AvatarSessionUI")], entitlements: "Config/Avatar.entitlements"),
     ]
 )
 ```
