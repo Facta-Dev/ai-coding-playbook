@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
 # Capture harness for visual-review, adapted from the MotionSites claude-skill
 # repository (github.com/Motionsites-AI/claude-skill). The instruction and script
-# folders of that repository are MIT, (c) 2026 MotionSites; the examples and media
-# folders are NOT used and not redistributable. See frontend/.claude/skills/visual-review/CREDITS.md.
+# folders of that repository are MIT; the examples and media folders are NOT used
+# and not redistributable.
+#
+# MIT License, Copyright (c) 2026 MotionSites
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions: the above copyright notice and this
+# permission notice shall be included in all copies or substantial portions of
+# the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+# Full notice: frontend/.claude/skills/visual-review/CREDITS.md
 """Screenshot + QA a page so you can SEE what you built.
 
 Usage:
@@ -113,4 +124,4 @@ except ImportError:
 
 print(json.dumps(rep, indent=1))
 print("\nScreenshots:", ", ".join(str(p) for p in sorted(out.glob("*.png"))))
-print("Now LOOK at them (open the PNGs) and review against references/review.md.")
+print("Now LOOK at them (open the PNGs) and review against .claude/skills/visual-review/SKILL.md.")
