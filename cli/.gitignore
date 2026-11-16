@@ -1,0 +1,11 @@
+# <app>. Local state only. The package-lock.json IS shipped (npm install is the
+# bootstrap, and the lockfile pins the gate deps); rename.sh removes it before
+# substitution so the renamed copy installs fresh.
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

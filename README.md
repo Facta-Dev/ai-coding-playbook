@@ -197,7 +197,7 @@ Every kit also carries nine adapted MIT skills, each with a 1:1 command and a
 `CREDITS.md`: five from `mattpocock/skills` (`diagnosing-bugs`, `domain-modeling`,
 `grilling`, `research`, `tdd`) and four doctrine skills (`claim-check`,
 `clean-room-rebuild`, `verified-status`, `corpus-retrieval`); the visual kits add
-`visual-review`. `frontend/` and `cli/` are plane-only today.
+`visual-review`.
 
 | Directory | Content | Status |
 | --- | --- | --- |
@@ -211,16 +211,15 @@ Every kit also carries nine adapted MIT skills, each with a 1:1 command and a
 | [`frontend-mobile/`](frontend-mobile/) | Runnable React Native + Expo template (SDK 58, React 19.3, RN 0.88, plain App entry, device tiers + quality governor, typed route table, MVVM notes slice, vitest architecture tests, Metro export gate) + [`docs/`](frontend-mobile/docs/) 00–14, [`AGENTS.md`](frontend-mobile/AGENTS.md), [`MEMORY.md`](frontend-mobile/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready |
 | [`mobile-android/`](mobile-android/) | Runnable native Android template (Gradle 9.6, AGP 9.5, Kotlin 2.4, Compose, one Gradle module per layer, Navigation 3 typed NavKey, UDF notes slice, JVM tests, Gradle kit evals) + [`docs/`](mobile-android/docs/) 00–14, [`AGENTS.md`](mobile-android/AGENTS.md), [`MEMORY.md`](mobile-android/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, JVM contract evals | Ready |
 | [`mobile-ios/`](mobile-ios/) | Runnable native iOS template (Swift 6, SwiftUI, iOS 18, XcodeGen `project.yml`, one SwiftPM package per layer, typed `NotesRoute` enum, UDF notes slice, Swift Testing, node contract evals, native gates that SKIP off macOS) + [`docs/`](mobile-ios/docs/) 00–14, [`AGENTS.md`](mobile-ios/AGENTS.md), [`MEMORY.md`](mobile-ios/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready (native gates pending macOS/CI) |
-| [`frontend/`](frontend/) | `.claude` plane for React 19 web (MVVM + shared SDK, layer walls): 8 agents in core/client/security/testing, 14 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Partial — plane + installer; template, evals and CI not built yet |
-| [`cli/`](cli/) | `.claude` plane for cross-platform CLI/TUI (headless core, stdout/stderr and exit-code contracts, PTY tests, signing): 8 agents, 14 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Partial — plane + installer; template, evals and CI not built yet |
+| [`frontend/`](frontend/) | Runnable React 19 + Vite template (TypeScript strict, MVVM layering with ESLint and vitest architecture walls, lead-detail slice with react-dom/server tests, node contract evals, staged verify gate) + 8 agents, 14 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
+| [`cli/`](cli/) | Runnable Node CLI template (TypeScript strict, headless core over ports, versioned exit-code and JSON envelope contracts, stdout/stderr split, vitest plus architecture tests, node contract evals, staged verify gate) + 8 agents, 14 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
 
 The [Go directory](golang/) is the reference implementation for the backend kits; the
 [extension kit](extension/) is the reference for the client kits.
 
 Every kit is a **runnable template**, not a snapshot: a renamed copy is a
-working project. The `frontend/` and `cli/` kits are the exception today: their
-`.claude` plane and installer are ready and wired, while the runnable template
-and evals are not built yet (status marked in the table above). The contract a
+working project. `frontend/` and `cli/` use npm with a committed
+`package-lock.json`; the earlier kits use pnpm. The contract a
 kit must satisfy — required surface, two eval
 tiers, frozen domain-adapted fixtures, local playbook copies — is
 [`PLAYBOOK_CLAUDE_CODE.md`](PLAYBOOK_CLAUDE_CODE.md) §21; the shared gate surface (`make ci`, `make evals`,

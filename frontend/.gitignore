@@ -1,0 +1,10 @@
+# <app>. Local state only - package-lock.json IS committed (this kit uses npm,
+# not pnpm): scripts/verify-template.sh regenerates it on the staged copy.
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

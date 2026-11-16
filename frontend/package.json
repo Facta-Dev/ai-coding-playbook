@@ -1,0 +1,39 @@
+{
+  "name": "<app>",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "<app> frontend - React 19 web SPA (Vite, TypeScript, MVVM + shared SDK).",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "evals": "node --test evals/contracts.test.mjs",
+    "verify": "bash scripts/verify-template.sh",
+    "ci": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^7.3.8",
+    "vitest": "^5.1.0"
+  }
+}

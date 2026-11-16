@@ -1,0 +1,13 @@
+// <app> — test-program typecheck (vitest units + architecture tests). Extends
+// the build tsconfig; src and tests are checked as one program so the tests
+// see the same types the CLI ships.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["src", "tests"],
+  "exclude": ["dist", "node_modules"]
+}

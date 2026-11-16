@@ -1,0 +1,10 @@
+/* <app> - minimal styles for the template. */
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 2rem;
+  max-width: 40rem;
+}
