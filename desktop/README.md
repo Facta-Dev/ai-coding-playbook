@@ -95,7 +95,7 @@ Seven contracts ship next to this file:
 | `PLAYBOOK_FRONTEND.md` | UI copy, accessibility, shared design tokens |
 
 The `.claude/` layer ships **11 agents** across four divisions (`core`,
-`client`, `security`, `testing`), **9 skills** with 1:1 slash commands
+`client`, `security`, `testing`), **14 skills** with 1:1 slash commands
 (`/add-slice`, `/add-view`, `/add-linux-packaging`, `/platform-port`, `/plan`,
 `/spec`, `/review`, `/ship`, `/learn`), schema-driven linters in `scripts/`, a
 `PreToolUse` Bash guard and a `manifest.json` target matrix for other runtimes.

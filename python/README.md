@@ -161,8 +161,8 @@ importing all of them:
 | `PLAYBOOK_AUDIT.md`       | self-hosting a SOC 2 / ISO 27001 audit program                                      |
 | `PLAYBOOK_CLAUDE_CODE.md` | the `.claude` kit, SDD + TDD loop, multi-session governance                         |
 
-The kit ships 11 agents (`backend`, `core`, `security`, `testing`), 9 skills
-and 9 matching `/commands` (`add-handler`, `add-module`, `ownership-author`,
+The kit ships 11 agents (`backend`, `core`, `security`, `testing`), 14 skills
+and 14 matching `/commands` (`add-handler`, `add-module`, `ownership-author`,
 `depguard-guard`, `review`, `spec`, `plan`, `learn`, `ship`), a `PreToolUse`
 Bash guard, and 14 offline contract evals.
 

@@ -28,7 +28,7 @@ the template root does not build. See [How to apply](#how-to-apply).
 ├── evals/                # :evals — the .claude contract tests (pure JVM) + live tier (run-live.sh)
 ├── gradle/               # libs.versions.toml · wrapper/
 ├── scripts/              # rename · verify-template · check-architecture · linters · jdk
-├── .claude/              # 11 agents · 9 skills/commands · schemas · hooks
+├── .claude/              # 11 agents · 14 skills/commands · schemas · hooks
 ├── docs/                 # 00–14 · adr/ · admin-guide · data-flows · dependency-register
 ├── PLAYBOOK_*.md        # seven local contracts — read on demand
 ├── AGENTS.md            # agent instructions; CLAUDE.md is a symlink to it
@@ -82,7 +82,7 @@ secrets), `PLAYBOOK_FRONTEND.md` (the cross-client UI contract),
 `PLAYBOOK_CLAUDE_CODE.md` (the kit, SDD + TDD loop, governance).
 
 The `.claude/` layer ships 11 agents across four divisions (`core`, `client`,
-`security`, `testing`), 9 skills with 1:1 slash commands (`/add-slice`,
+`security`, `testing`), 14 skills with 1:1 slash commands (`/add-slice`,
 `/add-module`, `/add-route`, `/add-port`, `/review`, `/spec`, `/plan`,
 `/learn`, `/ship`), schema-driven linters in `scripts/`, a `PreToolUse` Bash
 guard, and a `manifest.json` target matrix for installing the kit into other

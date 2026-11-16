@@ -100,7 +100,7 @@ error envelope), `PLAYBOOK_AUDIT.md` (SOC 2 / ISO 27001 / ISO 9001 programs)
 and `PLAYBOOK_CLAUDE_CODE.md` (the kit, SDD + TDD loop, governance).
 
 The `.claude/` layer ships 11 agents across four divisions (`core`, `client`,
-`security`, `testing`), 9 skills with 1:1 slash commands (`/add-slice`,
+`security`, `testing`), 14 skills with 1:1 slash commands (`/add-slice`,
 `/add-message`, `/permission-change`, `/storage-migration`, `/review`,
 `/spec`, `/plan`, `/learn`, `/ship`), schema-driven linters in `scripts/`, a
 `PreToolUse` Bash guard, and a `manifest.json` target matrix for installing
