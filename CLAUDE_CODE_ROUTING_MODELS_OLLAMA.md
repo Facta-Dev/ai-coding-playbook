@@ -182,7 +182,7 @@ Runbook: `ai-coding-playbook/CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md`.
 - All code, comments, tests, specs, and documentation are generated in English.
 ```
 
-Rollout (2026-11-08): heimdall-platform, enyo/enyo-platform, deino, talos,
+Rollout (2026-11-08): enyo/enyo-platform, deino, talos,
 staxis, everythink_platform, transportation-bank, v0ss, ctx0/nest, ctx0/ctx0.
 
 ## 7. Native `--advisor` — Anthropic only

@@ -1,0 +1,29 @@
+# rollback — pin the stack to an older app image (manual).
+# docker-publish tags every main commit with the git sha; run this workflow
+# with tag=<sha> to revert, tag=latest to re-arm on the current build.
+name: rollback
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: image tag to pin (a git sha from docker-publish; latest re-arms)
+        required: true
+        type: string
+
+jobs:
+  roll-back:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: pin the stack to the chosen image
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /srv/<app>
+            # the app service uses image: ${APP_IMAGE}; pin it in .env
+            sed -i "s#^APP_IMAGE=.*#APP_IMAGE=ghcr.io/<scope>/<app>/app:${{ github.event.inputs.tag }}#" .env
+            docker compose -f docker-compose.prod.yml up -d app
+            docker compose -f docker-compose.prod.yml ps app

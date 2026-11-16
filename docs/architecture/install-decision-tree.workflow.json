@@ -276,7 +276,7 @@
         "working set: clone-repos.sh --group=selected --dir ~/work",
         "skill packs: install-skill-packs.sh --dir ~/work",
         "cost tracker: ~/work/claude-code-cli-cost-tracker/install.sh",
-        "each repo: configure-repo.sh <repo> --kit=<golang|nodejs|python|rust|java|extension|desktop|frontend-mobile|mobile-android|mobile-ios>"
+        "each repo: configure-repo.sh <repo> --kit=<golang|nodejs|python|rust|java|extension|desktop|frontend-mobile|mobile-android|mobile-ios|frontend|cli>"
       ]
     },
     {
