@@ -43,7 +43,7 @@ bash ~/ai-coding-playbook/scripts/claude-kit/bootstrap.sh             # install
              ├─ working set   clone-repos.sh --group=selected --dir ~/work
              ├─ skill packs   install-skill-packs.sh --dir ~/work
              ├─ cost tracker  ~/work/claude-code-cli-cost-tracker/install.sh
-             └─ each repo     configure-repo.sh <repo> --kit=<golang|nodejs|python|rust|java|extension|desktop|frontend-mobile|mobile-android|mobile-ios>
+             └─ each repo     configure-repo.sh <repo> --kit=<golang|nodejs|python|rust|java|extension|desktop|frontend-mobile|mobile-android|mobile-ios|frontend|cli>
 
 VERIFY: kit_check.py · deny probe (PLAYBOOK_INSTALL §5) · routing probes (§9)
         · /context · /doctor
@@ -205,12 +205,17 @@ specialized to it, and the matching `.claude/` plane:
 | [`frontend-mobile/`](frontend-mobile/) | Runnable React Native + Expo template (SDK 58, React 19.3, RN 0.88, plain App entry, device tiers + quality governor, typed route table, MVVM notes slice, vitest architecture tests, Metro export gate) + [`docs/`](frontend-mobile/docs/) 00–14, [`AGENTS.md`](frontend-mobile/AGENTS.md), [`MEMORY.md`](frontend-mobile/MEMORY.md), 7 client playbooks, 11 agents, 9 skills/commands, node contract evals | Ready |
 | [`mobile-android/`](mobile-android/) | Runnable native Android template (Gradle 9.6, AGP 9.5, Kotlin 2.4, Compose, one Gradle module per layer, Navigation 3 typed NavKey, UDF notes slice, JVM tests, Gradle kit evals) + [`docs/`](mobile-android/docs/) 00–14, [`AGENTS.md`](mobile-android/AGENTS.md), [`MEMORY.md`](mobile-android/MEMORY.md), 7 client playbooks, 11 agents, 9 skills/commands, JVM contract evals | Ready |
 | [`mobile-ios/`](mobile-ios/) | Runnable native iOS template (Swift 6, SwiftUI, iOS 18, XcodeGen `project.yml`, one SwiftPM package per layer, typed `NotesRoute` enum, UDF notes slice, Swift Testing, node contract evals, native gates that SKIP off macOS) + [`docs/`](mobile-ios/docs/) 00–14, [`AGENTS.md`](mobile-ios/AGENTS.md), [`MEMORY.md`](mobile-ios/MEMORY.md), 7 client playbooks, 11 agents, 9 skills/commands, node contract evals | Ready (native gates pending macOS/CI) |
+| [`frontend/`](frontend/) | `.claude` plane for React 19 web (MVVM + shared SDK, layer walls): 8 agents in core/client/security/testing, 9 skills/commands (five adapted MIT Pocock skills included), schemas, manifest, installer and kit linters | Partial — plane + installer; template, evals and CI not built yet |
+| [`cli/`](cli/) | `.claude` plane for cross-platform CLI/TUI (headless core, stdout/stderr and exit-code contracts, PTY tests, signing): 8 agents, 9 skills/commands (five adapted MIT Pocock skills included), schemas, manifest, installer and kit linters | Partial — plane + installer; template, evals and CI not built yet |
 
 The [Go directory](golang/) is the reference implementation for the backend kits; the
 [extension kit](extension/) is the reference for the client kits.
 
 Every kit is a **runnable template**, not a snapshot: a renamed copy is a
-working project. The contract a kit must satisfy — required surface, two eval
+working project. The `frontend/` and `cli/` kits are the exception today: their
+`.claude` plane and installer are ready and wired, while the runnable template
+and evals are not built yet (status marked in the table above). The contract a
+kit must satisfy — required surface, two eval
 tiers, frozen domain-adapted fixtures, local playbook copies — is
 [`PLAYBOOK_CLAUDE_CODE.md`](PLAYBOOK_CLAUDE_CODE.md) §21; the shared gate surface (`make ci`, `make evals`,
 `make verify`) and what each gate proves is [`PLAYBOOK_TESTS.md`](PLAYBOOK_TESTS.md) §12.
