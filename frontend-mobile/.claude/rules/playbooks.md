@@ -12,12 +12,18 @@ it. Do not `@`-import a playbook: this rule is the routing entry and the
 always-on instruction set stays inside the harness budget.
 
 - `PLAYBOOK_FRONTEND_MOBILE.md` — the stack contract for this kit.
+  - `PLAYBOOK_FRONTEND_MOBILE_PART2.md` — part of `PLAYBOOK_FRONTEND_MOBILE.md`.
+  - `PLAYBOOK_FRONTEND_MOBILE_PART3.md` — part of `PLAYBOOK_FRONTEND_MOBILE.md`.
 - `PLAYBOOK_FRONTEND.md` — the shared architecture contract.
 - `PLAYBOOK_SECURITY.md` — shared contract.
+  - `PLAYBOOK_SECURITY_PART2.md` — part of `PLAYBOOK_SECURITY.md`.
 - `PLAYBOOK_TESTS.md` — shared contract.
 - `PLAYBOOK_URLS.md` — shared contract.
 - `PLAYBOOK_AUDIT.md` — shared contract.
+  - `PLAYBOOK_AUDIT_PART2.md` — part of `PLAYBOOK_AUDIT.md`.
 - `PLAYBOOK_CLAUDE_CODE.md` — shared contract.
+  - `PLAYBOOK_CLAUDE_CODE_PART2.md` — part of `PLAYBOOK_CLAUDE_CODE.md`.
+  - `PLAYBOOK_CLAUDE_CODE_PART3.md` — part of `PLAYBOOK_CLAUDE_CODE.md`.
 
 If a rule here contradicts a playbook, the playbook is the contract:
 change it in the same PR, then re-copy it into the kit.

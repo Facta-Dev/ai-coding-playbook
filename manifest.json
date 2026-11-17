@@ -37,6 +37,56 @@
       }
     },
     {
+      "id": "MASTER_PART2",
+      "file": "PLAYBOOK_MASTER_PART2.md",
+      "version": "1.0.0",
+      "layer": "governance",
+      "volatility": "fast",
+      "owner": "architecture",
+      "depends_on": [
+        "MASTER"
+      ],
+      "appliesTo": {
+        "paths": [
+          "PLAYBOOK_*.md",
+          ".claude/**",
+          "scripts/**",
+          "kit/**"
+        ],
+        "keywords": [
+          "playbook",
+          "constitution",
+          "routing",
+          "precedence"
+        ]
+      }
+    },
+    {
+      "id": "MASTER_PART3",
+      "file": "PLAYBOOK_MASTER_PART3.md",
+      "version": "1.0.0",
+      "layer": "governance",
+      "volatility": "fast",
+      "owner": "architecture",
+      "depends_on": [
+        "MASTER"
+      ],
+      "appliesTo": {
+        "paths": [
+          "PLAYBOOK_*.md",
+          ".claude/**",
+          "scripts/**",
+          "kit/**"
+        ],
+        "keywords": [
+          "playbook",
+          "constitution",
+          "routing",
+          "precedence"
+        ]
+      }
+    },
+    {
       "id": "INSTALL",
       "file": "PLAYBOOK_INSTALL.md",
       "version": "1.0.0",
@@ -138,6 +188,33 @@
       }
     },
     {
+      "id": "SECURITY_PART2",
+      "file": "PLAYBOOK_SECURITY_PART2.md",
+      "version": "1.0.0",
+      "layer": "foundation",
+      "volatility": "medium",
+      "owner": "security",
+      "depends_on": [
+        "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "**/auth/**",
+          "**/security/**",
+          "**/Dockerfile*",
+          "**/*.tf"
+        ],
+        "keywords": [
+          "auth",
+          "token",
+          "secret",
+          "input",
+          "ssrf",
+          "dependency"
+        ]
+      }
+    },
+    {
       "id": "TESTS",
       "file": "PLAYBOOK_TESTS.md",
       "version": "1.0.0",
@@ -189,6 +266,30 @@
       }
     },
     {
+      "id": "AUDIT_PART2",
+      "file": "PLAYBOOK_AUDIT_PART2.md",
+      "version": "1.0.0",
+      "layer": "foundation",
+      "volatility": "medium",
+      "owner": "compliance",
+      "depends_on": [
+        "AUDIT"
+      ],
+      "appliesTo": {
+        "paths": [
+          "docs/compliance/**",
+          "docs/adr/**"
+        ],
+        "keywords": [
+          "soc 2",
+          "iso 27001",
+          "iso 9001",
+          "evidence",
+          "control"
+        ]
+      }
+    },
+    {
       "id": "CLAUDE_CODE",
       "file": "PLAYBOOK_CLAUDE_CODE.md",
       "version": "1.0.0",
@@ -197,6 +298,62 @@
       "owner": "engineering-productivity",
       "depends_on": [
         "MASTER"
+      ],
+      "appliesTo": {
+        "paths": [
+          ".claude/**",
+          "AGENTS.md",
+          "CLAUDE.md",
+          "scripts/**"
+        ],
+        "keywords": [
+          "claude code",
+          "agent",
+          "skill",
+          "hook",
+          "multi-session",
+          "sdd",
+          "tdd"
+        ]
+      }
+    },
+    {
+      "id": "CLAUDE_CODE_PART2",
+      "file": "PLAYBOOK_CLAUDE_CODE_PART2.md",
+      "version": "1.0.0",
+      "layer": "process",
+      "volatility": "fast",
+      "owner": "engineering-productivity",
+      "depends_on": [
+        "CLAUDE_CODE"
+      ],
+      "appliesTo": {
+        "paths": [
+          ".claude/**",
+          "AGENTS.md",
+          "CLAUDE.md",
+          "scripts/**"
+        ],
+        "keywords": [
+          "claude code",
+          "agent",
+          "skill",
+          "hook",
+          "multi-session",
+          "sdd",
+          "tdd"
+        ]
+      }
+    },
+    {
+      "id": "CLAUDE_CODE_PART3",
+      "file": "PLAYBOOK_CLAUDE_CODE_PART3.md",
+      "version": "1.0.0",
+      "layer": "process",
+      "volatility": "fast",
+      "owner": "engineering-productivity",
+      "depends_on": [
+        "CLAUDE_CODE"
       ],
       "appliesTo": {
         "paths": [
@@ -270,6 +427,54 @@
       }
     },
     {
+      "id": "FRONTEND_MOBILE_PART2",
+      "file": "PLAYBOOK_FRONTEND_MOBILE_PART2.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND_MOBILE"
+      ],
+      "appliesTo": {
+        "paths": [
+          "app/**",
+          "src/**",
+          "packages/**"
+        ],
+        "keywords": [
+          "expo",
+          "react native",
+          "device tier",
+          "push"
+        ]
+      }
+    },
+    {
+      "id": "FRONTEND_MOBILE_PART3",
+      "file": "PLAYBOOK_FRONTEND_MOBILE_PART3.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND_MOBILE"
+      ],
+      "appliesTo": {
+        "paths": [
+          "app/**",
+          "src/**",
+          "packages/**"
+        ],
+        "keywords": [
+          "expo",
+          "react native",
+          "device tier",
+          "push"
+        ]
+      }
+    },
+    {
       "id": "MOBILE_ANDROID_KOTLIN",
       "file": "PLAYBOOK_MOBILE_ANDROID_KOTLIN.md",
       "version": "1.0.0",
@@ -278,6 +483,54 @@
       "owner": "client-platform",
       "depends_on": [
         "FRONTEND_MOBILE"
+      ],
+      "appliesTo": {
+        "paths": [
+          "android/**",
+          "app/**",
+          "src/**"
+        ],
+        "keywords": [
+          "android",
+          "kotlin",
+          "compose",
+          "gradle"
+        ]
+      }
+    },
+    {
+      "id": "MOBILE_ANDROID_KOTLIN_PART2",
+      "file": "PLAYBOOK_MOBILE_ANDROID_KOTLIN_PART2.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "MOBILE_ANDROID_KOTLIN"
+      ],
+      "appliesTo": {
+        "paths": [
+          "android/**",
+          "app/**",
+          "src/**"
+        ],
+        "keywords": [
+          "android",
+          "kotlin",
+          "compose",
+          "gradle"
+        ]
+      }
+    },
+    {
+      "id": "MOBILE_ANDROID_KOTLIN_PART3",
+      "file": "PLAYBOOK_MOBILE_ANDROID_KOTLIN_PART3.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "MOBILE_ANDROID_KOTLIN"
       ],
       "appliesTo": {
         "paths": [
@@ -318,6 +571,54 @@
       }
     },
     {
+      "id": "MOBILE_IOS_SWIFT_PART2",
+      "file": "PLAYBOOK_MOBILE_IOS_SWIFT_PART2.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "MOBILE_IOS_SWIFT"
+      ],
+      "appliesTo": {
+        "paths": [
+          "ios/**",
+          "Sources/**",
+          "Packages/**"
+        ],
+        "keywords": [
+          "ios",
+          "swift",
+          "swiftui",
+          "storekit"
+        ]
+      }
+    },
+    {
+      "id": "MOBILE_IOS_SWIFT_PART3",
+      "file": "PLAYBOOK_MOBILE_IOS_SWIFT_PART3.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "MOBILE_IOS_SWIFT"
+      ],
+      "appliesTo": {
+        "paths": [
+          "ios/**",
+          "Sources/**",
+          "Packages/**"
+        ],
+        "keywords": [
+          "ios",
+          "swift",
+          "swiftui",
+          "storekit"
+        ]
+      }
+    },
+    {
       "id": "DESKTOP_QT",
       "file": "PLAYBOOK_DESKTOP_QT.md",
       "version": "1.0.0",
@@ -327,6 +628,54 @@
       "depends_on": [
         "FRONTEND",
         "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "cmake/**",
+          "src/**",
+          "packages/**"
+        ],
+        "keywords": [
+          "qt",
+          "desktop",
+          "cmake",
+          "signing"
+        ]
+      }
+    },
+    {
+      "id": "DESKTOP_QT_PART2",
+      "file": "PLAYBOOK_DESKTOP_QT_PART2.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "DESKTOP_QT"
+      ],
+      "appliesTo": {
+        "paths": [
+          "cmake/**",
+          "src/**",
+          "packages/**"
+        ],
+        "keywords": [
+          "qt",
+          "desktop",
+          "cmake",
+          "signing"
+        ]
+      }
+    },
+    {
+      "id": "DESKTOP_QT_PART3",
+      "file": "PLAYBOOK_DESKTOP_QT_PART3.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "DESKTOP_QT"
       ],
       "appliesTo": {
         "paths": [
@@ -369,6 +718,31 @@
       }
     },
     {
+      "id": "CHROME_EXTENSION_PART2",
+      "file": "PLAYBOOK_CHROME_EXTENSION_PART2.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "CHROME_EXTENSION"
+      ],
+      "appliesTo": {
+        "paths": [
+          "entrypoints/**",
+          "src/**",
+          "manifest*.json"
+        ],
+        "keywords": [
+          "chrome",
+          "extension",
+          "mv3",
+          "service worker",
+          "permission"
+        ]
+      }
+    },
+    {
       "id": "CLI",
       "file": "PLAYBOOK_CLI.md",
       "version": "1.0.0",
@@ -378,6 +752,30 @@
       "depends_on": [
         "URLS",
         "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/**",
+          "tests/**"
+        ],
+        "keywords": [
+          "cli",
+          "tui",
+          "exit code",
+          "stdout",
+          "pty"
+        ]
+      }
+    },
+    {
+      "id": "CLI_PART2",
+      "file": "PLAYBOOK_CLI_PART2.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "CLI"
       ],
       "appliesTo": {
         "paths": [
@@ -514,6 +912,29 @@
       "volatility": "fast",
       "owner": "security",
       "depends_on": [],
+      "appliesTo": {
+        "paths": [
+          ".claude/**",
+          "docs/rea/**"
+        ],
+        "keywords": [
+          "reverse engineering",
+          "binary",
+          "mcp",
+          "frida"
+        ]
+      }
+    },
+    {
+      "id": "REA_PART2",
+      "file": "PLAYBOOK_REA_PART2.md",
+      "version": "1.0.0",
+      "layer": "tooling",
+      "volatility": "fast",
+      "owner": "security",
+      "depends_on": [
+        "REA"
+      ],
       "appliesTo": {
         "paths": [
           ".claude/**",

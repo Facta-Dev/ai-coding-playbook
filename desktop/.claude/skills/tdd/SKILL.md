@@ -81,7 +81,7 @@ Do NOT activate this skill when:
 | Good tests verify behavior through public interfaces; tautological tests pass by construction | mattpocock/skills, skills/engineering/tdd/tests.md | 2026 | skills/engineering/tdd/tests.md |
 | Mock only at system boundaries, and design for mockability at those boundaries | mattpocock/skills, skills/engineering/tdd/mocking.md | 2026 | skills/engineering/tdd/mocking.md |
 | The desktop test types and where each assertion belongs | `PLAYBOOK_TESTS.md` §2 | - | `PLAYBOOK_TESTS.md` |
-| The gate that turns a red test into a green suite | `PLAYBOOK_CLAUDE_CODE.md` §10 | - | `PLAYBOOK_CLAUDE_CODE.md` |
+| The gate that turns a red test into a green suite | `PLAYBOOK_CLAUDE_CODE_PART2.md` §10 | - | `PLAYBOOK_CLAUDE_CODE.md` |
 
 ## Output Format
 

@@ -69,7 +69,7 @@ Do NOT activate this skill when:
 | AppStream metadata is the standard store metadata for Linux apps | freedesktop.org AppStream | 2025 | https://specifications.freedesktop.org/appstream-spec/latest/ |
 | Flatpak manifests pin the runtime and the modules used | Flatpak documentation | 2025 | https://docs.flatpak.org/en/latest/flatpak-command-reference.html |
 | The version packaged comes from the CMake cache variable | `cmake/versioning.cmake` | - | `cmake/versioning.cmake` |
-| The packaging matrix per operating system | `PLAYBOOK_DESKTOP_QT.md` §14 | - | `PLAYBOOK_DESKTOP_QT.md` |
+| The packaging matrix per operating system | `PLAYBOOK_DESKTOP_QT_PART2.md` §14 | - | `PLAYBOOK_DESKTOP_QT.md` |
 
 ## Output Format
 

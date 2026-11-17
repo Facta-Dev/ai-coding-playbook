@@ -53,18 +53,27 @@ stack_for() {
 }
 
 expected_for() {
-  local kit="$1" stack
+  local kit="$1" root="${2:-}" stack
   stack="$(stack_for "$kit")"
-  printf '%s\n' "${SHARED[@]}"
+  emit() {
+    local f="$1"
+    printf '%s\n' "$f"
+    if [[ -n "$root" ]]; then
+      local stem="${f%.md}"
+      (cd "$root" && ls "${stem}_PART"*.md 2>/dev/null || true)
+    fi
+  }
+  local name
+  for name in "${SHARED[@]}"; do emit "$name"; done
   if [[ " ${BACKEND_KITS[*]} " == *" $kit "* ]]; then
-    printf '%s\n' PLAYBOOK_BACKEND.md
+    emit PLAYBOOK_BACKEND.md
   fi
   # The visual client kits ship the shared frontend contract in addition to
   # their own platform playbook.
   case "$kit" in
-    extension|desktop|frontend-mobile|mobile-android|mobile-ios) printf '%s\n' PLAYBOOK_FRONTEND.md ;;
+    extension|desktop|frontend-mobile|mobile-android|mobile-ios) emit PLAYBOOK_FRONTEND.md ;;
   esac
-  [[ -n "$stack" ]] && printf '%s\n' "$stack"
+  [[ -n "$stack" ]] && emit "$stack"
 }
 
 check_tree() {
@@ -81,11 +90,11 @@ check_tree() {
         echo "DRIFT:   $kit/$f (must be byte-identical to $f)" >&2
         echo "drift" >> "$failures"
       fi
-    done < <(expected_for "$kit")
+    done < <(expected_for "$kit" "$root")
 
     # Any other PLAYBOOK_*.md is an unmanaged copy: it will drift silently.
     local expected
-    expected="$(expected_for "$kit")"
+    expected="$(expected_for "$kit" "$root")"
     while IFS= read -r f; do
       [[ -n "$f" ]] || continue
       if ! grep -qxF "$f" <<< "$expected"; then
@@ -105,7 +114,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
     while IFS= read -r f; do
       printf 'source %s\n' "$f" > "$tmp/root/$f"
       cp "$tmp/root/$f" "$tmp/root/$k/$f"
-    done < <(expected_for "$k")
+    done < <(expected_for "$k" "$tmp/root")
   done
 
   : > "$tmp/failures"

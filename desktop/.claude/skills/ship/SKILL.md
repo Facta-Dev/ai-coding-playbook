@@ -58,7 +58,7 @@ Do NOT activate this skill when:
 | Claim | Source | Year | Link |
 |-------|--------|------|------|
 | The version lives in a single CMake cache variable | `cmake/versioning.cmake` | - | `cmake/versioning.cmake` |
-| The release checklist and the packaging matrix | `PLAYBOOK_DESKTOP_QT.md` §14, §16 | - | `PLAYBOOK_DESKTOP_QT.md` |
+| The release checklist and the packaging matrix | `PLAYBOOK_DESKTOP_QT_PART2.md` §14, §16 | - | `PLAYBOOK_DESKTOP_QT.md` |
 | The gate ladder that must be green before a release | `PLAYBOOK_TESTS.md` | - | `PLAYBOOK_TESTS.md` |
 | CMake presets produce the release configuration | CMake documentation | 2025 | https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html |
 | Migrations are forward-only and numbered | `src/infrastructure/src/storage/note_store.cpp` | - | `src/infrastructure/src/storage/note_store.cpp` |

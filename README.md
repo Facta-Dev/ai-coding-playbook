@@ -148,6 +148,10 @@ never duplicate a baseline plugin in a project file.
 | [`PLAYBOOK_REA.md`](PLAYBOOK_REA.md) | REA setup: register the reverse-engineering MCP + skill with every agent on the machine | Analyzing binaries, bundles or captured traffic |
 | [`CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md`](CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md) | Model tiers (`opus`/`sonnet`/`haiku`), `advisor` agent, settings, verification, gotchas, rollback | Setting up a new machine or a new repo |
 
+A large playbook continues in `PLAYBOOK_<NAME>_PART<n>.md`; the table indexes
+the main entry, which opens with a Parts index and keeps the original section
+numbers.
+
 ### Playbook copies per kit
 
 Every kit ships **byte-identical** copies of the root playbooks it includes:
@@ -155,7 +159,12 @@ the five shared contracts (`SECURITY`, `TESTS`, `URLS`, `AUDIT`,
 `CLAUDE_CODE`), the language-agnostic `BACKEND` or `FRONTEND`, and the kit's
 stack playbook. Stack-specific rules belong in the stack playbook, never in a
 hand-edited copy. `scripts/claude-kit/check-playbook-copies.sh` fails on any
-drift.
+drift. A playbook split into parts ships its `PLAYBOOK_<NAME>_PART<n>.md`
+companions with it; the gate compares them too.
+
+Large playbooks are split into numbered parts so each file stays navigable;
+each main entry opens with a **Parts** index and keeps the original section
+numbers.
 
 | Kit | Playbook copies |
 | --- | --- |
@@ -172,6 +181,9 @@ drift.
 | [`frontend/`](frontend/) | [`PLAYBOOK_FRONTEND.md`](frontend/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](frontend/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](frontend/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](frontend/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](frontend/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](frontend/PLAYBOOK_CLAUDE_CODE.md) |
 | [`cli/`](cli/) | [`PLAYBOOK_CLI.md`](cli/PLAYBOOK_CLI.md), [`PLAYBOOK_TESTS.md`](cli/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](cli/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](cli/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](cli/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](cli/PLAYBOOK_CLAUDE_CODE.md) |
 
+The table lists the main entry for each contract; the `_PART<n>` companions
+are listed by that entry and ship with it.
+
 ### 3.1 User-scope kit and install path
 
 [`kit/`](kit/) is the canonical user-scope (`~/.claude`) layer, versioned here so a new
@@ -185,7 +197,7 @@ machine is one command away; [`scripts/claude-kit/`](scripts/claude-kit/) is the
 | [`kit/templates/sdd/`](kit/templates/sdd/) | Spec, plan, tasks and lessons templates |
 | [`kit/settings.fragment.json`](kit/settings.fragment.json) | Base settings fragment merged into `~/.claude/settings.json` on every machine: default model (`sonnet` — the cost lever) and the deny list. Provider-agnostic |
 | [`kit/settings.ollama.json`](kit/settings.ollama.json) | Ollama-only fragment, merged on top when Ollama is the provider: tier aliases (`opus`/`sonnet`/`haiku` → Ollama cloud models), local endpoint and the fixed literal token `ollama`, cheap subagent routing |
-| [`scripts/claude-kit/`](scripts/claude-kit/) | [`bootstrap.sh`](scripts/claude-kit/bootstrap.sh) (decision tree: OS + Ollama/Claude detection, chains the installers), [`install-user-kit.sh`](scripts/claude-kit/install-user-kit.sh) (kit into `~/.claude`, `--provider` picks the settings env), [`clone-repos.sh`](scripts/claude-kit/clone-repos.sh) (working set by group), [`install-skill-packs.sh`](scripts/claude-kit/install-skill-packs.sh) (register + install the skill-pack plugins), [`configure-repo.sh`](scripts/claude-kit/configure-repo.sh) (wire one repo, `--check` to verify), [`kit_check.py`](scripts/claude-kit/kit_check.py) (read-only validator), [`check-playbook-copies.sh`](scripts/claude-kit/check-playbook-copies.sh) (copy-drift gate), [`generate-playbook-rules.py`](scripts/claude-kit/generate-playbook-rules.py) (path-scoped rules), [`pin-actions.py`](scripts/claude-kit/pin-actions.py) (Action SHA pinning), [`dedupe_plugins.py`](scripts/claude-kit/dedupe_plugins.py) (move user copies of plugin components aside) — flags and the no-delete contract: [scripts/claude-kit/README.md](scripts/claude-kit/README.md) |
+| [`scripts/claude-kit/`](scripts/claude-kit/) | [`bootstrap.sh`](scripts/claude-kit/bootstrap.sh) (decision tree: OS + Ollama/Claude detection, chains the installers), [`install-user-kit.sh`](scripts/claude-kit/install-user-kit.sh) (kit into `~/.claude`, `--provider` picks the settings env), [`clone-repos.sh`](scripts/claude-kit/clone-repos.sh) (working set by group), [`install-skill-packs.sh`](scripts/claude-kit/install-skill-packs.sh) (register + install the skill-pack plugins), [`configure-repo.sh`](scripts/claude-kit/configure-repo.sh) (wire one repo, `--check` to verify), [`kit_check.py`](scripts/claude-kit/kit_check.py) (read-only validator), [`check-playbook-copies.sh`](scripts/claude-kit/check-playbook-copies.sh) (copy-drift gate), [`split-playbook.py`](scripts/split-playbook.py) (split an oversized playbook into parts), [`playbook-lint.py`](scripts/playbook-lint.py) (set lint: front matter, manifest, links, size), [`generate-playbook-rules.py`](scripts/claude-kit/generate-playbook-rules.py) (path-scoped rules), [`pin-actions.py`](scripts/claude-kit/pin-actions.py) (Action SHA pinning), [`dedupe_plugins.py`](scripts/claude-kit/dedupe_plugins.py) (move user copies of plugin components aside) — flags and the no-delete contract: [scripts/claude-kit/README.md](scripts/claude-kit/README.md) |
 | [`install/repos.txt`](install/repos.txt) | The working-set inventory — one `group\|org/repo\|why` per line, mirrored from §4. Single source of truth for [`clone-repos.sh`](scripts/claude-kit/clone-repos.sh) |
 
 The installers never delete and never overwrite without `--force`; see
@@ -205,16 +217,16 @@ Every kit also carries the adapted MIT skills, each with a 1:1 command and a
 
 | Directory | Content | Status |
 | --- | --- | --- |
-| [`golang/`](golang/) | Runnable Go template (slices, auth core, worker, realtime) + [`AGENTS.md`](golang/AGENTS.md), [`MEMORY.md`](golang/MEMORY.md), 7 backend playbooks, 11 agents, 18 skills/commands, kit linters | Ready |
-| [`rust/`](rust/) | Runnable Rust workspace (11 crates, axum 0.8, sqlx 0.8, sessions, outbox, realtime) + [`AGENTS.md`](rust/AGENTS.md), [`MEMORY.md`](rust/MEMORY.md), 7 backend playbooks, 11 agents (incl. `unsafe-reviewer`), 18 skills/commands, contract evals | Ready |
-| [`nodejs/`](nodejs/) | Runnable Node 24 + TypeScript template (Fastify 5, Kysely, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](nodejs/docs/) 00–14, [`AGENTS.md`](nodejs/AGENTS.md), [`MEMORY.md`](nodejs/MEMORY.md), 7 backend playbooks, 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
-| [`python/`](python/) | Runnable Python 3.12 + uv template (FastAPI, pydantic v2, SQLAlchemy 2 async, Alembic, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](python/docs/) 00–14, [`AGENTS.md`](python/AGENTS.md), [`MEMORY.md`](python/MEMORY.md), 7 backend playbooks, 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
-| [`java/`](java/) | Runnable Jakarta EE 11 template (Java 21, Maven, CDI, JPA/Hibernate, Flyway, JAX-RS, widgets slice, JUnit/ArchUnit tests) + [`docs/`](java/docs/) 00–14 + ADRs, [`AGENTS.md`](java/AGENTS.md), [`MEMORY.md`](java/MEMORY.md), 7 backend playbooks, 10 agents, 15 skills/commands, contract evals | Ready (Maven gates in CI) |
-| [`extension/`](extension/) | Runnable Chrome MV3 template (Vite 7, React 19 side panel, classic service worker, zod message protocol with sender validation, versioned storage, managed policy, zero host permissions) + [`docs/`](extension/docs/) 00–14, [`AGENTS.md`](extension/AGENTS.md), [`MEMORY.md`](extension/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready |
-| [`desktop/`](desktop/) | Runnable Qt 6 Widgets template (C++20, CMake presets, one static library per layer with link-time rules, MVVM notes slice, SQLite, managed policy, headless Qt Test) + [`docs/`](desktop/docs/) 00–14, [`AGENTS.md`](desktop/AGENTS.md), [`MEMORY.md`](desktop/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, C++ contract evals | Ready |
-| [`frontend-mobile/`](frontend-mobile/) | Runnable React Native + Expo template (SDK 58, React 19.3, RN 0.88, plain App entry, device tiers + quality governor, typed route table, MVVM notes slice, vitest architecture tests, Metro export gate) + [`docs/`](frontend-mobile/docs/) 00–14, [`AGENTS.md`](frontend-mobile/AGENTS.md), [`MEMORY.md`](frontend-mobile/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready |
-| [`mobile-android/`](mobile-android/) | Runnable native Android template (Gradle 9.6, AGP 9.5, Kotlin 2.4, Compose, one Gradle module per layer, Navigation 3 typed NavKey, UDF notes slice, JVM tests, Gradle kit evals) + [`docs/`](mobile-android/docs/) 00–14, [`AGENTS.md`](mobile-android/AGENTS.md), [`MEMORY.md`](mobile-android/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, JVM contract evals | Ready |
-| [`mobile-ios/`](mobile-ios/) | Runnable native iOS template (Swift 6, SwiftUI, iOS 18, XcodeGen `project.yml`, one SwiftPM package per layer, typed `NotesRoute` enum, UDF notes slice, Swift Testing, node contract evals, native gates that SKIP off macOS) + [`docs/`](mobile-ios/docs/) 00–14, [`AGENTS.md`](mobile-ios/AGENTS.md), [`MEMORY.md`](mobile-ios/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready (native gates pending macOS/CI) |
+| [`golang/`](golang/) | Runnable Go template (slices, auth core, worker, realtime) + [`AGENTS.md`](golang/AGENTS.md), [`MEMORY.md`](golang/MEMORY.md), 7 backend contracts (plus parts), 11 agents, 18 skills/commands, kit linters | Ready |
+| [`rust/`](rust/) | Runnable Rust workspace (11 crates, axum 0.8, sqlx 0.8, sessions, outbox, realtime) + [`AGENTS.md`](rust/AGENTS.md), [`MEMORY.md`](rust/MEMORY.md), 7 backend contracts (plus parts), 11 agents (incl. `unsafe-reviewer`), 18 skills/commands, contract evals | Ready |
+| [`nodejs/`](nodejs/) | Runnable Node 24 + TypeScript template (Fastify 5, Kysely, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](nodejs/docs/) 00–14, [`AGENTS.md`](nodejs/AGENTS.md), [`MEMORY.md`](nodejs/MEMORY.md), 7 backend contracts (plus parts), 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
+| [`python/`](python/) | Runnable Python 3.12 + uv template (FastAPI, pydantic v2, SQLAlchemy 2 async, Alembic, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](python/docs/) 00–14, [`AGENTS.md`](python/AGENTS.md), [`MEMORY.md`](python/MEMORY.md), 7 backend contracts (plus parts), 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
+| [`java/`](java/) | Runnable Jakarta EE 11 template (Java 21, Maven, CDI, JPA/Hibernate, Flyway, JAX-RS, widgets slice, JUnit/ArchUnit tests) + [`docs/`](java/docs/) 00–14 + ADRs, [`AGENTS.md`](java/AGENTS.md), [`MEMORY.md`](java/MEMORY.md), 7 backend contracts (plus parts), 10 agents, 15 skills/commands, contract evals | Ready (Maven gates in CI) |
+| [`extension/`](extension/) | Runnable Chrome MV3 template (Vite 7, React 19 side panel, classic service worker, zod message protocol with sender validation, versioned storage, managed policy, zero host permissions) + [`docs/`](extension/docs/) 00–14, [`AGENTS.md`](extension/AGENTS.md), [`MEMORY.md`](extension/MEMORY.md), 7 client contracts (plus parts), 11 agents, 19 skills/commands, node contract evals | Ready |
+| [`desktop/`](desktop/) | Runnable Qt 6 Widgets template (C++20, CMake presets, one static library per layer with link-time rules, MVVM notes slice, SQLite, managed policy, headless Qt Test) + [`docs/`](desktop/docs/) 00–14, [`AGENTS.md`](desktop/AGENTS.md), [`MEMORY.md`](desktop/MEMORY.md), 7 client contracts (plus parts), 11 agents, 19 skills/commands, C++ contract evals | Ready |
+| [`frontend-mobile/`](frontend-mobile/) | Runnable React Native + Expo template (SDK 58, React 19.3, RN 0.88, plain App entry, device tiers + quality governor, typed route table, MVVM notes slice, vitest architecture tests, Metro export gate) + [`docs/`](frontend-mobile/docs/) 00–14, [`AGENTS.md`](frontend-mobile/AGENTS.md), [`MEMORY.md`](frontend-mobile/MEMORY.md), 7 client contracts (plus parts), 11 agents, 19 skills/commands, node contract evals | Ready |
+| [`mobile-android/`](mobile-android/) | Runnable native Android template (Gradle 9.6, AGP 9.5, Kotlin 2.4, Compose, one Gradle module per layer, Navigation 3 typed NavKey, UDF notes slice, JVM tests, Gradle kit evals) + [`docs/`](mobile-android/docs/) 00–14, [`AGENTS.md`](mobile-android/AGENTS.md), [`MEMORY.md`](mobile-android/MEMORY.md), 7 client contracts (plus parts), 11 agents, 19 skills/commands, JVM contract evals | Ready |
+| [`mobile-ios/`](mobile-ios/) | Runnable native iOS template (Swift 6, SwiftUI, iOS 18, XcodeGen `project.yml`, one SwiftPM package per layer, typed `NotesRoute` enum, UDF notes slice, Swift Testing, node contract evals, native gates that SKIP off macOS) + [`docs/`](mobile-ios/docs/) 00–14, [`AGENTS.md`](mobile-ios/AGENTS.md), [`MEMORY.md`](mobile-ios/MEMORY.md), 7 client contracts (plus parts), 11 agents, 19 skills/commands, node contract evals | Ready (native gates pending macOS/CI) |
 | [`frontend/`](frontend/) | Runnable React 19 + Vite template (TypeScript strict, MVVM layering with ESLint and vitest architecture walls, lead-detail slice with react-dom/server tests, node contract evals, staged verify gate) + 10 agents, 19 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
 | [`cli/`](cli/) | Runnable Node CLI template (TypeScript strict, headless core over ports, versioned exit-code and JSON envelope contracts, stdout/stderr split, vitest plus architecture tests, node contract evals, staged verify gate) + 9 agents, 19 skills/commands (nine adapted MIT skills included), schemas, manifest, installer and kit linters | Ready (npm; GitHub CI workflows not added) |
 

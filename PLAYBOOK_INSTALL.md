@@ -184,7 +184,7 @@ bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app --k
 Every kit is a runnable template with the same gate surface: `make ci` (the
 working tree), `make evals` (the `.claude` contract harness) and `make verify`
 (a staged renamed copy in a temp dir, the working tree untouched). The kit
-contract is `PLAYBOOK_CLAUDE_CODE.md` §21; the gate meanings are
+contract is `PLAYBOOK_CLAUDE_CODE_PART3.md` §21; the gate meanings are
 `PLAYBOOK_TESTS.md` §12.
 
 The script is idempotent and does exactly this:

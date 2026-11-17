@@ -3,6 +3,14 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-17 — 1.1.0
+
+### Changed
+- Split the eleven oversized reference playbooks into `PLAYBOOK_<NAME>_PART<n>.md`
+  companions. Each main entry opens with a Parts index, keeps the original
+  section numbers, and the manifest has one entry per part. `playbook-lint`
+  is now warning-free; `check-playbook-copies.sh` includes the parts.
+
 ## 2026-11-17 — 1.0.0
 
 ### Added

@@ -51,7 +51,7 @@ Do NOT activate this skill when:
 |-------|--------|------|------|
 | Primary sources over secondary write-ups, every claim cited | mattpocock/skills, skills/engineering/research/SKILL.md | 2026 | skills/engineering/research/SKILL.md |
 | The brief goes to a Markdown file in the repository, following the local convention | mattpocock/skills, skills/engineering/research/SKILL.md | 2026 | skills/engineering/research/SKILL.md |
-| The libraries this template selects, and the upstream contracts behind them | `PLAYBOOK_MOBILE_ANDROID_KOTLIN.md` §9 | - | `../PLAYBOOK_MOBILE_ANDROID_KOTLIN.md` |
+| The libraries this template selects, and the upstream contracts behind them | `PLAYBOOK_MOBILE_ANDROID_KOTLIN_PART2.md` §9 | - | `../PLAYBOOK_MOBILE_ANDROID_KOTLIN.md` |
 | The platform behaviour a brief cites is owned by the official documentation | Android Developers, Compose architecture | 2026 | https://developer.android.com/develop/ui/compose/architecture |
 
 ## Output Format

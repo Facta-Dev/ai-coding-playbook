@@ -107,10 +107,22 @@ def render(kit: str, spec: dict[str, object]) -> str:
         "always-on instruction set stays inside the harness budget.",
         "",
     ]
+    files: list[tuple[str, str]] = []
     if stack:
-        lines.append(f"- `{stack}` — the stack contract for this kit.")
-    lines.append(f"- `{arch}` — the shared architecture contract.")
-    lines.extend(f"- `{name}` — shared contract." for name in SHARED)
+        files.append((str(stack), "the stack contract for this kit."))
+    files.append((arch, "the shared architecture contract."))
+    files.extend((name, "shared contract.") for name in SHARED)
+
+    seen: set[str] = set()
+    for name, description in files:
+        if name in seen:
+            continue
+        seen.add(name)
+        stem = name[:-3]
+        parts = sorted(ROOT.glob(f"{stem}_PART*.md"))
+        lines.append(f"- `{name}` — {description}")
+        for part in parts:
+            lines.append(f"  - `{part.name}` — part of `{name}`.")
     lines.extend(
         [
             "",
