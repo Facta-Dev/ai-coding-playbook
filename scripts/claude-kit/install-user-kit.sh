@@ -246,7 +246,7 @@ PY
         backup_file "$TARGET" "settings.json"
       fi
       mv "$RENDERED" "$TARGET"
-      say "merge $FRAGMENT -> $TARGET"
+      say "merge ${FRAGMENTS[*]} -> $TARGET"
     fi
   fi
 else
