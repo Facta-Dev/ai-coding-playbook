@@ -179,7 +179,7 @@ contract is `PLAYBOOK_CLAUDE_CODE.md` §21; the gate meanings are
 
 The script is idempotent and does exactly this:
 
-- appends the `<!-- model-routing:ollama -->` block to the repo's `CLAUDE.md` **only when the marker is absent** (text: `CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md §6`);
+- appends the `<!-- model-routing:ollama -->` or `<!-- model-routing:anthropic -->` block (`--provider=ollama|anthropic|auto`, default auto-detects Ollama like `bootstrap.sh`) to the repo's `CLAUDE.md` **only when neither marker is present** (text: `CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md §6`);
 - writes `.claude/README.md` pointing at the playbooks instead of restating them;
 - merges **only** `permissions.deny` into the repo's `.claude/settings.json` (never `allow`, never hooks, never `env`);
 - appends `.gitignore` entries: `CLAUDE.local.md`, `.claude/settings.local.json`, `.claude/install-state.json`, `.claude/backups/`, `.claude/logs/`;
