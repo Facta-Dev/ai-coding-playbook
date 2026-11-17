@@ -259,10 +259,11 @@ import.
 
 The 40,000-char limit is hard for **always-on** instruction files. A playbook
 is loaded on demand, so [`scripts/playbook-lint.py`](scripts/playbook-lint.py)
-reports one over that size as an advisory, not an error: split it by concern
-when it stops being navigable, not to satisfy a harness limit that does not
-apply to on-demand references. See
-[`docs/adr/0002-playbook-size-is-advisory.md`](docs/adr/0002-playbook-size-is-advisory.md).
+reports one over that size as a warning and
+[`scripts/split-playbook.py`](scripts/split-playbook.py) splits it at section
+boundaries into the `_PART<n>` companions. All current playbooks are under the
+threshold. See
+[`docs/adr/0002-playbook-size-is-split.md`](docs/adr/0002-playbook-size-is-split.md).
 
 ### 3.4 The Beautiful series
 
