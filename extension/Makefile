@@ -6,7 +6,7 @@
 PNPM ?= pnpm
 
 .DEFAULT_GOAL := help
-.PHONY: help ci build test lint format format-check verify
+.PHONY: help ci build test evals lint format format-check verify
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "};{printf "  %-12s %s\n",$$1,$$2}'
@@ -16,6 +16,9 @@ build: ## Bundle the unpacked extension into dist/
 
 test: ## Unit tests (vitest)
 	$(PNPM) test
+
+evals: ## Native contract tests for the .claude layer (node --test, offline)
+	node --test evals/contracts.test.mjs
 
 lint: ## ESLint + dependency-cruiser architecture rules
 	$(PNPM) lint

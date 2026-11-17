@@ -50,7 +50,7 @@ Jump to [13 — Project Skeleton](13-project-skeleton.md) and
 | 07  | [Request Lifecycle](07-request-lifecycle.md)                       | Middleware → identity → use case → port → adapter; WS/SSE aside                                   |
 | 08  | [Persistence & Migrations](08-persistence-and-migrations.md)       | asyncpg pool, per-slice `text()` queries, paired reversible Alembic revisions, never at startup    |
 | 09  | [Realtime & Streaming](09-realtime-and-streaming.md)               | Hub contract, WebSocket frames + close 4001, SSE heartbeats, Redis evolution                      |
-| 10  | [Errors, Config & Observability](10-error-config-observability.md) | `{detail, code}` envelope, pydantic-settings env load, stdlib JSON logs, health gates, `pip-audit` |
+| 10  | [Errors, Config & Observability](10-error-config-observability.md) | `{"error":{"code","message"}}` envelope, pydantic-settings env load, stdlib JSON logs, health gates, `pip-audit` |
 | 11  | [Testing & CI](11-testing-and-ci.md)                               | Test pyramid, fakes over mocks, pytest-bdd acceptance, `make ci`                                  |
 | 12  | [Playbooks](12-playbooks.md)                                       | Add a slice, add a port+adapter, ship a migration, expose an endpoint, add an email template      |
 | 13  | [Project Skeleton](13-project-skeleton.md)                         | Annotated tree of the shipped template                                                            |

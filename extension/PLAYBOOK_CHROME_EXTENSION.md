@@ -1,3 +1,13 @@
+---
+id: CHROME_EXTENSION
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: client-platform
+depends_on: [FRONTEND, SECURITY]
+---
+
 # PLAYBOOK_CHROME_EXTENSION.md — Enterprise-grade Chrome extension playbook (TypeScript, Manifest V3)
 
 Architecture and engineering contract for building, shipping and operating a
@@ -540,13 +550,17 @@ content entry (composition root, <50 lines)
 
 ### 11.1 SDK in the service worker
 
-The SDK (`packages/sdk`) is created once in the SW container with ports:
-`transport` (fetch with timeout/abort), `tokenStore` (`storage.session`),
-`clock`. UIs and content scripts never import the SDK; they call RPC use cases.
-Per the frontend playbook the SDK mirrors the URL contract
-(`sdk.app.funnels.leads.get(id)` ↔ `GET /api/v1/app/funnels/leads/{id}`) and
-adds `Authorization`, `X-Tenant-Id`, `X-Correlation-Id`, `Idempotency-Key`,
-retry and error mapping.
+The extension's SDK (`packages/sdk`) is a **typed client of the extension's
+own message protocol**, not an HTTP client. It is created with an injected
+transport (`SdkTransport.send`) and returns a `SdkResult` value; it imports no
+React and no `chrome.*`, so the same code runs in a page, in the worker and in
+tests. UIs and content scripts never touch the SDK directly: they call RPC use
+cases, and the service worker is the only context that talks to the backend.
+
+The backend-facing HTTP client is a **worker platform adapter**, not the
+shared SDK: it mirrors the URL contract, adds `Authorization`, `X-Tenant-Id`,
+`X-Correlation-Id`, `Idempotency-Key`, retry and error mapping, and its
+resources are exposed to the rest of the extension through RPC use cases.
 
 ### 11.2 Authentication
 

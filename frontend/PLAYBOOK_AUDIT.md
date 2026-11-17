@@ -1,3 +1,13 @@
+---
+id: AUDIT
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: compliance
+depends_on: [SECURITY, TESTS]
+---
+
 # PLAYBOOK_AUDIT.md — Audit, certification & compliance playbook
 
 Operating contract for how a team prepares for, passes and sustains audits:

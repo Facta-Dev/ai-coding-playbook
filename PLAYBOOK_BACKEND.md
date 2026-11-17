@@ -1,3 +1,13 @@
+---
+id: BACKEND
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 180
+owner: architecture
+depends_on: [URLS]
+---
+
 # PLAYBOOK_BACKEND.md — Backend architecture playbook
 
 Architecture contract for the reference service's backend: **hexagonal
@@ -230,8 +240,9 @@ Every use case:
    authorizes" is enforced. Controllers may reject early, but the use case is
    the authority.
 3. Loads aggregates through ports, executes domain behavior, saves, and
-   publishes domain events through the outbox (section 7.2) in the **same
-   transaction**.
+   publishes domain events through the outbox (section 7.2). When the
+   deployment promises at-least-once delivery, the outbox write is in the
+   **same transaction** as the state change.
 4. Returns a result object or typed error; it never throws transport-level
    errors (no HTTP codes here).
 
@@ -436,9 +447,13 @@ funnels/adapters/out/clients/ProjectsInProcessAdapter  # calls projects/contract
 ### 7.2 Level 2 — Asynchronous events (eventual consistency)
 
 - Slices publish **domain events** (`LeadCreated`, `RunCompleted`,
-  `TenantSuspended`) through a **transactional outbox**: the event is written
-  in the same database transaction as the state change, and an outbox relay
-  publishes it to Redis Streams (or a broker such as NATS, Kafka, RabbitMQ).
+  `TenantSuspended`) through an **outbox**. The target for a system that
+  promises at-least-once delivery is a **transactional outbox**: the event is
+  written in the same database transaction as the state change, and a relay
+  publishes it. A shipped template that hands the event to a queue after the
+  commit has **weaker delivery guarantees**: mark it as a deviation, keep the
+  event id and idempotency key stable, and never call it at-least-once until
+  the outbox row is durable in the same transaction.
 - Consumers are inbound adapters (`adapters/in/events`), idempotent, keyed by
   event id, and tolerant to duplicates and reordering within a tenant.
 - Events are versioned (`type`, `version`, `occurredAt`, `tenantId`,

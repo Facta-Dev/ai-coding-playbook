@@ -7,7 +7,7 @@ PNPM      ?= pnpm
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/<app>?sslmode=disable
 
 .DEFAULT_GOAL := help
-.PHONY: help tidy build fmt-check vet lint test generate gen-check \
+.PHONY: help tidy build fmt-check vet lint test evals generate gen-check \
         migrate migrate-up migrate-down migrate-add run ci vuln
 
 help: ## Show targets
@@ -31,15 +31,18 @@ lint: ## ESLint (arch guards live in eslint.config.mjs)
 test: ## Unit tests (no DB needed)
 	$(PNPM) test
 
+evals: ## Native contract tests for the .claude layer (node --test, offline)
+	node --test evals/contracts.test.mjs
+
 generate: ## openapi-typescript models (src/gen/api/schema.d.ts)
 	$(PNPM) gen
 
 gen-check: ## Fail if committed generated code is stale
-	@rm -rf /tmp/<app>-gencheck
-	@cp -R src/gen/api /tmp/<app>-gencheck
-	@$(MAKE) --no-print-directory generate
-	@diff -ru /tmp/<app>-gencheck src/gen/api || { \
-	  echo "generated code stale — run make generate and commit"; exit 1; }
+	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	  cp -R src/gen/api "$$tmp/api"; \
+	  $(MAKE) --no-print-directory generate; \
+	  diff -ru "$$tmp/api" src/gen/api || { \
+	    echo "generated code stale — run make generate and commit"; exit 1; }
 
 # node-pg-migrate resolves the connection from DATABASE_URL; the local dev
 # default points at docker-compose postgres.

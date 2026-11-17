@@ -47,7 +47,7 @@ when another session may have touched it.
 - Kit changes go through the `kit-curator` agent, except one-line edits.
 - The control plane (`settings.json`, `hooks/`, permissions, model routing) is
   human-only: propose it, never edit it unprompted.
-- Run `/kit-check` after changing agents, skills, or rules.
+- Run `python3 ~/.claude/scripts/kit_check.py` after changing agents, skills, or rules.
 
 ## Spec-driven development
 

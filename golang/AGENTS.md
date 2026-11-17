@@ -137,7 +137,8 @@ them wholesale:
 
 | File | Covers |
 |---|---|
-| `PLAYBOOK_BACKEND.md` | Architecture, slices, dependency rules, persistence, worker, realtime |
+| `PLAYBOOK_BACKEND.md` | Hexagonal architecture, slices, dependency rules, persistence, worker, realtime (language-agnostic) |
+| `PLAYBOOK_GOLANG.md` | Go specialization: cmd/internal layout, chi, pgx/sqlc, River, go-redis, depguard gates |
 | `PLAYBOOK_TESTS.md` | Test pyramid, tags, environments, gates, SOC 2 / ISO 27001 evidence |
 | `PLAYBOOK_SECURITY.md` | Threat model, authn/authz, input, secrets, supply chain, incident |
 | `PLAYBOOK_URLS.md` | Route naming, namespaces, error envelope, streaming |
@@ -156,7 +157,7 @@ logged pitfall.
 - `context.Context` first parameter on every I/O boundary; use cases take and
   return it.
 - Errors: wrap with `%w`, match with `errors.Is`/`errors.As`; stable codes live
-  in `internal/shared/apperr`, mapped to `{detail, code}` only in `http.go` /
+  in `internal/shared/apperr`, mapped to `{"error":{"code","message"}}` only in `http.go` /
   `httpx`.
 - Interfaces live in the consumer package, kept small (1–2 methods).
 - No goroutine starts without an owner: contexts derive from the server's base

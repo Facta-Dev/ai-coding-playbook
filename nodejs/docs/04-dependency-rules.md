@@ -90,7 +90,7 @@ Stacked enforcement, in order:
 
 - **One error vocabulary.** Adapters map driver errors _inward_ (pg errors
   through `#shared/apperr`'s `from()`); use cases throw domain
-  `AppError`s; the stable `code` for the `{detail, code}` envelope is decided
+  `AppError`s; the stable `code` for the `{"error":{"code","message"}}` envelope is decided
   once, in `src/shared/apperr`. Callers never see raw `pg` error shapes.
 - **SQL lives only in per-slice `queries.ts` files.** A raw `pg` query in
   `postgres.ts` bypassing `queries.ts`, or worse in `usecase.ts`, is a leak —

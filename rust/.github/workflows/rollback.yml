@@ -35,8 +35,10 @@ jobs:
     runs-on: [self-hosted, <app>-prod]
     steps:
       - name: Validate tag input
+        env:
+          TAG: ${{ github.event.inputs.tag }}
         run: |
-          tag="${{ github.event.inputs.tag }}"
+          tag="$TAG"
           [ -n "$tag" ] || { echo "::error::tag is required"; exit 1; }
           echo "rolling back api to tag=$tag"
 
@@ -71,6 +73,8 @@ jobs:
           ${{ env.COMPOSE }} --env-file .env up -d --no-build api
 
       - name: Health check (wait for /api/readyz)
+        env:
+          TAG: ${{ github.event.inputs.tag }}
         working-directory: ${{ env.DEPLOY_DIR }}
         run: |
           set -e
@@ -82,7 +86,7 @@ jobs:
             sleep 4
           done
           if [ "$ok" -ne 1 ]; then
-            echo "::error::api not ready after rollback to ${{ github.event.inputs.tag }}"
+            echo "::error::api not ready after rollback to $TAG"
             ${{ env.COMPOSE }} ps
             exit 1
           fi

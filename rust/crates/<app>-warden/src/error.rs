@@ -23,12 +23,14 @@ pub struct ErrorEnvelope {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ErrorBody {
     pub code: String,
-    pub title: String,
-    pub detail: String,
+    pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub request_id: Option<String>,
+    pub required_permission: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extra: Option<Value>,
 }
@@ -81,9 +83,9 @@ impl IntoResponse for AuthError {
         let envelope = ErrorEnvelope {
             error: ErrorBody {
                 code: auth_code(&self.inner).to_string(),
-                title: auth_title(&self.inner).to_string(),
-                detail: self.inner.to_string(),
-                request_id: self.request_id.clone(),
+                message: self.inner.to_string(),
+                required_permission: None,
+                correlation_id: self.request_id.clone(),
                 extra: None,
             },
         };
@@ -107,13 +109,6 @@ const fn auth_code(err: &Error) -> &'static str {
     }
 }
 
-const fn auth_title(err: &Error) -> &'static str {
-    match err {
-        Error::Forbidden(_) => "Forbidden",
-        _ => "Authentication required",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,7 +125,12 @@ mod tests {
         let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["error"]["code"], "unauthenticated");
-        assert_eq!(json["error"]["title"], "Authentication required");
+        assert!(
+            json["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("bad token")
+        );
     }
 
     #[tokio::test]
@@ -157,6 +157,6 @@ mod tests {
             .into_response();
         let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(json["error"]["request_id"], "req-test-123");
+        assert_eq!(json["error"]["correlationId"], "req-test-123");
     }
 }

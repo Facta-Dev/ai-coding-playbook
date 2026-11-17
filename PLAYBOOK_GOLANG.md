@@ -1,3 +1,13 @@
+---
+id: GOLANG
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: backend-platform
+depends_on: [BACKEND]
+---
+
 # PLAYBOOK_GOLANG.md — Backend architecture playbook (Go)
 
 Architecture contract for a Go backend built from this kit: **hexagonal
@@ -358,12 +368,14 @@ early rejection, not the authority — the use case re-checks ownership.
   (`httpx` limit/offset; the SDK clamps client-side too).
 - Long operations return a run resource to poll or stream; the work is done by
   a slice worker. Do not hold HTTP connections open for pipeline work.
-- Error envelope (same shape as the URL playbook):
+- Error envelope (the canonical shape in the URL playbook):
 
 ```json
 {
-  "detail": "forbidden: admin role required",
-  "code": "FORBIDDEN"
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "forbidden: admin role required"
+  }
 }
 ```
 

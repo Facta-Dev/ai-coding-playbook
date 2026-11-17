@@ -1,3 +1,13 @@
+---
+id: RUST
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: backend-platform
+depends_on: [BACKEND]
+---
+
 # PLAYBOOK_RUST.md — backend architecture contract (Rust)
 
 Architecture contract for the `<app>` Rust backend. The one rule that carries
@@ -248,8 +258,8 @@ pub enum Error {
 - Envelope:
 
 ```json
-{ "error": { "code": "not_found", "title": "Resource not found",
-             "detail": "…", "request_id": "req_…", "extra": {} } }
+{ "error": { "code": "not_found", "message": "Resource not found",
+             "correlationId": "req_…" } }
 ```
 
 - 5xx detail is redacted to `"An internal error occurred."`; the real error

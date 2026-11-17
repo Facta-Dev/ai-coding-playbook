@@ -5,7 +5,7 @@ deliberate cut: no OpenTelemetry in the template.
 
 ## 1. The error envelope
 
-Every non-2xx body is `{"detail": string, "code": STABLE_CODE}` — stable
+Every non-2xx body is `{"error": {"code": STABLE_CODE, "message": string}}` — stable
 codes are the `Code` enum in `app/shared/apperr.py`, domain errors carry
 them, and the handlers installed by `install_error_handlers(app)` map them
 to HTTP statuses in exactly one place:
@@ -27,12 +27,12 @@ class Code(StrEnum):
 ```python
 # app/platform/envelope.py — the only writer of the envelope
 def error_body(code: Code | str, detail: str) -> dict[str, str]:
-    return {"detail": detail, "code": code.value if isinstance(code, Code) else code}
+    return {"error": {"code": code.value if isinstance(code, Code) else code, "message": detail}}
 ```
 
 Rules: adapters never invent codes; use cases raise `AppError` through the
 `E(code, detail, status)` helper, and the envelope is written only by the
-handlers in `app/platform/envelope.py` — grep for `"detail"` and you find
+handlers in `app/platform/envelope.py` — grep for `"error"` and you find
 one definition, one writer (the `AppError`, `RequestValidationError` and
 `StarletteHTTPException` handlers; unmatched paths answer the same 404
 `NOT_FOUND` envelope). Client code keys on the _code_, not the message.
@@ -50,7 +50,7 @@ one definition, one writer (the `AppError`, `RequestValidationError` and
   field-level detail stays server-side), an `HTTPException` keeps its status
   (mapped to `NOT_FOUND` for 404, `INTERNAL` otherwise), and the catch-all
   `Exception` handler logs the trace once and answers 500
-  `{"detail": "internal server error", "code": "INTERNAL"}`. Nothing but the
+  `{"error": {"code": "INTERNAL", "message": "internal server error"}}`. Nothing but the
   envelope reaches the client — a failure nobody modelled degrades to a
   generic 500 instead of leaking a traceback.
 - No error strings in conditionals; no `raise ValueError("user message")`

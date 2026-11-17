@@ -1,3 +1,13 @@
+---
+id: FRONTEND_MOBILE
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: client-platform
+depends_on: [FRONTEND, URLS, SECURITY]
+---
+
 # PLAYBOOK_FRONTEND_MOBILE.md — React Native mobile playbook (Game · Market · Avatar)
 
 Architecture and engineering contract for a **React Native (TypeScript)** mobile

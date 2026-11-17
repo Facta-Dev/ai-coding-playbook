@@ -1,12 +1,12 @@
-//! HTTP error envelope. Maps `<app>-core::Error` to a JSON envelope:
+//! HTTP error envelope. Maps `<app>-core::Error` to the canonical
+//! `PLAYBOOK_URLS` shape:
 //!
 //! ```json
 //! {
 //!   "error": {
 //!     "code": "not_found",
-//!     "title": "Resource not found",
-//!     "detail": "...",
-//!     "request_id": "req_..."
+//!     "message": "Not found",
+//!     "correlationId": "req_..."
 //!   }
 //! }
 //! ```
@@ -83,9 +83,9 @@ impl IntoResponse for ApiError {
         let envelope = ErrorEnvelope {
             error: ErrorBody {
                 code: error_code(&self.inner).to_string(),
-                title: error_title(&self.inner).to_string(),
-                detail,
-                request_id: self.request_id,
+                message: detail,
+                required_permission: None,
+                correlation_id: self.request_id,
                 extra: extra_for(&self.inner),
             },
         };
@@ -113,20 +113,6 @@ const fn error_code(err: &Error) -> &'static str {
         Error::QuotaExceeded { .. } => "quota_exceeded",
         Error::Upstream { .. } => "upstream_failure",
         Error::Internal(_) => "internal_error",
-    }
-}
-
-const fn error_title(err: &Error) -> &'static str {
-    match err {
-        Error::NotFound => "Resource not found",
-        Error::Invalid(_) => "Invalid request",
-        Error::Unauthorized | Error::Unauthenticated(_) => "Authentication required",
-        Error::Forbidden(_) => "Forbidden",
-        Error::Conflict(_) => "Conflict",
-        Error::RateLimited { .. } => "Rate limited",
-        Error::QuotaExceeded { .. } => "Quota exceeded",
-        Error::Upstream { .. } => "Upstream service failed",
-        Error::Internal(_) => "Internal server error",
     }
 }
 
@@ -179,7 +165,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        let detail = json["error"]["detail"].as_str().unwrap();
+        let detail = json["error"]["message"].as_str().unwrap();
         assert!(!detail.contains("DB pool"), "5xx detail must be redacted");
         assert_eq!(detail, GENERIC_5XX_DETAIL);
     }
@@ -191,7 +177,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::CONFLICT);
         let body = axum::body::to_bytes(resp.into_body(), 4096).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        let detail = json["error"]["detail"].as_str().unwrap();
+        let detail = json["error"]["message"].as_str().unwrap();
         assert!(
             detail.contains("email already registered"),
             "4xx detail should be shown"

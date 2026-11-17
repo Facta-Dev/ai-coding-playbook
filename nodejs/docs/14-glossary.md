@@ -26,7 +26,7 @@ slice. [01, 13]
 **Domain** — `domain.ts` in a slice: types, invariants, stable-code errors.
 Imports stdlib + `#shared/*` only; zero I/O. [00, 04]
 
-**Envelope** — The error body `{"detail": string, "code": STABLE_CODE}` on
+**Envelope** — The error body `{"error": {"code": STABLE_CODE, "message": string}}` on
 every non-2xx. Codes are `#shared/apperr` constants; only the root's error
 handler writes the envelope. [10]
 

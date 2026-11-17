@@ -88,7 +88,7 @@ Stacked enforcement, in order:
 ## 5. Invariants the structure protects
 
 - **One error vocabulary.** Adapters map driver errors *inward*; use cases
-  return domain errors; the stable `code` for the `{detail, code}` envelope is
+  return domain errors; the stable `code` for the `{"error":{"code","message"}}` envelope is
   decided once, in `internal/shared/apperr`. Callers never see `pgx.ErrNoRows`.
 - **SQL lives only in per-slice `queries.sql` files.** A raw `pgx` query in `postgres.go`
   bypassing gen/db, or worse in `usecase.go`, is a leak — depguard denies the

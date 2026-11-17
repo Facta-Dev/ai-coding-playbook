@@ -149,7 +149,8 @@ them wholesale:
 
 | File | Covers |
 |---|---|
-| `PLAYBOOK_BACKEND.md` | Crates, dependency rules, ports/adapters, SQL, workers, realtime |
+| `PLAYBOOK_BACKEND.md` | Hexagonal architecture, slices, dependency rules, persistence, workers, realtime (language-agnostic) |
+| `PLAYBOOK_RUST.md` | Rust specialization: crate graph, axum, sqlx, outbox worker, clippy gates |
 | `PLAYBOOK_TESTS.md` | Test pyramid, nextest, contract evals, gates, SOC 2 / ISO 27001 evidence |
 | `PLAYBOOK_SECURITY.md` | Threat model, authn/authz, input, secrets, supply chain, incident |
 | `PLAYBOOK_URLS.md` | Route naming, namespaces, error envelope, streaming |

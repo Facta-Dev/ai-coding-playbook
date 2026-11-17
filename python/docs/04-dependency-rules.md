@@ -109,7 +109,7 @@ Stacked enforcement, in order:
 
 - **One error vocabulary.** Adapters map driver errors _inward_ (SQLAlchemy's
   `IntegrityError` → `AUTH_EMAIL_TAKEN`); use cases raise domain
-  `AppError`s; the stable `code` for the `{detail, code}` envelope is decided
+  `AppError`s; the stable `code` for the `{"error":{"code","message"}}` envelope is decided
   once, in `src/app/shared/apperr.py`. Callers never see raw SQLAlchemy error
   shapes.
 - **SQL lives only in per-slice `queries.py` files.** A raw

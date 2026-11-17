@@ -38,7 +38,7 @@ graph LR
 - `requireAuth` resolves the token — `Authorization: Bearer`, else the cookie
   when a cookie name is configured — parses it with the HS256 verifier,
   builds the `authx.Identity`, stores it as `req.identity`; failures answer
-  `401` with the `{detail, code}` envelope, `AUTH_TOKEN_INVALID`.
+  `401` with the `{"error":{"code","message"}}` envelope, `AUTH_TOKEN_INVALID`.
 - `requireRole(min)` then checks `rolex.atLeast(identity.role, min)`; failure
   is 403 `AUTH_FORBIDDEN`.
 
@@ -77,7 +77,7 @@ sequenceDiagram
     A->>A: queries.ts call, map rows → domain
     A-->>U: domain value or AppError
     U-->>H: domain result or stable-code error
-    H-->>client: 200/201 JSON · or {"detail","code"}
+    H-->>client: 200/201 JSON · or {"error":{"code","message"}}
 ```
 
 Edge rules: `http.ts` validates at the trust boundary (`httpx.decode` over a

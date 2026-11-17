@@ -57,7 +57,11 @@ class Settings(BaseSettings):
         if not self.database_url.startswith("postgresql+asyncpg://"):
             msg = "database_url must use the postgresql+asyncpg driver"
             raise ValueError(msg)
-        if self.jwt_secret.lower() in _WEAK_SECRETS or len(set(self.jwt_secret)) < 8:
+        if (
+            self.jwt_secret.lower() in _WEAK_SECRETS
+            or self.jwt_secret.lower().startswith(("change-me", "dev-compose-secret"))
+            or len(set(self.jwt_secret)) < 8
+        ):
             msg = "jwt_secret is too weak; use at least 32 random characters"
             raise ValueError(msg)
         if self.offline and (self.smtp_password or self.smtp_user):

@@ -57,7 +57,7 @@ touches one file.
 
 - **Driving** (left): HTTP handlers, the WS handler — the _world calls us_. In
   this layout they are the `http.py` adapter: decode the request (pydantic v2),
-  call the use case, encode the `{detail, code}` envelope.
+  call the use case, encode the `{"error":{"code","message"}}` envelope.
 - **Driven** (right): Postgres, mail queue, hub, clock — _we call the world_.
   These are the `postgres.py` adapters and platform packages.
 

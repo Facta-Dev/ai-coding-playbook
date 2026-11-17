@@ -52,7 +52,7 @@ hub))`. Swapping Postgres for anything else touches one file.
 
 - **Driving** (left): HTTP handlers, WS handler — the *world calls us*. In
   this layout they are the `http.go` adapter: decode request, call the use
-  case, encode the `{detail, code}` envelope.
+  case, encode the `{"error":{"code","message"}}` envelope.
 - **Driven** (right): Postgres, mail queue, hub, clock — *we call the world*.
   These are the `postgres.go` adapters and platform packages.
 

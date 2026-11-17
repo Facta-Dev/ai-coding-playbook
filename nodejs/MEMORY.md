@@ -115,7 +115,7 @@ never `#features/*`; nothing imports `src/bin/*`.
    slice's `postgres.ts`. No raw SQL in `usecase.ts` or `http.ts`.
 5. **Paired migrations** — every migration file exports both `up` and `down`;
    an empty `down` is a review block. Migrations never run at server startup.
-6. **One error envelope** — every non-2xx body is `{"detail","code"}` written
+6. **One error envelope** — every non-2xx body is `{"error":{"code","message"}}` written
    by the root's `setErrorHandler` + `httpx`; stable codes live in
    `src/shared/apperr.ts`. Adapters map driver errors inward once.
 7. **Durable side effects ride the outbox** — a slice's use case inserts a

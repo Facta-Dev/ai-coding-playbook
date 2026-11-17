@@ -1,21 +1,30 @@
-# PLAYBOOK_TESTS.md — Testing & compliance-evidence playbook (Go backend)
+---
+id: TESTS
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 180
+owner: testing
+depends_on: [BACKEND, URLS]
+---
 
-Testing contract for a Go backend built from this kit. It follows the same
-**vertical slicing** as `PLAYBOOK_BACKEND.md`, uses the route and permission
-model of `PLAYBOOK_URLS.md`, and is designed so that the test suite doubles as
-**audit evidence for SOC 2 and ISO/IEC 27001**.
+# PLAYBOOK_TESTS.md — Testing & compliance-evidence playbook
+
+Testing contract for the reference service. It follows the same **vertical
+slicing** as `PLAYBOOK_BACKEND.md` and `PLAYBOOK_FRONTEND.md`, uses the route and
+permission model of `PLAYBOOK_URLS.md`, and is designed so that the test
+suite doubles as **audit evidence for SOC 2 and ISO/IEC 27001**.
 
 The rules that carry the whole file:
 
-1. **Tests live next to the code they test.** Backend tests are `*_test.go`
-   inside the slice. The path tells you what is covered without a mirror tree
-   to keep in sync.
+1. **Tests are organized by slice first, then by side (`backend` / `frontend`),
+   then by test type.** The folder tells you what is covered and who owns it.
 2. **Test where the risk is.** Business rules at the cheapest level (unit),
    wiring against real infrastructure (integration), agreements between
    parties (contract), and only the critical journeys end to end.
-3. **Authorization, ownership isolation, idempotency and privacy are
-   first-class test targets**, not afterthoughts. They are what this product
-   can least afford to get wrong.
+3. **Authorization, tenant isolation, idempotency and privacy are first-class
+   test targets**, not afterthoughts. They are what this product can least
+   afford to get wrong.
 4. **Every control-relevant test is tagged with the control it supports** and
    produces a retained, tamper-evident artifact. A control that is not tested
    automatically is a control that is not evidenced.
@@ -31,280 +40,392 @@ The rules that carry the whole file:
 ## 1. Repository layout
 
 ```text
-internal/features/<slice>/            # colocated unit + use-case tests
-  domain_test.go   usecase_test.go   http_test.go
-  postgres_test.go                      # build tag `integration`
-  fakes_test.go                         # in-package fakes for the ports
-internal/platform/<pkg>/*_test.go       # platform tests, colocated
-test/
-  acceptance/                           # godog over the real mux with fakes
-    app.go  fakes.go  steps_*.go  census_test.go
-  integration/                          # testcontainers Postgres, build tag
-  testutil/                             # shared harness (no assertions)
-specs/features/*.feature                # the behavioral contracts godog runs
-evals/                                  # separate Go module: contract evals
-  contracts_test.go  fixtures/{valid,invalid}  run-live.sh
+tests/
+  _shared/                         # no tests here, only reusable support code
+    builders/                      # test data builders (Lead, Tenant, User, Run)
+    fakes/                         # in-memory fakes of ports (Clock, Repo, Queue, Notifier)
+    fixtures/                      # synthetic datasets, OpenAPI snapshots, event samples
+    containers/                    # Postgres, Dragonfly/Redis, vector DB, mock providers
+    auth/                          # token factories, role/permission personas
+    msw/                           # network mocks for frontend tests
+  _platform/                       # cross-slice and cross-cutting suites (section 8)
+    architecture/
+    authz-matrix/
+    tenant-isolation/
+    security/                      # sast, sca, secrets, dast, iac, container, sbom
+    privacy/
+    audit-log/
+    resilience/
+    performance/
+    disaster-recovery/
+    observability/
+    compliance/                    # control map, evidence collectors, traceability report
+  _journeys/                       # cross-slice end-to-end journeys (section 7.3)
+  funnels/                         # one folder per slice, same names as src/slices
+    backend/
+      unit/
+        domain/
+        application/
+      integration/
+        persistence/               # ORM, SQL read models, RLS
+        vector/
+        queue/                     # Dragonfly/Redis locks, streams, dedup
+        http/                      # controllers + real use cases + real DB
+        jobs/
+        events/                    # outbox, inbound handlers
+      contract/
+        http/                      # provider verification against OpenAPI
+        events/                    # event schemas, consumer-driven
+        slice/                     # contracts/ package between slices
+        external/                  # external, payment, messaging providers
+      concurrency/                 # duplicate delivery, two workers, crash mid-job
+      migration/
+      security/                    # authz, IDOR, input handling for this slice
+      performance/
+      e2e/                         # API-level critical flows
+    frontend/
+      unit/
+        viewmodels/
+        sdk/
+        core/                      # route builders, permission helpers, mappers
+      component/                   # Views and presentational components
+      integration/                 # View + ViewModel + SDK against MSW
+      contract/                    # SDK vs OpenAPI, extension message schemas
+      e2e/
+        web/
+        native/
+        extension/
+      a11y/
+      visual/
+      security/                    # XSS, token storage, CSP, extension manifest
+      performance/                 # bundle budgets, web vitals
+  extraction/ ...
+  identity/ ...
+  tenants/ ...
 ```
 
 Rules:
 
-- A test file's location is its scope. There is no `tests/<slice>/...` mirror
-  tree; do not create one.
-- Cross-slice backend journeys live in `test/acceptance/` (godog).
-- `test/testutil` and `test/acceptance/fakes.go` hold support code only.
-- Slice ownership follows `internal/features/<slice>/` in CODEOWNERS.
+- Folder names under `tests/` match slice names in `src/slices/` and the URL
+  `{module}`; an unmatched folder fails the architecture test.
+- `unit/` mirrors the source path of what it tests
+  (`tests/funnels/backend/unit/domain/model/lead.unit.<ext>` ↔
+  `src/slices/funnels/domain/model/lead.<ext>`).
+- A slice with no frontend omits `frontend/`; do not create empty trees.
+- `_shared` contains support code only. It is not a place for cross-slice
+  business assertions.
+- Each slice folder has a `CODEOWNERS` entry; the slice team owns its tests,
+  `_platform` is co-owned by Engineering, Security and QA.
 
 ### 1.1 Naming
 
-- Go: `<topic>_test.go` in the package; table-driven subtests named as
-  behavior (`t.Run("rejects update when role is not admin")`). In-package
-  fakes in `fakes_test.go`.
+- File suffix declares the type: `*.unit`, `*.integration`, `*.contract`,
+  `*.e2e`, `*.security`, `*.perf`, `*.a11y` (with the language's usual
+  extension).
 - Test names describe behavior, not implementation:
-  `rejects the update when the caller does not own the row`.
+  `rejects_lead_update_when_user_lacks_funnels_leads_update`.
 - Every test that supports a control carries a tag (section 10.2).
-- Test IDs are stable (`TST-ADMINUSERS-BE-UC-0042`) so audit evidence can
-  reference them across releases.
+- Test IDs are stable (`TST-FUN-BE-INT-0042`) so audit evidence can reference
+  them across releases.
 
 ## 2. Test types and the pyramid
 
 | Type | Proves | Real vs. fake | Speed | Share of suite |
 |---|---|---|---|---|
-| **Unit** | Business rules | Ports faked in-package | ms | Most |
-| **Integration** | Adapters work against real infrastructure | Real Postgres (testcontainers); external APIs stubbed | seconds | Many |
+| **Unit** | Business rules and presentation logic | Everything external faked | ms | Most |
+| **Integration** | Adapters work against real infrastructure | Real DB, Dragonfly/Redis, vector DB (containers); external APIs mocked | seconds | Many |
 | **Contract** | Two parties agree on an interface | Each side tested alone against a shared contract | seconds | Moderate |
-| **End-to-end (E2E)** | A critical user journey works across the deployed stack | Everything real except third-party providers | minutes | Few |
-| **Security** | Authorization, ownership isolation, input handling, supply chain | Mixed | seconds–minutes | Targeted and continuous |
-| **Non-functional** | Performance, resilience, recovery | Prod-like environment | minutes–hours | Scheduled |
+| **End-to-end (E2E)** | A critical user journey works across the deployed stack | Everything real except third-party providers (sandboxed) | minutes | Few |
+| **Security** | Authorization, isolation, input handling, supply chain | Mixed | seconds–minutes | Targeted and continuous |
+| **Non-functional** | Performance, resilience, accessibility, recovery | Prod-like environment | minutes–hours | Scheduled |
 
 Placement rule: **push each assertion to the lowest level that can prove it.**
-A role rule is a unit test of the use case; that the route enforces it is one
-handler test; that the real token flows through the stack is one E2E check. Do
-not repeat the same assertion at three levels.
+A permission rule is a unit test of the policy; that the route enforces it is
+one integration test; that the real token flows through the stack is one E2E
+check. Do not repeat the same assertion at three levels.
 
 ## 3. Backend tests
 
-Maps one-to-one to the slice contract in `PLAYBOOK_BACKEND.md`.
+Maps one-to-one to the hexagon in `PLAYBOOK_BACKEND.md`.
 
 ### 3.1 Unit
 
-| File | Scope | Rules |
+| Folder | Scope | Rules |
 |---|---|---|
-| `domain_test.go` | Invariants, value objects, pure helpers, typed errors | No mocks, no I/O; deterministic (`clockx`, `idgen` injected) |
-| `usecase_test.go` | Use cases with in-package fakes of every port (`fakes_test.go`) | Covers: happy path, validation, **role denied**, **not the owner**, not found, conflict/version mismatch |
-| `http_test.go` | Handler: decode, status codes, `{detail, code}` envelope | Uses `httptest`; no database |
+| `unit/domain` | Entities, value objects, invariants, domain events, domain services | No mocks, no I/O, no framework; deterministic (`Clock`, `IdGenerator` injected) |
+| `unit/application` | Use cases with in-memory fakes of every outbound port | Covers: happy path, validation, **permission denied**, **wrong tenant**, **not the owner**, conflict/version mismatch, event emitted to outbox |
 
-Mutation testing runs on `domain.go` + `usecase.go` nightly to prove the tests
-detect changes, not merely execute lines.
+Mutation testing runs on `domain` and `application` (nightly) to prove the
+tests detect changes, not merely execute lines.
 
 ### 3.2 Integration
 
-Run against real infrastructure, never against mocks of the database.
+Run against real containers (`_shared/containers`), never against mocks of the
+database.
 
-| Suite | What it proves |
+| Folder | What it proves |
 |---|---|
-| `postgres_test.go` (`-tags=integration`) | `postgres.go` ↔ sqlc mapping, real queries, migrations applied from scratch, constraints (unique, FK) |
-| `test/integration/integration_test.go` | Cross-slice wiring, pool bootstrap, `readyz` |
-| `test/acceptance/` | godog over the real mux with fakes: routes, envelopes, pagination, role gates |
-| `concurrency` cases inside the slice | Two workers claim one run: effect once; duplicate delivery resumes from checkpoint; terminal rows are never re-claimed |
+| `integration/persistence` | Repository ↔ ORM mapping, hand-written SQL read models, optimistic locking, `tenant_id` filtering, **row-level security** blocks cross-tenant reads even when the app filter is omitted |
+| `integration/vector` | `LeadSimilarityIndex` upsert/query, tenant scoping is impossible to bypass, idempotent upsert by `leadId + contentHash`, rebuild from the database |
+| `integration/queue` | Dragonfly/Redis: lease lock acquire/renew/expire, release only by token holder, stream consumer groups, `jobId` dedup, reclaim of stuck messages, DLQ after max attempts, per-tenant rate limit |
+| `integration/http` | Controller + real use case + real DB through an in-process server: auth → `RequestContext` → use case → error envelope; status codes; pagination; `Idempotency-Key` behavior |
+| `integration/jobs` | Job adapters call use cases as a system actor with minimum permissions and carry `tenantId` |
+| `integration/events` | Outbox written in the same transaction as the state change, relay publishes, inbound handlers are idempotent |
 
 ### 3.3 Contract
 
-| Suite | Provider / consumer | Mechanism |
+| Folder | Provider / consumer | Mechanism |
 |---|---|---|
-| `make gen-check` | `specs/openapi.yaml` ↔ `internal/gen/api` ↔ client types | Generated code must be reproduced byte-for-byte; a spec change that is not regenerated fails the build |
-| `evals/contracts_test.go` | Backend ↔ client/agent contracts | Valid vs. invalid fixtures; offline |
-| `specs/features/*.feature` | Route behavior ↔ product intent | godog acceptance suite (`make accept`) |
-| `make vuln` | Dependency graph ↔ known CVEs | `govulncheck` |
+| `contract/http` | Backend ↔ SDK/clients | Provider verification of responses against the OpenAPI spec; breaking-change detection (spec diff) fails the build unless a new version is created |
+| `contract/events` | Producer slice ↔ consumer slices | Schema registry/JSON Schema tests; consumer-driven expectations; backward compatibility checks (additive only) |
+| `contract/slice` | Slice `contracts/` package ↔ its callers | Callers compile and run against the published contract; no deep imports (also enforced by architecture tests) |
+| `contract/external` | The service ↔ external providers, payment and messaging providers | Recorded/consumer contracts for PR runs; **scheduled live smoke** against sandboxes to detect provider drift; 429/5xx/timeout behavior simulated |
 
-A slice's contract suite must pass **before** that slice is extracted into a
+Contract tests of a slice must pass **before** that slice is extracted into a
 service (readiness checklist in `PLAYBOOK_BACKEND.md`).
 
-### 3.4 Concurrency and idempotency
+### 3.4 Concurrency and idempotency (`concurrency/`)
 
-Required for every slice with a worker (the email outbox in `cmd/worker`, the
-janitor loops, and any slice worker added later). These prove "many workers,
-one effect":
+Required for every slice with batch work. These prove "many workers, one
+effect":
 
-- Two workers claim the same `pending` row: the effect happens once.
-- Duplicate delivery after a worker crash mid-run: resumes from the checkpoint,
+- Two workers receive the same message: effect happens once.
+- Duplicate delivery after worker crash mid-job: resumes from checkpoint,
   no duplicate rows (unique constraint holds).
-- A stale worker whose run was re-claimed cannot overwrite newer state (status
-  transition guard).
-- Process restart mid-run: `running` rows are discovered from Postgres and
-  resumed; nothing is lost when the in-process hub is empty.
-- Concurrent updates to the same aggregate: conflict surfaces as `409`.
+- Lease expires while a worker is paused: the stale worker's write is rejected
+  by the fencing token/version check.
+- Redis flushed or failed over mid-run: no corruption; sweeper re-enqueues
+  from the database.
+- Scheduler leader loss: exactly one new leader, no double enqueue.
+- Concurrent updates to the same aggregate: optimistic lock conflict
+  surfaces as `409`.
 
-### 3.5 Migration
+### 3.5 Migration (`migration/`)
 
-- Apply all migrations **from scratch** on an empty database (`make migrate`).
-- Apply the new migration on a database at the **previous release** with
+- Apply all slice migrations **from scratch** on an empty schema.
+- Apply the new migrations on a database at the **previous release** with
   representative data.
 - Expand/contract: old code still works after the expand step; new code works
   before the contract step.
-- Backfill workers are resumable and idempotent.
-- `make migrate-down` works for the new migration, or the file documents why
-  it is irreversible.
+- Backfill jobs are resumable and idempotent.
+- No migration touches another slice's schema (checked by the architecture
+  suite).
 
-### 3.6 Backend E2E
+### 3.6 Backend E2E (`e2e/`)
 
 API-level flows against the deployed stack (ephemeral or staging), with
 third-party providers on sandbox/stub:
 
-- Signup → verification email (console mailer) → login → refresh → logout.
-- A user creates a widget → sees it in their list → a second user does not.
-- Admin suspends a user → their next request fails → sessions revoked.
+- Launch campaign → `202` → run progresses → leads appear in funnels → usage
+  metered.
+- Admin suspends a user → their next request fails → existing sessions are
+  revoked.
+- Same flows executed under the `/app` and `/admin` routes with the correct
+  persona each.
 
-Keep this thin; godog acceptance is the default home for route-level behavior.
+Keep this folder small (critical journeys only).
 
-## 4. Security tests (per slice and platform-wide)
+## 4. Frontend tests
 
-Per slice (`internal/features/<slice>/*_test.go`):
+Maps to MVVM + SDK in `PLAYBOOK_FRONTEND.md`.
 
-- **Role matrix**: for each admin route and each role, the expected outcome.
-  The `adminusers` tests assert every action the admin surface declares; a new
-  action without a backend check fails review.
+### 4.1 Unit
+
+| Folder | Scope |
+|---|---|
+| `unit/viewmodels` | State, derived values and commands with a fake SDK and fake ports; **every status** (`loading`, `ready`, `empty`, `forbidden`, `not-found`, `offline`, `error`); runs without DOM, native runtime or `chrome` APIs (if it needs them, a platform concern leaked) |
+| `unit/sdk` | Path built per `{userType}/{module}/{resource}`, headers (`Authorization`, `X-Tenant-Id`, `X-Correlation-Id`, `Idempotency-Key`), 401 single-flight refresh, retry/backoff rules, error envelope → `SdkError` mapping |
+| `unit/core` | Route builders reproduce the URL playbook exactly; permission helpers; mappers |
+
+### 4.2 Component and integration
+
+- `component/`: each screen View renders **every ViewModel status** from a
+  stubbed ViewModel; presentational components by props. Guards
+  (`RequireUserType`, `RequirePermission`) redirect to `/login`, `/403` or the
+  allowed dashboard.
+- `integration/`: View + real ViewModel + real SDK against MSW handlers
+  generated from the OpenAPI spec (so mocks cannot drift from the contract).
+
+### 4.3 Contract
+
+- SDK request/response types validated against the backend OpenAPI spec in
+  CI; a spec change that breaks the SDK fails the build.
+- Extension message schemas (`{ type, version, payload, correlationId }`)
+  between popup/side panel/content script and the service worker, including
+  rejection of unknown types and untrusted senders.
+
+### 4.4 End-to-end (`e2e/{web,native,extension}`)
+
+| Client | Tooling (examples) | Notes |
+|---|---|---|
+| Web | Playwright | Per `{userType}` projects (`app`, `admin`, `partner`, `public`); verify layout, guard redirects and that a forged `/admin` URL with an `/app` token is denied by the **backend**, not only hidden |
+| Native | Maestro or Detox | Deep links (`app://app/funnels/leads/{leadId}`) resolve to the right screen; background/foreground token refresh |
+| Extension | Playwright with the unpacked extension in a persistent context | Content-script capture → service worker → SDK; tokens never visible to the content script; MV3 service-worker restart resumes work |
+
+### 4.5 Quality gates
+
+- **Accessibility** (`a11y/`): automated checks (axe or equivalent) on every
+  route and key native screens against WCAG 2.2 AA; keyboard/focus tests on
+  critical flows.
+- **Visual** (`visual/`): snapshot comparison for layouts per `{userType}` and
+  the design-system components; reviewed diffs only.
+- **Security** (`security/`): no tokens in `localStorage`; refresh token not
+  readable from JS; CSP present; unsanitized lead HTML does not execute
+  (XSS payload suite); extension manifest has only approved permissions and
+  host patterns, no remote code, strict CSP; provider API keys are write-only
+  in the UI.
+- **Performance** (`performance/`): bundle-size budgets per `{userType}`
+  (admin code not in the `/app` bundle), web vitals thresholds, list
+  virtualization on large datasets.
+- **i18n**: no literal user-visible strings; all message keys resolve in each
+  supported locale.
+
+## 5. Security tests (per slice and platform-wide)
+
+Per-slice (`<slice>/backend/security`, `<slice>/frontend/security`):
+
+- **Authorization matrix**: for each route, each `{userType}` and each role,
+  the expected status. Generated from the route table so a new route without
+  a matrix row fails the build.
 - **Broken object-level authorization (IDOR)**: user A requests user B's
-  resource id; expected `404`/`403`. There are no tenants; ownership is
-  `user_id`.
-- **Prefix is not authorization**: a valid non-admin token calling
-  `/api/v1/admin/...` is denied by `authx.RequireRole`, and the use case
-  re-checks.
-- **Authorization in the use case**, not only in the handler (call the use case
-  directly with the wrong actor).
-- **Input handling**: validation, injection payloads, oversized bodies,
-  unexpected content types, mass assignment.
-- **Session**: expired/revoked token, suspended user, refresh-token reuse,
-  logout revoking the session.
+  resource id; tenant A requests tenant B's; expected `404`/`403`.
+- **Prefix is not authorization**: a valid `/app` token calling the
+  equivalent `/admin/...` route is denied (core rule of `PLAYBOOK_URLS.md`).
+- **Permission enforcement in the use case**, not only in the controller
+  (call the use case directly with a context lacking the permission).
+- **Input handling**: validation, injection payloads (SQL, NoSQL, command),
+  oversized bodies, unexpected content types, mass assignment.
+- **Session**: expired/revoked token, suspended user, role switch, tenant
+  switch invalidating cached data.
 - **Secrets**: provider keys never returned by any endpoint and never present
   in logs.
 
-Platform-wide (`make lint`, `make vuln`): section 8.2.
+Platform-wide (`_platform/security`): section 8.2.
 
-## 5. Non-functional tests
+## 6. Non-functional tests
 
 | Suite | Location | Purpose | Cadence |
 |---|---|---|---|
-| Performance (backend) | `-tags=perf`, `make test-perf` | Absolute budgets, serial on a quiet host | Pre-release |
-| Resilience / chaos | Deploy-level exercise | Database failover, provider `429`/`5xx`, worker kill; verifies degradation and no data loss | Pre-release |
-| Disaster recovery | Deploy-level exercise | Backup **restore** into a clean environment, RPO/RTO measured, migrations replayed | At least semi-annual |
-| Observability | Log assertions in slice tests | Logs carry the actor, slice and run id; no secrets/PII in logs | Per PR |
-| Privacy | `make ci` + review | PII redaction in logs, retention jobs delete on schedule, data-subject export/erasure flows | Per release |
-| Audit log | `adminusers` tests | Security-relevant actions (login, role change, permission denied) produce an attributable record without sensitive values | Per PR |
+| Load / stress / soak | `<slice>/backend/performance`, `_platform/performance` | SLO validation per slice (latency, throughput, queue drain time); capacity evidence; the data used to decide on slice extraction | Nightly smoke, pre-release full |
+| Resilience / chaos | `_platform/resilience` | Dragonfly/Redis down, DB failover, provider `429`/`5xx`, network partition between slices, worker kill; verifies degradation, backpressure, no data loss | Pre-release, quarterly game day |
+| Disaster recovery | `_platform/disaster-recovery` | Backup **restore** into a clean environment, RPO/RTO measured, migrations + vector index rebuild from the database | At least semi-annual (match your policy) |
+| Observability | `_platform/observability` | Every request/job log carries `correlationId`, `tenantId`, `slice`; no secrets/PII in logs; traces propagate across HTTP, queue and events; alerts fire for DLQ growth and outbox lag | Per PR (assertions) + pre-release |
+| Privacy | `_platform/privacy` | PII redaction in logs/analytics, retention jobs delete on schedule, data-subject export/erasure flows, deletion cascades to vector index and caches | Per release |
+| Audit log | `_platform/audit-log` | Security-relevant actions (login, role change, user suspend, key rotation, export, permission denied) produce an immutable, attributable record without sensitive values | Per PR |
 
-## 6. End-to-end policy
+## 7. End-to-end policy
 
-### 6.1 What deserves an E2E
+### 7.1 What deserves an E2E
 
-Only journeys where failure is business-critical: sign-in and session handoff,
-signup + verification, password reset, admin user suspension, admin role
-change. Everything else is covered lower in the pyramid.
+Only journeys where failure is business-critical or spans slices and clients:
+sign-in and session, tenant onboarding, API-key configuration, launch
+campaign, lead lifecycle, admin user suspension, billing close. Everything
+else is covered lower in the pyramid.
 
-### 6.2 Rules
+### 7.2 Rules
 
-- Deterministic: own data per test, created through the API, and isolated by a
-  unique user.
+- Deterministic: own data per test, created through the SDK/API, cleaned up
+  or isolated by a unique test tenant.
 - No sleeps; wait on observable conditions with a timeout.
-- Third-party providers are stubbed; a separate scheduled suite checks the
-  real sandbox.
+- Third-party providers are sandboxed or stubbed; a separate scheduled suite
+  checks the real sandbox.
 - Flaky tests are quarantined with an owner and an expiry date (max 14 days),
   tracked as a defect, and **never** silently retried to green.
 
-## 7. Platform-wide suites
+### 7.3 Cross-slice journeys (`tests/_journeys`)
 
-There is no `tests/_platform` tree. Enforcement lives in the tools that
-already run in the gates.
+Journeys that cross slices live here instead of inside one slice, for example
+`launch-campaign-to-billing`. They call public APIs only (never internals) and
+are owned jointly by the slices they touch.
 
-### 7.1 Architecture (`make lint`)
+## 8. Platform-wide suites (`tests/_platform`)
+
+### 8.1 Architecture (`architecture/`)
 
 Fails the build when:
 
-- `domain.go` imports `net/http`, `pgx`, `database/sql`, `internal/gen`,
-  `internal/platform` or another slice (`domain-pure`).
-- `usecase.go` / `ports.go` name a transport or adapter
-  (`usecase-transport-free`).
-- A slice imports another slice (`slice-isolation`), or
-  `internal/platform` imports a feature (`platform-no-features`).
-- `make gen-check` finds stale generated code.
-- `go mod tidy` would change `go.mod`/`go.sum` (INV-T3 hygiene).
+- Backend layers break the dependency rules (domain imports nothing;
+  application does not import adapters; no slice imports another slice's
+  internals).
+- A migration touches another slice's schema or a table has no `tenant_id`
+  where required.
+- Frontend `views` import the SDK, `viewmodels` import `react-dom`,
+  `react-native` or `chrome`, or `sdk` imports React.
+- A route is registered without a permission declaration and a matrix row.
+- A `tests/` slice folder has no matching `src/slices` folder.
 
-All GitHub Actions workflows live in `.github/workflows/` at the repository
-root.
+### 8.2 Security (`security/`)
 
-### 7.2 Security
-
-| Check | Tooling | Gate |
+| Check | Tooling (examples) | Gate |
 |---|---|---|
-| SAST | `golangci-lint` (standard set + depguard) | `make lint`, inside CI; a new finding blocks merge |
-| SCA (dependencies) | `make vuln` (`govulncheck`) | Release step: critical/high with a fix available block release |
-| Secrets scanning | Not configured in the skeleton | **Known gap:** required before release; any verified secret blocks merge once wired |
-| Template/leak guard | `scripts/leak-guard.sh` flags leftover template tokens | Manual/review step; wire into CI per project |
-| Container/image | Image is built (`Dockerfile`) but there is no scan stage | **Known gap:** critical/high block release once the stage is wired |
+| SAST | Semgrep, CodeQL | New high/critical findings block merge |
+| SCA (dependencies) + licenses | OSV, Dependabot/Renovate, license checker | Critical/high with fix available block release; policy-defined SLAs |
+| Secrets scanning | Gitleaks, TruffleHog (pre-commit **and** CI, full history periodically) | Any verified secret blocks merge |
+| IaC and config | Checkov, tfsec, kube-linter | High findings block |
+| Container/image | Trivy, Grype | Critical/high block release |
+| DAST baseline | OWASP ZAP against staging | Weekly + pre-release; findings triaged with SLA |
+| SBOM + provenance | CycloneDX/SPDX, signed build attestations | Generated and stored for every release |
 | Manual penetration test | Independent third party | At least annually and after major architecture change |
 
-Current state (2026-11-08): the skeleton wires SAST through the `backend` job
-of `.github/workflows/ci.yml`. `make vuln` is a release-step command, not part
-of `make ci`. Secrets scanning, the leak guard and container scanning have no
-gate yet; do not cite them as audit evidence until they run in CI (AGENTS.md
-rule 3).
+Vulnerability remediation SLAs (for example by severity) are set in the
+vulnerability-management policy; the pipeline enforces whatever that policy
+says.
 
-Vulnerability remediation SLAs are set in the vulnerability-management policy;
-the pipeline enforces whatever that policy says.
+### 8.3 Authorization matrix and tenant isolation
 
-### 7.3 Role matrix and ownership isolation
+- `authz-matrix/`: the full table `route × {userType} × role × expected
+  status`, generated from the route table and the permission catalog
+  (`module.resource.action`).
+- `tenant-isolation/`: with two seeded tenants, **every** list/detail/mutation
+  endpoint, query, job, vector search and cache key is exercised from tenant A
+  against tenant B data. Includes background jobs and events (a job carrying
+  tenant A must never write tenant B).
 
-- The backend has a role test per admin route, and each declared admin action
-  has a matching backend authorization test.
-- **Ownership isolation**: with two seeded users, every list/detail/mutation
-  endpoint that returns user data is exercised from user A against user B's
-  ids. Includes workers and streams (a run owned by A must never be delivered
-  to B). There are no tenants.
+## 9. Environments, data and pipeline
 
-## 8. Environments, data and pipeline
-
-### 8.1 Environments
+### 9.1 Environments
 
 | Environment | Used for | Data |
 |---|---|---|
-| Local / CI ephemeral | Unit, integration, contract | Containers, synthetic |
+| Local / CI ephemeral | Unit, integration, contract, component | Containers, synthetic |
 | Ephemeral stack per PR (optional) | E2E, DAST | Synthetic, destroyed after |
 | Staging | Pre-release E2E, load, resilience, DR rehearsal | Synthetic, prod-like volume |
-| Production | Synthetic monitoring and smoke only | Dedicated, flagged test account; no destructive tests |
+| Production | Synthetic monitoring and smoke only | Dedicated, flagged test tenant; no destructive tests |
 
 Production, staging and test environments are separated: distinct accounts or
 projects, distinct credentials, no network path from test to production data.
 
-### 8.2 Test data
+### 9.2 Test data
 
 - **Never use production data**, and never copy it down. Use builders and
-  synthetic fixtures (`test/testutil`).
+  synthetic generators (`_shared/builders`).
 - If masked production-shaped data is ever unavoidable, it needs documented
   approval, irreversible masking, restricted access and a deletion date.
 - Test secrets are generated per environment, short-lived and stored in the
   secret manager; none in the repository.
-- Fixtures contain no real personal data; seed users and widgets are
-  synthetic.
+- Fixtures contain no real personal data; leads are synthetic.
 
-### 8.3 Pipeline stages
+### 9.3 Pipeline stages
 
 | Stage | Trigger | Runs |
 |---|---|---|
 | Pre-commit | Developer machine | Lint, format, secrets scan, affected unit tests |
-| Pull request | Every PR | Unit, architecture, contract, integration for **affected slices and their dependents**, SAST, SCA, secrets, role matrix |
-| Main | Merge | Full integration, godog acceptance, container scan |
-| Nightly | Schedule | Full E2E, perf smoke, mutation testing, ownership-isolation sweep |
-| Release candidate | Tag | Full E2E, performance regression, migration from previous release, evidence bundle (section 9.4) |
-| Periodic | Calendar | Penetration test, DR restore test, access-review verification, evidence-completeness review |
+| Pull request | Every PR | Unit, component, architecture, contract, integration for **affected slices and their dependents**, SAST, SCA, secrets, authz-matrix, a11y, bundle budgets |
+| Main | Merge | Full integration, backend/frontend E2E smoke, container and IaC scan, SBOM |
+| Nightly | Schedule | Full E2E, load smoke, mutation testing, tenant-isolation full sweep, external-provider live smoke, DAST baseline (staging) |
+| Release candidate | Tag | Full E2E (all clients), performance regression, migration from previous release, resilience suite, evidence bundle (section 10.4) |
+| Periodic | Calendar | Penetration test, DR restore test, chaos game day, access-review verification, evidence-completeness review |
 
-Path filters decide which slices run on a PR, but a change to a shared port or
-to `specs/openapi.yaml` always runs the contract tests of every dependent
-slice.
+Path filters decide which slices run on a PR, but a change to a slice's
+`contracts/` always runs the contract tests of every dependent slice.
 
-### 8.4 Thresholds (starting points, tune with data)
+### 9.4 Thresholds (starting points, tune with data)
 
 | Area | Threshold |
 |---|---|
-| `domain.go` + `usecase.go` line/branch coverage | ≥ 90% / ≥ 85%, plus a mutation score target set per slice |
+| Domain + application line/branch coverage | ≥ 90% / ≥ 85%, plus a mutation score target set per slice |
 | Adapters | Covered by integration tests; coverage informational, not a gate |
+| ViewModels | ≥ 85% |
 | New code | Coverage must not decrease; changed lines covered |
 | Flaky rate | < 1% of runs; above that the suite is paused for repair |
 | PR pipeline duration | Target ≤ 15 minutes; nightly absorbs the slow suites |
@@ -313,9 +434,9 @@ Coverage is a floor for visibility, never the goal; the authorization,
 isolation and idempotency suites are gated on **presence and pass**, not on
 percentages.
 
-## 9. Compliance evidence (SOC 2 and ISO/IEC 27001)
+## 10. Compliance evidence (SOC 2 and ISO/IEC 27001)
 
-### 9.1 Control-to-test mapping (starting point)
+### 10.1 Control-to-test mapping (starting point)
 
 SOC 2 references use the 2017 Trust Services Criteria; ISO references use
 ISO/IEC 27001:2022 Annex A. Confirm the final mapping with your auditor.
@@ -323,9 +444,9 @@ ISO/IEC 27001:2022 Annex A. Confirm the final mapping with your auditor.
 | Control objective | Tests / evidence | SOC 2 | ISO 27001:2022 |
 |---|---|---|---|
 | Logical access and least privilege | Authz matrix, IDOR, prefix-is-not-authorization, role/permission tests, session revocation | CC6.1–CC6.3 | A.5.15, A.5.18, A.8.2, A.8.3 |
-| Authentication | Token expiry/refresh/revocation, suspended-user denial | CC6.1 | A.8.5 |
-| Ownership segregation (confidentiality) | Two-user isolation sweep over detail, list, mutation, worker and stream paths | CC6.1, C1.1 | A.8.3, A.8.22 |
-| Cryptography and secrets | Secrets scanning, no secrets in logs/responses, secure storage tests | CC6.1, CC6.7, C1.1 | A.8.24, A.8.12 |
+| Authentication | Token expiry/refresh/revocation, suspended-user denial, extension token isolation | CC6.1 | A.8.5 |
+| Tenant segregation (confidentiality) | Tenant-isolation sweep, RLS tests, vector tenant scoping | CC6.1, C1.1 | A.8.3, A.8.22 |
+| Cryptography and secrets | Secrets scanning, no secrets in logs/responses/bundle, secure storage tests | CC6.1, CC6.7, C1.1 | A.8.24, A.8.12 |
 | Secure development and testing | This playbook's pipeline, SAST, architecture tests, peer review gates | CC8.1 | A.8.25, A.8.26, A.8.28, A.8.29 |
 | Change management | Required checks on protected branches, PR-to-ticket traceability, release evidence bundle | CC8.1 | A.8.32 |
 | Separation of environments | Environment isolation checks, no prod data in tests | CC6.1, CC8.1 | A.8.31 |
@@ -337,29 +458,30 @@ ISO/IEC 27001:2022 Annex A. Confirm the final mapping with your auditor.
 | Processing integrity | Idempotency, concurrency, outbox, migration and contract tests | PI1.1–PI1.5 | A.8.26, A.8.27 |
 | Privacy and data lifecycle | PII redaction, retention deletion, export/erasure, deletion cascades | P-series, C1.2 | A.5.34, A.8.10, A.8.11 |
 | Supply chain | SBOM, provenance, license and dependency policies | CC9.2 | A.5.19–A.5.22, A.8.30 |
+| Accessibility (customer commitments, if stated) | a11y suite | CC2.3 (if committed) | — |
 
-### 9.2 Tagging tests to controls
+### 10.2 Tagging tests to controls
 
 Every control-relevant test carries machine-readable tags in its metadata or
 name, for example:
 
 ```text
 @control SOC2:CC6.1  @control ISO27001:A.8.3
-@risk ownership-isolation
-@slice adminusers  @type usecase
+@risk tenant-isolation
+@slice funnels  @side backend  @type integration
 ```
 
 The `compliance/` collector reads the test report plus the tags and generates
 the **traceability matrix**: control → tests → last result → artifact link. A
 control without a passing, recent test appears as a gap in the report.
 
-### 9.3 Evidence requirements
+### 10.3 Evidence requirements
 
 Evidence is only useful if it is complete, attributable and tamper-evident:
 
 - Each pipeline run stores: JUnit/xUnit results, coverage, SARIF (SAST/SCA),
-  SBOM, build provenance, commit SHA, who approved, and the pipeline
-  definition version.
+  DAST report, SBOM, build provenance, commit SHA, who approved, and the
+  pipeline definition version.
 - Stored in an **append-only / write-once** location with hashes, access
   restricted and logged, retained for at least the audit window your
   frameworks require (SOC 2 Type II observation periods are typically 3–12
@@ -370,26 +492,25 @@ Evidence is only useful if it is complete, attributable and tamper-evident:
 - Timestamps come from the CI system, not from the test code.
 - Evidence contains no secrets or personal data.
 
-### 9.4 Release evidence bundle
+### 10.4 Release evidence bundle
 
 For each release the pipeline produces `evidence/{release}/`:
 
 ```text
 manifest.json                 # commit, version, pipeline id, approver(s), hashes
-test-results/                 # per slice and type
+test-results/                 # per slice, side and type
 coverage/
-security/                     # SARIF, container, SBOM, provenance
+security/                     # SARIF, DAST, container, IaC, SBOM, provenance
 traceability-matrix.html/csv  # control → tests → result
 change-record.link            # ticket, review, approvals
 exceptions.md                 # waived findings with owner, justification, expiry
 ```
 
-### 9.5 Change management gates
+### 10.5 Change management gates
 
 - Protected main branch; direct pushes disabled; at least one reviewer who is
-  not the author; code-owner review for the touched slice and for shared
-  packages.
-- Required status checks (section 8.3 PR stage) cannot be bypassed, including
+  not the author; code-owner review for the touched slice and for `_platform`.
+- Required status checks (section 9.3 PR stage) cannot be bypassed, including
   by administrators, except through the emergency path.
 - **Emergency change**: allowed only with a recorded justification and
   approver; the full suite runs afterwards and the exception is logged in
@@ -398,13 +519,13 @@ exceptions.md                 # waived findings with owner, justification, expir
 - Separation of duties: the person who approves a release is not the sole
   author of its changes.
 
-### 9.6 Exceptions and waivers
+### 10.6 Exceptions and waivers
 
 A failing security or compliance gate can be waived only with: owner,
 justification, compensating control, expiry date (default ≤ 30 days) and
 approver outside the owning team. Expired waivers fail the build.
 
-### 9.7 Periodic control testing
+### 10.7 Periodic control testing
 
 | Activity | Frequency (set in policy) | Evidence |
 |---|---|---|
@@ -416,47 +537,104 @@ approver outside the owning team. Expired waivers fail the build.
 | Dependency and base-image refresh | Continuous, reviewed monthly | Update PRs, SLA dashboard |
 | Review of this playbook and control map | Annual | Versioned change log |
 
-## 10. Concrete example: updating a user as an admin
+## 11. Concrete example: updating a lead's stage
 
-Feature: `PATCH /api/v1/admin/users/{id}` (role `ADMIN`).
+Feature: `PATCH /api/v1/app/funnels/leads/{leadId}` (permission
+`funnels.leads.update`).
 
 ```text
-internal/features/adminusers/domain_test.go      # patch validation
-internal/features/adminusers/usecase_test.go     # role denied, not found, audit written
-internal/features/adminusers/http_test.go        # 401/403/404/200, envelope, pagination bounds
-internal/features/adminusers/postgres_test.go    # -tags=integration: update + audit row
-test/acceptance/steps_admin_users.go             # godog journey over the real mux
-specs/features/admin-users.feature               # the behavioral contract
+tests/funnels/backend/unit/domain/model/lead.unit            # stage transition rules
+tests/funnels/backend/unit/application/move-lead-stage.unit  # permission denied, wrong tenant,
+                                                             # not owner, version conflict, outbox event
+tests/funnels/backend/integration/persistence/lead-repo.integration   # optimistic lock, RLS
+tests/funnels/backend/integration/http/lead-update.integration        # envelope, 403/404/409
+tests/funnels/backend/contract/http/leads.contract                    # OpenAPI conformance
+tests/funnels/backend/contract/events/lead-stage-changed.contract     # event schema v1
+tests/funnels/backend/security/lead-idor.security                     # tenant A vs tenant B
+tests/funnels/frontend/unit/viewmodels/use-lead-detail-vm.unit        # forbidden/offline/ready
+tests/funnels/frontend/unit/sdk/leads.unit                            # path + headers + errors
+tests/funnels/frontend/component/lead-detail-view.component           # every status rendered
+tests/funnels/frontend/e2e/web/lead-stage.e2e                         # /app route + guard
+tests/funnels/frontend/e2e/extension/capture-lead.e2e                 # content script → worker → SDK
+tests/_platform/authz-matrix/                                         # row for this route
+tests/_platform/tenant-isolation/                                     # sweep includes this endpoint
 ```
 
 Representative tagged test:
 
 ```text
-name:  rejects update when the caller is not an admin
+name:  rejects_stage_change_for_user_without_permission
 tags:  @control SOC2:CC6.1  @control ISO27001:A.5.15  @risk authz
-type:  usecase unit + http integration (403 {detail, code})
+type:  application unit + http integration (403 with requiredPermission)
 evidence: JUnit entry linked in traceability-matrix for control CC6.1
 ```
 
-## 11. Checklist
+Campaign-launch flow adds: `queue` and `concurrency` suites in `extraction`
+(duplicate delivery, lease expiry, Redis flush), a `contract/external` suite
+for the external provider with a nightly live-sandbox smoke, and the
+`_journeys/launch-campaign-to-billing` end-to-end.
 
-- [ ] Tests colocate with the code: `*_test.go` in the slice.
-- [ ] Slice directories match `internal/features/**`; CODEOWNERS set per slice.
+## 12. The client kits' own gates
+
+The five client kits — `extension`, `desktop`, `frontend-mobile`,
+`mobile-android` and `mobile-ios` — ship the same gate surface under the same
+names, so one
+command means the same thing in every one of them:
+
+| Gate | What it proves |
+| --- | --- |
+| `ci` | The fast gate on the working tree: lint, build and the test suite |
+| `evals` | The `.claude` contract harness: the agents, skills and commands against `.claude/schemas/` |
+| `verify` | A staged renamed copy in a temp dir, every gate run on it — the working tree is never mutated |
+
+`ci` and `verify` are Make targets in every client kit; the contract harness
+is `make evals`, except in the extension kit, whose Makefile does not wrap
+the `evals` package script.
+
+Three rules keep the five kits interchangeable:
+
+1. **Same name, same meaning.** `verify` is always the staged renamed copy —
+   never an alias of `test`, and never a target the documentation contradicts.
+2. **A live-eval tier defaults to something that exists.** `evals/run-live.sh`
+   defaults to a skill slug the kit ships (`review` in all five). A default
+   that skips by default turns the tier into a no-op that still exits 0.
+3. **A schema doc describes the harness the kit ships.**
+   `.claude/schemas/*.schema.md` states what parses it: the bash linters
+   always, plus the contract eval. The desktop kit's
+   `evals/contracts_test.cpp` reads every list from the schema at runtime;
+   the React Native kit's `evals/contracts.test.mjs` reads the division enum
+   from it and mirrors the required keys and sections by hand; the extension
+   kit's eval, the Android kit's `evals/src/` and the iOS kit's
+   `evals/contracts.test.mjs` do the same. Never
+   document a harness the kit does not ship, and never tell the reader to
+   update a file that does not exist.
+
+## 13. Checklist
+
+- [ ] Tests live under `tests/{slice}/{backend|frontend}/{type}`; cross-cutting
+      suites under `_platform`, cross-slice journeys under `_journeys`.
+- [ ] Slice folder names match `src/slices` and the URL `{module}`; CODEOWNERS
+      set per slice.
 - [ ] Every assertion sits at the lowest level that can prove it.
-- [ ] Backend: domain, usecase, handler, integration (`-tags=integration`),
-      acceptance (godog) and a thin API E2E exist where the slice needs them.
-- [ ] Integration tests use real Postgres; no mocked database.
-- [ ] Role matrix has a test per declared admin action; a new action without a
-      backend check fails review.
-- [ ] Ownership-isolation sweep covers detail, list, mutation, worker and
-      stream paths (two users, no tenants).
+- [ ] Backend: unit (domain, application), integration (persistence, vector,
+      queue, http, jobs, events), contract (http, events, slice, external),
+      concurrency, migration, security and a thin E2E exist for each slice
+      that needs them.
+- [ ] Frontend: unit (viewmodels, sdk, core), component, integration, contract,
+      E2E per client (web, native, extension), a11y, visual, security,
+      performance.
+- [ ] Integration tests use real containers; no mocked database.
+- [ ] Authorization matrix is generated from the route table; a route without
+      a row fails the build.
+- [ ] Tenant-isolation sweep covers endpoints, jobs, events, vector search and
+      cache keys.
 - [ ] Idempotency and concurrency tests prove one effect under duplicate
-      claim, crash and restart.
-- [ ] depguard enforces the architecture rules; `make gen-check` is green.
-- [ ] SAST, SCA and secrets scanning run on the cadence in section 8.3; pen
-      test at least annually.
-- [ ] DR restore and access-review verification run on schedule with dated
-      evidence.
+      delivery, crash and lease expiry.
+- [ ] Architecture tests enforce backend and frontend dependency rules.
+- [ ] SAST, SCA, secrets, IaC, container, DAST and SBOM run on the cadence in
+      section 9.3; pen test at least annually.
+- [ ] DR restore, chaos and access-review verification run on schedule with
+      dated evidence.
 - [ ] No production data in tests; environments and credentials are separated.
 - [ ] Control-relevant tests are tagged; the traceability matrix is generated
       and gaps are reviewed.
@@ -469,3 +647,5 @@ evidence: JUnit entry linked in traceability-matrix for control CC6.1
       green.
 - [ ] Control mapping and this playbook are reviewed with the auditor at least
       annually.
+- [ ] The client kits expose the same gate surface (`ci`, `evals`, `verify`),
+      each with the meaning of section 12.

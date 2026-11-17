@@ -1,3 +1,13 @@
+---
+id: NODEJS
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: backend-platform
+depends_on: [BACKEND]
+---
+
 # PLAYBOOK_NODEJS.md — backend architecture contract (Node.js)
 
 The rules that keep `<app>` hexagonal and vertically sliced, written against
@@ -302,7 +312,7 @@ Rules:
 Every non-2xx response has exactly one shape:
 
 ```json
-{ "detail": "widget not found", "code": "NOT_FOUND" }
+{ "error": { "code": "NOT_FOUND", "message": "widget not found" } }
 ```
 
 `AppError` (`#shared/apperr`) carries `http`, `code`, `detail`. Construction:

@@ -1,3 +1,13 @@
+---
+id: PYTHON
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: backend-platform
+depends_on: [BACKEND]
+---
+
 # PLAYBOOK_PYTHON.md — backend architecture contract (Python)
 
 The rules that keep `<app>` hexagonal and vertically sliced, written against
@@ -373,7 +383,7 @@ Rules:
 Every non-2xx response has exactly one shape:
 
 ```json
-{ "detail": "widget not found", "code": "WIDGET_NOT_FOUND" }
+{ "error": { "code": "WIDGET_NOT_FOUND", "message": "widget not found" } }
 ```
 
 `AppError` (`src/app/shared/apperr.py`) carries `code`, `detail` and

@@ -1,3 +1,13 @@
+---
+id: CLAUDE_CODE
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: engineering-productivity
+depends_on: [MASTER]
+---
+
 # PLAYBOOK_CLAUDE_CODE.md — Claude Code implementation kit: what every project must have
 
 Specification of the **Claude Code implementation kit** for any software project:
@@ -1434,17 +1444,20 @@ the leak and lint gates must catch.
 
 ### 21.4 Local playbook copies
 
-- Client kits ship **byte-identical** copies of the root playbooks they
-  include. When a root playbook changes, re-copy it into every client kit
-  that ships it, in the same change: a stale copy is a silent second source
-  of truth.
-- Backend kits ship **stack-specialized** copies (the Go kit's
-  `PLAYBOOK_TESTS.md` is not the root's). Edit those in place; never
-  byte-compare them against the root.
-- Never fix a root rule by hand-editing a kit copy. Fix the root, then sync.
-- **Known gap:** no root gate enforces the copy sync. Each kit's `verify`
-  checks its own tree only, so a stale client copy passes every gate — the
-  sync has to happen in the same change as the root edit, by discipline.
+- **Every kit ships byte-identical copies** of the root playbooks it
+  includes: the five shared contracts (`SECURITY`, `TESTS`, `URLS`, `AUDIT`,
+  `CLAUDE_CODE`), the language-agnostic `BACKEND` (backend kits) or
+  `FRONTEND` (visual client kits), and the kit's stack playbook.
+- When a root playbook changes, re-copy it into every kit that ships it, in
+  the same change. A stale copy is a silent second source of truth.
+- **Stack-specific rules live in the stack playbook** (`PLAYBOOK_GOLANG.md`,
+  `PLAYBOOK_CHROME_EXTENSION.md`, …), never in a hand-edited copy of a shared
+  contract. Never fix a root rule by editing a kit copy: fix the root, then
+  re-copy.
+- **Enforced:** `scripts/claude-kit/check-playbook-copies.sh` compares every
+  kit copy against the root and fails on drift, a missing copy, or an
+  unmanaged `PLAYBOOK_*.md`. Run it from the repo root (and in CI) after any
+  playbook edit.
 
 ### 21.5 Adding a kit updates every enumeration
 
@@ -1550,7 +1563,7 @@ allowed-tools: Bash(scripts/tdd/run-tests *)
 ## Done when
 - <observable criteria>
 
-See [reference.md](reference.md) for details.
+See `reference.md` for details.
 ```
 
 ### A.4 Rule template

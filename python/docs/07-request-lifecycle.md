@@ -101,7 +101,7 @@ sequenceDiagram
     A->>A: queries.py call, map rows → domain
     A-->>U: domain value or AppError
     U-->>H: domain result or stable-code error
-    H-->>client: 200/201 JSON · or {"detail","code"}
+    H-->>client: 200/201 JSON · or {"error":{"code","message"}}
 ```
 
 Edge rules: `http.py` validates at the trust boundary — a pydantic v2 model
@@ -114,7 +114,7 @@ reaches the handler: `install_error_handlers` converts it into a 422
 values; the handlers in `app/platform/envelope.py` are the only place that
 renders an HTTP status from a code. The catch-all `Exception` handler is
 the last resort: it logs the trace once and answers 500
-`{"detail": "internal server error", "code": "INTERNAL"}` — no internals
+`{"error": {"code": "INTERNAL", "message": "internal server error"}}` — no internals
 reach the client, and every failure on the API answers the same envelope
 shape.
 

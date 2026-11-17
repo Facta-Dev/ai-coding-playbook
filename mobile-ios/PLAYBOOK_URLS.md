@@ -1,3 +1,13 @@
+---
+id: URLS
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 180
+owner: architecture
+depends_on: []
+---
+
 # PLAYBOOK_URLS.md — URL / route naming playbook
 
 Route-naming contract for the reference service's backend API and SPA routes,

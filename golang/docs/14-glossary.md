@@ -30,7 +30,7 @@ slice. [01, 13]
 **Domain** — `domain.go` in a slice: types, invariants, sentinel errors.
 Imports stdlib + `internal/shared` only; zero I/O. [00, 04]
 
-**Envelope** — The error body `{"detail": string, "code": STABLE_CODE}` on
+**Envelope** — The error body `{"error": {"code": STABLE_CODE, "message": string}}` on
 every non-2xx. Codes are `internal/shared/apperr` constants; `httpx` maps
 code→status in one place. [10]
 

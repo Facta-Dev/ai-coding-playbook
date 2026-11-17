@@ -1,581 +1,665 @@
-# PLAYBOOK_BACKEND.md — backend architecture contract (Node.js)
-
-The rules that keep `<app>` hexagonal and vertically sliced, written against
-the code that actually ships: one ESM package, Fastify 5, `pg` + Kysely,
-node-pg-migrate, an email outbox, an in-process realtime hub.
-
-Premise for actors, roles, tables and invariants: `MEMORY.md`. This file is
-the deep contract; `AGENTS.md` is the short one. When they disagree with the
-code, the code wins and this file gets fixed in the same PR.
-
+---
+id: BACKEND
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 180
+owner: architecture
+depends_on: [URLS]
 ---
 
-## 1. The model in one screen
+# PLAYBOOK_BACKEND.md — Backend architecture playbook
 
-| Layer            | Directory                       | Knows about                    | Never imports                      |
-| ---------------- | ------------------------------- | ------------------------------ | ---------------------------------- |
-| Driving adapters | `src/features/<slice>/http.ts`  | Fastify, zod, own use case     | other slices, `postgres.ts`        |
-| Use case         | `usecase.ts`                    | `domain.ts`, `ports.ts`        | Fastify, pg, Kysely, zod, platform |
-| Ports            | `ports.ts`                      | `domain.ts`                    | adapters                           |
-| Domain           | `domain.ts`                     | Node stdlib, `#shared/*`       | everything else — **zero I/O**     |
-| Driven adapters  | `postgres.ts`, `src/platform/*` | pg/Kysely or the outside world | other slices                       |
-| Wiring           | `module.ts`                     | the slice's adapter + `Deps`   | —                                  |
-| Composition root | `src/bin/*`                     | every slice and adapter        | — (nothing imports it)             |
+Architecture contract for the reference service's backend: **hexagonal
+architecture (ports & adapters) organized by vertical slices**.
+Language-agnostic: every rule is expressed in terms of folders, dependencies
+and contracts, not frameworks. Companion of `PLAYBOOK_URLS.md` (routes and
+authorization model).
 
-Dependency direction is enforced by `no-restricted-imports` groups in
-`eslint.config.mjs`, not by the module system. ESM happily loads cycles; the
-linter is the law.
+The runnable, machine-checkable companions are the Go, Node.js, Python and
+Rust skill packs: three Agent Skills (write, review, port) and a drop-in
+linter config per language, enforcing this contract.
 
-The three non-negotiable properties:
+The language-specific specialization for Java enterprise (J2EE / Jakarta EE)
+is `PLAYBOOK_JAVA_J2EE.md`.
 
-1. **The domain is pure.** `domain.ts` has types, invariants and error values,
-   no await, no client.
-2. **Ports are consumer-defined.** The use case writes the interface it needs,
-   narrow (1–3 methods), in its own `ports.ts`. The adapter satisfies it
-   structurally.
-3. **Only the root wires concretions.** A slice receives `Deps` and returns
-   nothing else. `test/acceptance/app.ts` is the second wiring and the proof.
+The rules that carry the whole file:
 
----
+1. **A slice owns a business capability end to end** (routes → use cases →
+   domain → tables). Code is grouped by capability, never by technical type.
+2. **Dependencies point inward**: adapters → application → domain. The domain
+   imports nothing.
+3. **Slices talk only through published contracts**, never through each
+   other's tables, ORM models or internals.
+4. **Redis/Dragonfly coordinates, the database decides.** Locks and queues
+   prevent duplicate work; correctness is guaranteed by idempotency and
+   database constraints.
+5. **Extract a slice into a service only when measurements demand it**, and
+   the hexagon makes that a swap of adapters, not a rewrite.
 
-## 2. Slice roles and the allowed edges
+## 1. Vertical slicing
+
+### 1.1 What is a slice
+
+A slice is a cohesive business capability with its own language, data and
+lifecycle. The service's initial slices:
+
+| Slice | Responsibility |
+|---|---|
+| `identity` | Authentication, sessions, tokens, users, roles, RBAC permissions |
+| `tenants` | Organizations, membership, API key configuration |
+| `projects` | Projects and their configuration |
+| `extraction` | External-provider extraction runs, raw results, normalization |
+| `funnels` | Funnels, leads, stages, per-employee funnel view |
+| `campaigns` | Campaign definition, launch, calls/messages |
+| `usage` | Metering of runs, tokens, calls per tenant |
+| `billing` | Plans, invoices, payment provider |
+
+Slice naming follows the `{module}` segment of `PLAYBOOK_URLS.md`: the URL
+module, the slice folder and the permission prefix match
+(`funnels` → `/api/v1/app/funnels/...` → `funnels.leads.read`).
+
+### 1.2 Slice boundaries — how to decide
+
+- One slice = one aggregate root family that changes together.
+- If two things must be consistent in the same transaction, they belong to the
+  same slice.
+- If a feature needs data from another slice, it asks through that slice's
+  contract (section 7); it never joins its tables.
+- Splitting too early is worse than splitting late. Start with fewer, larger
+  slices and split when the language or the change rate diverges.
+- A `shared-kernel` exists but stays tiny (section 2.3).
+
+## 2. Repository layout
 
 ```text
-src/bin/api.ts ──► every slice register() ──► Deps (concrete adapters)
-      │                                              │
-      └──► src/platform/* ◄── slices may import platform
-                                     │
-                              src/shared/* (kernel)
+src/
+  slices/
+    funnels/
+      domain/                  # pure business rules
+        model/                 # entities, aggregates, value objects
+        events/                # domain events
+        services/              # domain services (stateless rules)
+        errors/
+      application/             # use cases and ports
+        commands/              # write use cases (CreateLead, MoveLeadStage)
+        queries/               # read use cases (ListLeads, GetLeadDetail)
+        ports/
+          in/                  # use-case interfaces (optional if handlers are the API)
+          out/                 # LeadRepository, LeadSimilarityIndex, EventPublisher, Clock...
+        policies/              # permission checks, ownership checks
+      adapters/
+        in/
+          http/                # presentation: routes, controllers, DTOs
+            app/               # /api/v1/app/funnels/...
+            admin/             # /api/v1/admin/tenants/{tenantId}/funnels/...
+          jobs/                # batch entrypoints (consumers, schedulers)
+          events/              # inbound event handlers from other slices
+        out/
+          persistence/         # data layer (section 3)
+            orm/               # ORM models + repository implementations
+            sql/               # hand-written SQL for read models
+            migrations/        # this slice's migrations only
+          vector/              # vector index adapter
+          cache/               # Dragonfly/Redis cache adapter
+          clients/             # adapters to other slices or external APIs
+      contracts/               # PUBLISHED API of the slice (section 7)
+      module.<ext>             # composition: wires ports to adapters
+    extraction/ ...
+    identity/ ...
+  shared-kernel/               # ids, money, pagination, error model, Clock, Result
+  platform/                    # cross-cutting infra: config, logging, tracing,
+                               # db pool, redis client, http server, outbox runner
+  bootstrap/                   # process entrypoints: api, worker, scheduler
+tests/
+  architecture/                # dependency rule tests
 ```
 
-Rules, exact:
+### 2.1 Dependency rules (enforced, not suggested)
 
-| From                                                       | May import                                                                |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `src/bin/**`                                               | anything                                                                  |
-| `src/features/<slice>/http.ts`, `postgres.ts`, `module.ts` | own slice, `#platform/*`, `#shared/*`                                     |
-| `usecase.ts`                                               | `./domain.js`, `./ports.js`                                               |
-| `ports.ts`                                                 | `./domain.js` (+ platform types where the port is platform-shaped)        |
-| `domain.ts`                                                | Node stdlib, `#shared/*`                                                  |
-| `src/platform/*`                                           | `#shared/*`, stdlib, `pg`, its own submodules — never `#features/*`       |
-| `src/shared/*`                                             | stdlib only                                                               |
-| anything                                                   | `src/bin/**` — forbidden                                                  |
-| any slice                                                  | another slice — forbidden; `src/features/**` may not import `#features/*` |
+| From | May import | Must not import |
+|---|---|---|
+| `domain` | `shared-kernel` only | application, adapters, any framework, ORM, HTTP |
+| `application` | own `domain`, `shared-kernel`, other slices' `contracts` | adapters, ORM, HTTP types, another slice's internals |
+| `adapters` | own `application` + `domain`, `platform`, libraries | another slice's adapters or domain |
+| `contracts` | `shared-kernel` | everything else |
 
-Own-slice imports are relative (`./domain.js` — the `.js` extension is
-required in ESM). Cross-layer imports use the package `"imports"` map:
-`#shared/*`, `#platform/*`, `#features/*`, `#gen/*`.
+Enforce in CI with an architecture test (ArchUnit, dependency-cruiser,
+import-linter, depguard, Deptrac, or the equivalent for the language). A
+violation fails the build. Rules that are not enforced decay within weeks.
 
-Need another slice's behavior? Three lawful moves, in order:
+### 2.2 Composition root
 
-1. **Promote down** to `#shared` (pure rule) or `src/platform` (infrastructure
-   with no domain).
-2. **Declare a port** in the consumer and satisfy it from the root with the
-   other slice's adapter — the consumer never sees the producer's module.
-3. **Duplicate the small capability** in the consumer when the two copies are
-   genuinely independent (the signup and password slices both enqueue mail;
-   neither imports the other).
+Each slice has one `module` file that binds ports to adapters. Process
+entrypoints in `bootstrap/` decide which modules and which inbound adapters
+are active (section 8). Business code never instantiates infrastructure.
 
-Never add an eslint exception. A lint failure here is an architecture
-decision made in private; make it in the open instead.
+### 2.3 Shared kernel rules
 
----
+Allowed: identifiers, pagination, error envelope, `Clock`, `Result`, tenant
+context type. Forbidden: business entities, helpers "used by two slices".
+Duplicate a small piece of code before sharing a domain concept.
 
-## 3. The slice shape
+## 3. Data layer (outbound adapters)
 
-Every slice has the same eight files. "Where does this live?" is answered by
-file kind, never by search.
+The data layer lives in `adapters/out/persistence`, `vector`, and `cache`.
+The domain and application never see an ORM model, a SQL string or a vector
+client.
+
+### 3.1 Ownership
+
+- **Each slice owns its tables.** Use one database schema per slice
+  (`funnels.leads`, `extraction.runs`) in a shared Postgres instance at the
+  start, so the split into separate databases later is a configuration change.
+- **No cross-slice foreign keys, no cross-slice joins.** Reference other
+  slices by ID only (`lead.projectId` is an opaque value). Integrity across
+  slices is eventual and handled by events (section 7.2).
+- Every tenant-scoped table has `tenant_id NOT NULL`, indexed as the first
+  column of composite indexes. Enable row-level security as a second line of
+  defense where the database supports it; the application still filters by
+  tenant explicitly.
+- Standard columns: `id`, `tenant_id`, `created_at`, `updated_at`,
+  `version` (optimistic locking), `deleted_at` where soft delete is needed.
+
+### 3.2 ORM vs SQL — when to use which
+
+| Use | For |
+|---|---|
+| **ORM** (repository implementations) | Aggregate loading and saving, writes, simple lookups by ID |
+| **Hand-written SQL** (query adapters) | Read models, reports, dashboards, funnel aggregates, anything with joins, window functions or heavy filtering |
+
+- Commands go through repositories (`LeadRepository.save(lead)`) and map
+  ORM model ↔ domain entity inside the adapter. ORM entities never leave the
+  adapter.
+- Queries may bypass the aggregate and return DTOs straight from SQL
+  (CQRS-lite). The query port returns a read DTO, not a domain entity.
+- SQL lives in versioned files or a query builder inside `sql/`, always
+  parameterized. No string concatenation. Every query has the tenant filter.
+- One transaction boundary per use case, opened in the application layer via a
+  `UnitOfWork` port. Adapters never commit on their own.
+
+### 3.3 Vector database
+
+- Hidden behind a port that speaks the domain language, for example
+  `LeadSimilarityIndex.upsert(leadId, text)` /
+  `findSimilar(tenantId, query, limit)`. No vendor types in signatures.
+- **Default**: `pgvector` inside the slice's own schema (one fewer system,
+  transactional with the rest). **Move to a dedicated engine** (Qdrant,
+  Weaviate, Pinecone, Milvus) when measured recall/latency or index size
+  requires it; only the adapter changes.
+- Tenant isolation is mandatory: a tenant filter or a collection/namespace per
+  tenant. A similarity query without a tenant scope must be impossible to
+  express through the port.
+- Embeddings are derived data: the relational table is the source of truth.
+  Indexing is done asynchronously by a batch job (section 5), is idempotent
+  (keyed by `entityId + contentHash + modelVersion`), and the index can always
+  be rebuilt from the database.
+- Store `embedding_model` and `dimension` with each vector; re-embedding on a
+  model change is a batch job, not a deploy.
+
+### 3.4 Migrations
+
+- Migrations live in the slice (`adapters/out/persistence/migrations`) and run
+  against that slice's schema only. A migration that touches another slice's
+  table is rejected in review.
+- Forward-only, immutable once merged. Naming:
+  `YYYYMMDDHHMM__slice__description`.
+- **Expand → migrate → contract** for every breaking change: add the new
+  column/table (compatible with old code), backfill in a batch job, switch
+  reads/writes, drop the old structure in a later release. Never rename or drop
+  in the same release as the code change.
+- Migrations run as a separate deploy step (a one-shot job), never at API
+  startup in multi-replica environments.
+- Large backfills are batch jobs with checkpoints, not migration scripts.
+
+### 3.5 Cache
+
+- Cache is an outbound adapter (`CachePort`), used for read acceleration only.
+  Losing the cache must never lose data or break correctness.
+- Keys follow section 5.4. Every entry has a TTL.
+- Invalidate on domain events from the owning slice; never from another slice.
+
+## 4. Services layer (application + domain)
+
+### 4.1 Responsibilities
+
+| Layer | Contains | Does not contain |
+|---|---|---|
+| `domain` | Entities, value objects, invariants, domain events, stateless domain services | I/O, transactions, permissions, framework types |
+| `application` | Use cases (one class/function per command or query), orchestration, transactions, permission and ownership checks, port definitions | SQL, HTTP, ORM, queue clients |
+
+### 4.2 Use case contract
+
+Every use case:
+
+1. Receives an explicit input object and a **`RequestContext`**
+   (`userId`, `tenantId`, `activeRole`, `permissions`, `correlationId`)
+   derived from the token and session — never from the URL segment.
+2. Authorizes through a policy: permission (`funnels.leads.update`) **and**
+   resource ownership/tenant match. This is where the rule "`{userType}` never
+   authorizes" is enforced. Controllers may reject early, but the use case is
+   the authority.
+3. Loads aggregates through ports, executes domain behavior, saves, and
+   publishes domain events through the outbox (section 7.2). When the
+   deployment promises at-least-once delivery, the outbox write is in the
+   **same transaction** as the state change.
+4. Returns a result object or typed error; it never throws transport-level
+   errors (no HTTP codes here).
+
+The same use case serves `/app` and `/admin` routes. The difference is the
+`RequestContext` and the policy, not duplicated business logic.
+
+### 4.3 Conventions
+
+- Commands change state and return minimal data (ID, version). Queries never
+  change state.
+- Domain errors are typed and mapped to the error envelope in the
+  presentation layer (`FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED`).
+- Time, randomness and IDs come from ports (`Clock`, `IdGenerator`) so tests
+  are deterministic.
+- Business invariants live in the domain, not in validators or controllers.
+
+## 5. Batch processes layer (inbound adapters + coordination)
+
+Batch work (external-provider runs, enrichment, embedding, campaign dispatch,
+usage rollups, billing cycles, backfills) enters the slice through **inbound
+adapters in `adapters/in/jobs`**, the same way HTTP does: it parses the
+message, builds a `RequestContext` (a system actor with explicit permissions)
+and calls a use case. Jobs contain no business logic.
+
+### 5.1 Principles
+
+- **Many workers, one effect.** Any number of replicas may run; the same unit
+  of work must produce its effect once.
+- **At-least-once delivery + idempotent handlers = effectively once.**
+  Exactly-once delivery does not exist; design for redelivery.
+- **Dragonfly/Redis coordinates; the database is the source of truth.** If
+  Redis loses data, the system may repeat or delay work, but never corrupt it.
+- Work is **partitioned by `tenantId`** (and by entity where useful) so one
+  heavy tenant cannot starve the others.
+
+### 5.2 Building blocks
+
+| Need | Mechanism |
+|---|---|
+| Distributed work queue | Redis Streams with consumer groups (or a queue library built on them, such as BullMQ). One message is delivered to one consumer in the group |
+| Dedup at enqueue | Deterministic `jobId` (`{jobType}:{entityId}:{windowOrVersion}`) with `SET NX`; a second enqueue of the same id is a no-op |
+| Mutual exclusion on a resource | Lease lock: `SET key token NX PX ttl`; release only if the token matches (compare-and-delete script); renew while working |
+| Single scheduler (cron ticks) | Leader lease: only the holder of `scheduler:leader` enqueues scheduled jobs; others stand by. Failover when the lease expires |
+| Idempotency of effects | Idempotency record in the **database** (`processed_jobs` table or a unique constraint on the natural key), written in the same transaction as the effect |
+| Crash recovery | Visibility timeout + reclaim of pending messages (`XAUTOCLAIM`) for jobs whose worker stopped heartbeating |
+| Poison messages | Max attempts → dead-letter stream + alert; never infinite retry |
+| Fairness and limits | Per-tenant concurrency cap and token-bucket rate limit (per API key for external providers) kept in Redis |
+| Fallback without Redis | `SELECT ... FOR UPDATE SKIP LOCKED` on a jobs table for low-volume or critical jobs |
+
+### 5.3 Rules for every job
+
+1. **Idempotent by design.** Re-running a job with the same `jobId` yields the
+   same final state. Effects check "already done?" through a database
+   constraint, not through the lock.
+2. **A lock is an optimization, not a guarantee.** A lease can expire while a
+   worker is paused. Protect effects with a **fencing token** or a version
+   check (`UPDATE ... WHERE version = :expected`) so a stale worker cannot
+   overwrite newer state.
+3. **Lease longer than the work, renewed by heartbeat**, and shorter than the
+   acceptable recovery time. A worker that loses its lease stops.
+4. **Chunk long work** into resumable steps with a persisted checkpoint
+   (cursor, page, run id). A restart continues, it does not start over.
+5. **Retries with exponential backoff and jitter**; classify errors as
+   retryable (timeouts, 429, 5xx) or terminal (validation, 4xx) and send
+   terminal ones to the dead-letter stream immediately.
+6. **Bounded blast radius.** Timeouts on every external call, global and
+   per-tenant concurrency limits, backpressure when the queue depth exceeds a
+   threshold.
+7. **Observable.** Every job logs `jobId`, `jobType`, `tenantId`, `attempt`,
+   `correlationId`; emits metrics (queue depth, age of oldest message,
+   duration, success/failure, retries, DLQ size).
+
+### 5.4 Key naming in Dragonfly/Redis
 
 ```text
-src/features/<slice>/
-├── domain.ts        # pure types, invariants, AppError values
-├── ports.ts         # interfaces the use case declares
-├── usecase.ts       # orchestration: rules first, I/O last
-├── queries.ts       # typed Kysely queries — the only SQL home
-├── postgres.ts      # Store adapter over queries.ts
-├── http.ts          # Fastify handlers, zod decode, envelope
-├── module.ts        # register*(app, Deps)
-└── usecase.test.ts  # fakes beside the code (when the slice has rules)
+{app}:{env}:{slice}:{purpose}:{id}
+
+app:prod:extraction:lock:run:{runId}
+app:prod:extraction:queue:runs                 # stream
+app:prod:funnels:dedup:enrich:{leadId}:{hash}
+app:prod:platform:scheduler:leader
+app:prod:extraction:ratelimit:provider:{apiKeyId}
 ```
 
-### 3.1 Domain
+- Every key carries a TTL unless it is a stream with a trimming policy.
+- Where cluster mode or multi-key scripts are used, put a hash tag
+  (`{tenantId}`) so related keys land on the same shard.
+- A slice only touches keys under its own prefix. `platform` owns the shared
+  primitives (lock, leader election, rate limiter) and exposes them as ports.
+- Dragonfly is wire-compatible with Redis for streams, locks and scripts. Keep
+  the code on plain Redis commands so either engine is interchangeable, and
+  configure persistence and replication according to how costly a lost queue
+  entry is. Remember that a failover can drop the last acknowledged writes:
+  this is why idempotency lives in the database.
 
-```ts
-// src/features/widgets/domain.ts
-export const WidgetKinds = ["sprocket", "cog", "flange"] as const;
-export type WidgetKind = (typeof WidgetKinds)[number];
+### 5.5 Job types
 
-export interface Widget {
-  id: string;
-  name: string;
-  kind: WidgetKind;
-  ownerUserId: string;
-  createdAt: Date;
-}
+| Type | Trigger | Example |
+|---|---|---|
+| Queue worker | Message on a stream | Execute an external-provider run, enrich a lead, embed text |
+| Scheduled | Leader enqueues on a cron tick | Hourly usage rollup, nightly billing close |
+| Event-driven | Domain event from another slice | `LeadCreated` → index embedding |
+| One-off / backfill | Operator command | Re-embed all leads with a new model |
 
-export const ErrNotFound: AppError = E(CodeNotFound, NotFound, "widget not found");
-export const ErrValidation: AppError = E(CodeUnprocessable, Validation, "invalid request");
+Scheduled jobs enqueue small, idempotent units ("rollup tenant X for hour H"),
+not one giant task.
+
+## 6. Presentation layer (inbound HTTP adapters)
+
+Lives in `adapters/in/http`. Routes follow `PLAYBOOK_URLS.md` exactly.
+
+### 6.1 Structure
+
+```text
+adapters/in/http/
+  app/          # /api/v1/app/...      end-user experience
+  admin/        # /api/v1/admin/...    platform/tenant administration
+  partner/      # /api/v1/partner/...
+  dto/          # request/response schemas per version
+  mappers/      # DTO <-> use-case input/output
 ```
 
-- No `import` from Fastify/pg/Kysely/zod/platform/another slice.
-- Invalid states are unrepresentable: unions over boolean pairs, literal
-  unions for closed sets, `readonly` for data a callee must not mutate.
-- Errors are values created by `E(http, code, detail)` from `#shared/apperr`.
-  Never throw a bare string; never invent a code inline in `http.ts`.
+One folder per `{userType}` mirrors the frontend namespaces and layouts.
 
-### 3.2 Ports
+### 6.2 Controller rules
 
-```ts
-// ports.ts — written for the use case, not for the database
-export interface Store {
-  insert(w: Widget): Promise<void>;
-  list(ownerId: string, limit: number, offset: number): Promise<Widget[]>;
-  get(id: string, ownerId: string): Promise<Widget | null>;
-}
-```
+A controller does five things and nothing else:
 
-- Keep it to the methods this use case calls. A five-method port with one
-  production implementation is usually two features sharing a directory.
-- Methods return domain values or throw an `AppError`; adapters translate
-  driver failures inward (`23505` → `AUTH_EMAIL_TAKEN` is the reference).
-- No `Pool`, no `Kysely`, no `FastifyRequest` in a port signature.
+1. Authenticate (verify token, resolve session) through `identity`'s contract.
+2. Build the `RequestContext` (user, **tenant from the token/session or from
+   `X-Tenant-Id` validated against membership**, active role, permissions).
+3. Validate and map the request DTO to the use-case input.
+4. Call the use case.
+5. Map the result or typed error to the response and the error envelope.
 
-### 3.3 Use case
+It contains no business rules and no SQL. The `{userType}` path segment may
+select which controller group serves the route; it must never grant anything.
 
-```ts
-import { systemClock, type Clock } from "#shared/clockx.js";
-import { uuidGen } from "#shared/idgen.js";
-import { roomUser, type RealtimeEvent } from "#platform/realtime/index.js";
+### 6.3 Contract rules
 
-export class UseCase {
-  constructor(
-    private readonly store: Store,
-    private readonly pub: Publisher | null,
-    private readonly clock: Clock = systemClock,
-  ) {}
+- Version in the path (`/api/v1`). Additive changes stay in the same version;
+  breaking changes create `v2` and a deprecation window.
+- Plural resources, IDs in the path, filters/sort/pagination in the query
+  string, as in the URL playbook. State transitions are `POST` on a verb
+  sub-resource (`.../suspend`, `.../launch`).
+- List endpoints are paginated (cursor by default) with a hard maximum page
+  size.
+- Mutating endpoints that can be retried accept an `Idempotency-Key` header;
+  the key is stored in the database with the response.
+- Long operations return `202 Accepted` with a resource to poll
+  (`/api/v1/app/projects/{projectId}/runs/{runId}`), the work being done by a
+  batch job. Do not hold HTTP connections open for extraction work.
+- Error envelope (same shape as the URL playbook):
 
-  async create(ownerId: string, name: string, kind: WidgetKind): Promise<Widget> {
-    if (name === "") throw ErrValidation;
-    const w: Widget = {
-      id: uuidGen.newId(),
-      name,
-      kind,
-      ownerUserId: ownerId,
-      createdAt: this.clock.now(),
-    };
-    await this.store.insert(w);
-    this.pub?.publish({
-      room: roomUser(ownerId),
-      type: "widget.created",
-      payload: w,
-      at: new Date(),
-    });
-    return w;
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You do not have permission to manage users in this tenant.",
+    "requiredPermission": "tenant.users.manage",
+    "correlationId": "c0a8..."
   }
 }
 ```
 
-- Validate the domain's rules here, once. Edge validation (shape, types,
-  lengths) lives in `http.ts` with zod; the use case validates meaning.
-- I/O last: compute and check first, then call the port.
-- `AbortSignal` enters here when the work is long or batched; check
-  `signal.throwIfAborted()` at loop yields, not after every await.
-- No `console.*`, no `Date.now()` — take a clock (`#shared/clockx`) when time
-  matters to the rule.
+- Responses never leak internal details (stack traces, SQL, internal ids of
+  other tenants). Cross-tenant access to an existing resource answers
+  `404`, not `403`, when revealing existence would be a leak.
 
-### 3.4 HTTP adapter
+### 6.4 Other inbound protocols
 
-```ts
-export const widgetHttp = (uc: UseCase): Handlers => ({
-  create: async (req, reply) => {
-    const body = decode(CreateBody, req.body); // 422 VALIDATION_ERROR
-    const w = await uc.create(identityOf(req).userId, body.name, body.kind);
-    await sendJSON(reply, 201, w);
-  },
-});
+The same use cases can be exposed through other adapters without changing the
+core: gRPC for service-to-service calls, webhooks (external provider, payment
+provider) as `adapters/in/http/webhooks` with signature verification and
+idempotent processing, CLI for operations, WebSocket/SSE for live funnel
+updates.
+
+## 7. Connecting slices
+
+Three levels, in this order of preference. Use the cheapest one that meets the
+need.
+
+### 7.1 Level 1 — In-process contract (default)
+
+A slice publishes a small, versioned API in `contracts/` (interfaces + DTOs +
+event schemas). Another slice depends only on that package, through its own
+outbound port:
+
+```text
+funnels/application/ports/out/ProjectDirectory      # port owned by funnels
+funnels/adapters/out/clients/ProjectsInProcessAdapter  # calls projects/contracts
 ```
 
-- `httpx.decode(schema, value)` is the only body decoder; it throws
-  `VALIDATION_ERROR` on failure.
-- `reply.code(...).send(...)` for success; errors are thrown and rendered once
-  by the root's `setErrorHandler`. Do not hand-build error JSON here.
-- Identity comes from `requireAuth`, which attaches `req.identity`; a small
-  local `identityOf(req)` helper reads it. Never parse the JWT in a handler.
-- One handler = one job. Mapping loops and multi-step orchestration belong in
-  the use case.
+- The consuming slice defines the port in **its own language** and an adapter
+  translates (anti-corruption layer). It never reuses the other slice's
+  entities.
+- Calls are read-mostly and cheap. Writes across slices are not made through a
+  synchronous call chain; use events.
+- Contracts are DTOs only: no domain entities, no ORM models, no
+  framework types.
 
-### 3.5 Queries and the Store adapter
+### 7.2 Level 2 — Asynchronous events (eventual consistency)
 
-`queries.ts` is the only place SQL exists. Kysely builds it; column names stay
-snake_case exactly as the migrations declare them.
+- Slices publish **domain events** (`LeadCreated`, `RunCompleted`,
+  `TenantSuspended`) through an **outbox**. The target for a system that
+  promises at-least-once delivery is a **transactional outbox**: the event is
+  written in the same database transaction as the state change, and a relay
+  publishes it. A shipped template that hands the event to a queue after the
+  commit has **weaker delivery guarantees**: mark it as a deviation, keep the
+  event id and idempotency key stable, and never call it at-least-once until
+  the outbox row is durable in the same transaction.
+- Consumers are inbound adapters (`adapters/in/events`), idempotent, keyed by
+  event id, and tolerant to duplicates and reordering within a tenant.
+- Events are versioned (`type`, `version`, `occurredAt`, `tenantId`,
+  `correlationId`, `payload`). Add fields; never repurpose them.
+- Cross-slice workflows that need compensation (launch campaign → reserve
+  usage → charge) use a saga/process manager owned by the initiating slice,
+  with explicit compensating actions.
 
-```ts
-export const widgetListByOwner = (
-  db: Kysely<Database>,
-  p: { ownerId: string; limit: number; offset: number },
-): Promise<WidgetsRow[]> =>
-  db
-    .selectFrom("widgets")
-    .selectAll()
-    .where("owner_user_id", "=", p.ownerId)
-    .orderBy("created_at", "desc")
-    .limit(p.limit)
-    .offset(p.offset)
-    .execute();
+### 7.3 Level 3 — Network protocols between deployed services
+
+When a slice runs as its own service (section 9) the same port gets a
+different adapter:
+
+| Interaction | Protocol |
+|---|---|
+| Synchronous request/response, internal | gRPC (or HTTP/JSON with an OpenAPI contract) |
+| Asynchronous, durable | Stream/broker with the same event schemas as Level 2 |
+| External or partner-facing | HTTP/JSON, versioned, under `/api/v1/{userType}/...` |
+
+Network calls require: timeouts, retries only for idempotent operations,
+circuit breaker, bulkhead, propagation of `correlationId` and tenant context,
+and **service authentication** (mTLS or signed service tokens). The caller
+forwards the end-user identity; the callee still authorizes with RBAC. Trust is
+never implied by network position.
+
+## 8. Deployment modes: one codebase, several processes
+
+Before any microservice, run the same artifact in different **modes**,
+selected by the entrypoint in `bootstrap/`:
+
+| Mode | Runs | Scales by |
+|---|---|---|
+| `api` | HTTP inbound adapters of all slices | Request rate |
+| `worker` | Queue consumers (optionally limited to chosen slices/queues) | Queue depth |
+| `scheduler` | Leader-elected cron enqueuer (1 active, N standby) | Not scaled |
+| `migrate` | One-shot migrations | Run once per release |
+
+This isolates heavy batch load from interactive latency (a burst of
+external-provider runs cannot slow the API) and lets `worker` pools be
+dedicated per queue, with no network boundary introduced and no
+distributed-system cost paid yet.
+
+## 9. When to extract a slice into a microservice
+
+Default: **modular monolith, multiple modes**. Extract only with evidence.
+
+### 9.1 Triggers (any one, measured, sustained)
+
+| Signal | Example threshold (tune with real data) |
+|---|---|
+| Independent scaling | The slice needs more than ~5x the replicas/CPU/memory of the rest, or a different resource profile (GPU, large memory, long-lived connections) |
+| Load isolation | The slice's p95 CPU/DB load degrades other slices even with separate worker pools |
+| Data profile | Its dataset or write rate needs its own engine, sharding or retention policy (for example the vector index, or raw extraction results) |
+| Failure isolation | Its outages or deploys must not take down the core, and the core must keep working when it is down |
+| Team / release cadence | A dedicated team ships it independently and the shared release train is the bottleneck |
+| Security / compliance | It handles regulated data (payments, PII) that requires a separate boundary and audit scope |
+| Runtime fit | It benefits from a different language or runtime (for example a data/ML pipeline) |
+
+### 9.2 Anti-triggers
+
+- "It would be cleaner." The module boundary already gives that.
+- No measurements, only intuition.
+- The slice is still changing together with its neighbors in most PRs.
+- The team has no observability, tracing or on-call capacity for another
+  service.
+
+### 9.3 Readiness checklist (all required before extracting)
+
+- [ ] The slice owns its schema; no cross-slice joins or FKs remain.
+- [ ] All callers use its `contracts/` package; no deep imports.
+- [ ] Cross-slice writes already go through events, not synchronous chains.
+- [ ] Its jobs are idempotent and its queues are namespaced under its prefix.
+- [ ] Tracing, metrics and `correlationId` propagation are in place.
+- [ ] A contract test suite exists for its API and events.
+
+### 9.4 Extraction procedure (strangler)
+
+1. Deploy the slice as its own process using the existing code (mode
+   `worker`/`api` limited to that slice) against its own schema.
+2. Move its schema to its own database instance (config change plus data
+   migration).
+3. Replace the in-process adapters in consumers with network adapters (gRPC or
+   events). Ports and use cases stay untouched.
+4. Run both paths in parallel with comparison or shadow traffic, then cut over.
+5. Remove the in-process path.
+
+### 9.5 Candidates for extraction, in likely order
+
+1. **`extraction`** — bursty, long-running, provider-bound (the external
+   provider), the first one to isolate as a dedicated `worker` pool, and the
+   first candidate for a standalone service if load demands it.
+2. **Vector indexing / similarity** (inside `funnels`) — move to a dedicated
+   vector engine behind the same port before any service split.
+3. **`campaigns` dispatch** — external call/message providers, strict rate
+   limits.
+4. **`billing`** — likely extracted for compliance reasons rather than load.
+
+`identity`, `tenants` and `projects` stay in the core: everything depends on
+them and they are cheap to run.
+
+## 10. Cross-cutting rules
+
+### 10.1 Multi-tenancy and authorization
+
+- Tenant context is resolved once per request/job from the token or job
+  payload and carried in `RequestContext`. Every repository and query takes
+  the tenant explicitly.
+- Authorization = identity + active tenant + permission
+  (`module.resource.action`) + resource ownership, enforced in the use case.
+  The URL prefix, headers sent by the client and hidden UI buttons are never
+  the source of truth.
+- Jobs run as a **system actor** with the minimum permissions needed, and
+  always carry the `tenantId` of the data they process.
+- Secrets (tenant API keys for external providers) are stored encrypted,
+  decrypted only inside the outbound adapter that needs them, and never
+  logged or returned in responses.
+
+### 10.2 Observability
+
+- Structured logs with `correlationId`, `tenantId`, `userId`, `slice`,
+  `useCase`. Never log secrets or full PII.
+- Distributed tracing across HTTP, queue messages and events (propagate the
+  trace context in message headers).
+- Per-slice metrics: use-case latency and error rate, queue depth and age,
+  DLQ size, lock contention, outbox lag.
+- Health endpoints per mode: liveness (process) and readiness (database,
+  Redis reachable).
+
+### 10.3 Configuration and environments
+
+- Twelve-factor configuration from the environment, validated at startup;
+  the process fails fast on missing or invalid values.
+- Per-slice feature flags for risky rollouts. Same artifact in every
+  environment.
+
+### 10.4 Testing pyramid
+
+| Level | Scope | Notes |
+|---|---|---|
+| Domain unit | Entities, value objects, domain services | No mocks, no I/O, fastest |
+| Use-case | Application layer with in-memory fakes of the ports | Covers permissions and ownership paths |
+| Adapter integration | Repositories, SQL, vector index, Redis locks/streams against real containers | Includes migration run from scratch |
+| Contract | Slice `contracts/` and event schemas, consumer-driven | Required before extraction |
+| End-to-end | A few critical flows through HTTP | Keep thin |
+| Architecture | Dependency rules, no cross-slice imports | Runs on every PR |
+| Concurrency | Two workers on the same job, crash mid-job, duplicate delivery | Proves "no overlap, no duplicates" |
+
+## 11. Concrete example
+
+Flow: the end user launches a campaign from a project.
+
+```text
+POST /api/v1/app/projects/{projectId}/launch
 ```
 
-- Export named query functions, one per statement, with the port method in
-  the comment (`:one`, `:many`, `:exec`). No query builders leak out.
-- The slice-local `Database` interface lists only the tables this slice reads
-  or writes. Column types mirror the migration (`snake_case`).
-- `postgres.ts` owns the `Kysely<Database>` instance built from the shared
-  Pool; it implements `Store`, maps rows to domain values, and translates
-  driver errors. Nothing else may import `queries.ts`.
-- Two statements that must agree belong in one `db.transaction()` inside the
-  adapter, not in the use case. The port should say so (`insertWithProfile`)
-  instead of exposing a transaction handle.
+1. `projects` HTTP adapter (`app/`) authenticates, builds `RequestContext`,
+   maps the DTO, returns `202` with a `runId`.
+2. `LaunchCampaign` use case (application) checks `campaigns.launch` and that
+   the project belongs to the tenant, creates the run aggregate, and writes
+   `RunRequested` to the outbox in the same transaction.
+3. The outbox relay publishes the event to the `extraction` queue
+   (`jobId = extraction:run:{runId}`, deduplicated by `SET NX`).
+4. `extraction` worker (any replica) claims the message through the consumer
+   group, takes the lease `extraction:lock:run:{runId}`, checks the
+   per-API-key rate limit, calls the external provider through its outbound
+   adapter and persists a checkpoint after every page.
+5. Results are written idempotently (unique key on
+   `tenantId + externalResultId`) and `LeadsExtracted` is published via the
+   outbox.
+6. `funnels` consumes `LeadsExtracted`, creates leads in each employee's
+   funnel, and enqueues an embedding job per lead; the vector adapter upserts
+   by `leadId + contentHash`.
+7. `usage` consumes `RunCompleted` and meters the run for `billing`.
+8. The user polls `GET /api/v1/app/projects/{projectId}/runs/{runId}` and
+   sees progress; an admin sees the tenant-wide view under
+   `/api/v1/admin/tenants/{tenantId}/...` through a different policy, not a
+   different use case.
 
-### 3.6 Module
+If a worker dies at step 4, its lease expires, another worker reclaims the
+message and resumes from the checkpoint; the unique key makes repeated
+writes harmless. If Redis is wiped, runs in `RUNNING` state without a
+heartbeat are re-enqueued by the scheduler sweeper from the database.
 
-```ts
-export interface Deps {
-  store: Store;
-  publisher: Publisher | null;
-  verifier: Verifier;
-  cookieName: string;
-}
+## 12. Checklist
 
-export const registerWidgets = (app: FastifyInstance, d: Deps): void => {
-  const uc = new UseCase(d.store, d.publisher);
-  const h = widgetHttp(uc, d.publisher);
-  const auth = requireAuth(d.verifier, d.cookieName);
-  app.get("/api/v1/widgets", { preHandler: [auth] }, h.list);
-  // …
-};
-```
-
-`register(app, Deps)` is the whole seam. It may construct the use case and
-handlers; it may not open a pool, read env, or import another slice.
-
----
-
-## 4. Composition root
-
-`src/bin/api.ts` is one ordered function:
-
-1. `load()` config (zod-validated, fail-closed).
-2. Probe mode short-circuit (`dist/bin/api.js probe` → exit 0) before any I/O.
-3. Fastify with `{ logger: { level: cfg.logLevel }, bodyLimit }`; cookie
-   plugin; `onRequest` hooks `requestID`, `securityHeaders`, `cors(cfg)`.
-4. `setNotFoundHandler` + `setErrorHandler` writing `{detail, code}`.
-5. One `pg.Pool` (`newPool(cfg)`), one `Kysely` per _slice_ built inside its
-   `Postgres` adapter.
-6. Verifier + minter (`issuer = "<app>"`), cookie name/mode, the hub
-   (`newHub(0)` → default buffer), the mail `Sender` (`selectSender`).
-7. `/healthz` and `/readyz`.
-8. Every slice's `register` with constructed `Deps`.
-9. The in-process outbox worker on its own `AbortController`.
-10. `listen(parseBind(cfg.bind))`; SIGTERM/SIGINT → abort worker,
-    `app.close()`, `pool.end()`.
-
-`src/bin/worker.ts` is the scale-out entry on the same image: the same pool,
-one `AbortController`, the outbox loop **and** the janitor loop
-(`sessions`, `email_verifications`, `password_resets` expired-row purges),
-then `pool.end()`.
-
-Both roots validate config at boot. Neither applies migrations.
-
-Rules:
-
-- Adapters are constructed at the root or in `module.ts`, never imported by a
-  use case.
-- One pool per process. Additional Kysely instances per slice are cheap
-  views over it; additional pools are not.
-- Shutdown is explicit: abort loops, close HTTP, end the pool. A dangling
-  listener after SIGTERM is a defect.
-- The root may know every slice; nothing else may know two.
-
----
-
-## 5. Error model
-
-Every non-2xx response has exactly one shape:
-
-```json
-{ "detail": "widget not found", "code": "NOT_FOUND" }
-```
-
-`AppError` (`#shared/apperr`) carries `http`, `code`, `detail`. Construction:
-
-- `E(status, code, detail)` — the only constructor.
-- `withDetail(e, d)` — same code, richer context for the boundary.
-- `from(err)` — the single coercion from an unknown thrown value; anything
-  unrecognized becomes `INTERNAL_ERROR` with a generic detail.
-
-Rules:
-
-- Stable codes are constants in `src/shared/apperr.ts`. Add a code there
-  before using it; never type a string literal in a handler.
-- Map HTTP status once, in the adapter that knows the failure. `401` for an
-  invalid credential, `403` for an authenticated-but-forbidden action, `404`
-  for a row the caller may not see (never leak existence with `403`), `409`
-  for uniqueness, `422` for shape validation.
-- 5xx detail is generic. Do not echo driver messages, SQL, or stack data.
-- The root's `setErrorHandler` and a slice's `http.ts` must not both render
-  errors. Handlers throw; the root renders. The only exception is a stream
-  that already hijacked the reply — then close the stream.
-- Adapters translate exactly once. A `23505` mapped in two places will drift.
-- `catch` never swallows: log through `req.log` when the failure is not
-  rethrown, and always with the stable code and request id.
-
----
-
-## 6. Persistence
-
-- **Postgres 17**, one `pg.Pool` at the root (`DATABASE_MAX_CONNECTIONS`,
-  default 20).
-- **Kysely per slice**, constructed in `postgres.ts` from that Pool. The
-  `Database` type is slice-local and lists only owned tables.
-- **SQL lives in `queries.ts`** and is consumed only by `postgres.ts`. No raw
-  SQL in `usecase.ts` or `http.ts`; no query builder in a port signature.
-- **Migrations live in `migrations/`** as timestamped `.mjs` files created by
-  `make migrate-add NAME=…`. Every file exports `up` and `down`; an empty
-  `down` is a review block.
-- **Migrations never run at startup.** Apply with `make migrate-up`, or the
-  compose one-shot `migrations` service. Replicas would race.
-- **Naming**: snake_case tables and columns, plural tables, `id` text UUIDs,
-  `created_at timestamptz` defaulted by the DB, partial indexes for
-  active-row queries (`idx_sessions_user_active`).
-- **No `SELECT *` into a port type**: select the columns the port promises,
-  map explicitly. A schema addition should not silently widen a response.
-- **Pagination**: lists take `limit` (1–100, default 20) and `offset` (≥0)
-  through `httpx.queryPage`. An unbounded `execute()` on a user-sized table
-  is a defect.
-- **Ownership predicates are in the SQL**, not bolted on after the read:
-  `get(id, ownerId)` filters both. An unowned row then reads as `null` → 404.
-- **Destructive changes** (drop/rename column, backfill) get their own
-  migration with a data plan in the file header. Never edit a migration that
-  has shipped; add the next number.
-
-The shipped schema (`0001_init`, `0002_profiles`): `users`, `sessions`,
-`email_verifications`, `password_resets`, `settings`, `audit_logs`,
-`email_jobs`, `widgets`, `companies`, `users_profile`.
-
----
-
-## 7. Mail and the outbox
-
-Slices never send mail. They enqueue intent; a worker renders and delivers.
-
-```ts
-export interface Message {
-  to: string;
-  templateKey: string;
-  vars: Record<string, unknown>;
-}
-```
-
-- The slice declares an `EmailEnqueuer` port (`enqueue(m)`); `platform/email`
-  satisfies it. The use case calls it after the state change.
-- `Outbox.enqueue` inserts into `email_jobs` (`id`, `to_email`,
-  `template_key`, `payload`). Nothing is rendered on the request path.
-- The worker claims due rows with
-  `FOR UPDATE SKIP LOCKED` — safe with many replicas — flips them to
-  `sending`, and recovers rows stranded there past a 5-minute lease
-  (at-least-once).
-- Delivery success → `sent`. Failure → `retry_count + 1` with a `2^n`-minute
-  backoff plus ±10% jitter; at `max_retries` the row dead-letters as
-  `failed`. Render errors fail immediately.
-- Templates are keyed (`verify_email`, `reset_password`, `password_changed`,
-  `welcome`) and localized by the user's `language` (`en`, `es`); an unknown
-  language falls back to `en`.
-- **Atomicity gap (shipped):** `enqueue` uses its own pool connection, so the
-  mail row is not in the same transaction as the state change. A crash between
-  them loses the mail. Do not describe the outbox as transactional until a
-  transaction-capable port exists; the upgrade belongs in `Deps`, not in the
-  use case.
-- The janitor purges expired sessions and stale codes on
-  `<APP>_JANITOR_POLL` (default 1h). It does not purge `email_jobs`; add a
-  retention purge deliberately.
-
----
-
-## 8. Realtime
-
-One process-wide `EventBus` (`src/platform/realtime/hub.ts`), created at the
-root and injected as each slice's `Publisher` port.
-
-```ts
-export interface RealtimeEvent {
-  room: string; // "user:<id>" or a topic room
-  type: string; // "widget.created"
-  payload: unknown;
-  at: Date;
-}
-export interface EventBus {
-  publish(ev: RealtimeEvent): void;
-  subscribe(room: string): Subscriber; // AsyncIterable + cancel()
-}
-```
-
-- `publish` never blocks and never queues: when a subscriber's ring buffer
-  (default 16) is full, the event is **dropped**. Slow consumers lose data;
-  they do not apply backpressure to a request.
-- `cancel()` is idempotent and removes the subscription; the iterator returns
-  `done` on cancel.
-- Room vocabulary is shared by WS and SSE: `roomUser(userId)` → `user:<id>`.
-  A slice publishes to that room; it never imports the realtime slice.
-- **WebSocket**: upgrade at `/api/v1/ws?token=<access-jwt>`. The browser
-  cannot send an Authorization header on the handshake, so the token is
-  verified _after_ the upgrade; failure closes with code `4001` and reason
-  `authentication_failed`. The connection then only consumes its user room,
-  pings every 30 s, and closes cleanly with `1000`.
-- **SSE**: `GET /api/v1/widgets/events`, `text/event-stream`,
-  `retry: 2000`, `event: <type>` + `data: <json>`. The handler hijacks the
-  reply, subscribes to the user's room, and cancels on response `close`.
-- A stream delivers only what the same identity could read over REST. A
-  stream is not an authorization bypass.
-- **Single-process by design.** Fan-out stops at the process boundary. The
-  documented evolution is a Redis pub/sub adapter behind `EventBus`; the
-  contract above is what must not change.
-
----
-
-## 9. Workers and background work
-
-Two backgrounds exist: the email outbox and the janitor.
-
-Rules for any new loop:
-
-- It has an owner: one `AbortController` per process, aborted on SIGTERM and
-  SIGINT. No `setInterval` that outlives its owner.
-- It is idempotent or claims rows with `SKIP LOCKED`. Multiple replicas must
-  be safe; at-least-once is the delivery guarantee.
-- It never throws out of the loop. A failed tick logs and continues; a crash
-  loop needs an alert, not silent retries.
-- It honors the signal during sleep, not after the sleep.
-- It uses `pool.query` directly only for janitor-style bulk deletes; feature
-  writes go through a slice's adapter.
-- `console.*` is acceptable in `src/bin/worker.ts` for the loop's own
-  lifecycle lines. Request paths use the Fastify/Pino logger.
-
-Adding a queue? The outbox table is the pattern: durable row, lease,
-backoff, dead-letter. Do not add BullMQ/Redis for a second queue without
-writing the swap decision down — the adapter is replaceable, the contract is
-not.
-
----
-
-## 10. Configuration
-
-`src/platform/config.ts`: one zod schema over `<APP>_`-prefixed env, parsed
-once at boot. Unknown or malformed values fail the process — no silent
-defaults for security-relevant keys.
-
-- Every key is prefixed (`<APP>_DATABASE_URL`, `_JWT_SECRET`,
-  `_PASSWORD_PEPPER`, `_ACCESS_TOKEN_TTL`, `_REFRESH_TOKEN_TTL`,
-  `_VERIFY_CODE_TTL`, `_RESET_CODE_TTL`, `_RESET_RATE_LIMIT`,
-  `_RESET_RATE_WINDOW`, `_MAX_LOGIN_RETRIES`, `_AUTH_COOKIE`,
-  `_LOGOUT_ALL_ON_RESET`, `_CORS_ORIGINS`, `_GOOGLE_*`, `_GITHUB_*`,
-  `_AUTH_GITHUB_CALLBACK_URL`, `_AUTH_FRONTEND_SUCCESS`, `_JANITOR_POLL`,
-  `_ALLOWED_ADMIN_EMAILS`, `_SMTP_*`, `_OFFLINE`, `_OUTBOX_POLL`,
-  `_OUTBOX_BATCH`, `_LOG_LEVEL`, `_BIND`, `_DATABASE_MAX_CONNECTIONS`).
-- Durations accept `ms`/`s`/`m`/`h`; booleans are the literal `true`/`false`;
-  lists are comma-separated.
-- **Fail closed**: `JWT_SECRET` must be ≥32 bytes and not a placeholder;
-  `PASSWORD_PEPPER`, when set, must be ≥32 bytes.
-- **Offline guard (INV-T7)**: `<APP>_OFFLINE=true` forbids SMTP credentials
-  at boot, forces the console sender, and makes OAuth flows refuse instead of
-  opening sockets. A fresh `.env` with dummy values plus `OFFLINE=true` must
-  boot a working stack.
-- Config is read in the roots and passed down. A slice that calls
-  `load()` or reads `process.env` is a defect; add a field to `Deps`.
-
----
-
-## 11. Observability
-
-- **Logs**: Fastify's Pino logger (JSON). Request paths use `req.log`, with
-  `x-request-id` on every response. Never log passwords, tokens, cookies,
-  authorization headers, or the WS query string.
-- **Health**: `/healthz` is process liveness (no I/O). `/readyz` runs
-  `SELECT 1` against the pool and reports failure as non-2xx.
-- **Envelope**: stable `code` is the machine field; `detail` is for humans.
-  Counters and alerts should key on `code`, not on message text.
-- **Metrics/tracing are not shipped.** The seams are the Fastify hooks and
-  the platform adapters; add OpenTelemetry there, not in every slice.
-- **Log levels**: `debug` in development, `info` in production. A per-request
-  log line at `info` on a hot path is a cost decision.
-
----
-
-## 12. Deployment
-
-- One Docker image (`node:24-alpine`, non-root `node`, `HEALTHCHECK` via
-  `dist/bin/api.js probe`), two entrypoints: `dist/bin/api.js` and
-  `dist/bin/worker.js`.
-- `docker compose up --build` boots Postgres, a one-shot `migrations`
-  service, the API, and the worker. The API never migrates itself.
-- Single-replica deployments can run the outbox in-process (the API starts
-  one) but still need the worker for the janitor.
-- Scale-out is safe for outbox claims and janitor purges; realtime fan-out is
-  not (see §8).
-- No lockfile ships with the template (INV-T3). Decide deliberately after
-  instantiation: commit `pnpm-lock.yaml` and remove the ignore entry if you
-  need reproducible installs.
-
----
-
-## 13. When to add a slice
-
-Add a slice when a capability has its own rules, its own tables or its own
-route group. Do not add one for a single handler over an existing slice.
-
-The recipe is `docs/12-playbooks.md` §1; the proof it was done right:
-
-- `make ci` green and `make accept` green.
-- `git status` shows edits only under `src/features/<slug>/`, the root wiring
-  (`src/bin/api.ts`), a new migration, and optionally a spec — nothing else.
-- Deleting the slice directory plus its root registration leaves a compiling
-  project (apart from the example's spec).
-
-If adding a slice forced edits in three unrelated directories, the boundary
-is wrong; fix the shape before landing it.
-
----
-
-## 14. Checklist
-
-- [ ] `domain.ts` imports only Node stdlib and `#shared/*`.
-- [ ] Ports are consumer-defined, ≤3 methods, no driver types.
-- [ ] SQL appears only in `queries.ts`; the adapter is the only caller.
-- [ ] Errors are `AppError` values with codes from `src/shared/apperr`.
-- [ ] The handler throws; the root renders; nothing double-renders.
-- [ ] Lists are paginated with a hard maximum.
-- [ ] Ownership is a predicate in the SQL, not a post-read check.
-- [ ] A new table has a paired up/down migration and no startup migration.
-- [ ] Mail goes through the outbox port, never an inline sender.
-- [ ] Realtime publishes to a room; slices never import each other.
-- [ ] New loops take the process signal and are replica-safe.
-- [ ] New config is `<APP>_`-prefixed, zod-validated, fail-closed, documented
-      in `.env.example`.
-- [ ] Nothing new imports `src/bin/**`; nothing new imports another slice.
-
----
-
-## 15. Known gaps in the shipped code
-
-Not features. Fix deliberately or leave documented.
-
-- No integration tier: adapter SQL and migration up/down are unproven by CI
-  (`docs/11-testing-and-ci.md` §3).
-- The outbox insert is not atomic with the state change (§7).
-- `authsignup`, `authsession`, `authpassword`, `authoauth` and `realtime`
-  have no unit tests; cucumber covers their behavior.
-- Realtime is single-process (Redis pub/sub is the evolution).
-- No coverage threshold, mutation testing, secret scan, SBOM or image scan.
-- `POST /api/v1/auth/upgrade-to-admin` is unauthenticated and gated only by
-  `ALLOWED_ADMIN_EMAILS`; remove it after bootstrap.
-- The stack deltas vs beautifulnodejs's published digest (Kysely not Drizzle,
-  DB outbox not BullMQ/Redis, constructor DI not tsyringe) are intentional.
-  Swap an adapter; do not change the contract.
+- [ ] Code is organized by slice, then by layer (`domain`, `application`,
+      `adapters`, `contracts`), never by technical type at the top level.
+- [ ] Architecture tests enforce the dependency rules in CI.
+- [ ] `domain` has no framework, ORM, HTTP or queue imports.
+- [ ] Each slice owns its schema and migrations; no cross-slice joins or FKs.
+- [ ] ORM for aggregates and writes; parameterized SQL for read models.
+- [ ] Vector store behind a port, tenant-scoped, rebuildable from the database.
+- [ ] Migrations are forward-only, expand/contract, run as a separate step.
+- [ ] Use cases authorize by permission + ownership using `RequestContext`;
+      controllers are thin; `{userType}` never authorizes.
+- [ ] Every job is idempotent, has a deterministic `jobId`, a lease with
+      heartbeat, a fencing/version check, retries with backoff and a DLQ.
+- [ ] Redis/Dragonfly holds coordination only; the database holds truth.
+- [ ] Redis keys follow `{app}:{env}:{slice}:{purpose}:{id}` and have TTLs.
+- [ ] Scheduled work uses leader election and enqueues small units.
+- [ ] Cross-slice calls go through `contracts/`; cross-slice writes go through
+      outbox events.
+- [ ] Long operations return `202` and are executed by batch workers.
+- [ ] Deployment modes (`api`, `worker`, `scheduler`, `migrate`) exist before
+      any microservice.
+- [ ] A slice is extracted only with a measured trigger and the readiness
+      checklist complete.
+- [ ] Logs, traces and metrics carry `correlationId`, `tenantId` and `slice`.
+- [ ] Secrets are encrypted at rest and never logged.

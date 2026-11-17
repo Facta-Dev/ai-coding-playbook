@@ -1,3 +1,13 @@
+---
+id: REA
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: security
+depends_on: []
+---
+
 REA: setup in 3 commands
 Setup registers REA with every agent it finds on your machine (Claude Code, Codex, Cursor, Gemini CLI) and installs a matching REA skill. Restart Claude Code afterwards.
 python
@@ -201,7 +211,7 @@ PHASE 3 · Check
 Report: features matched, features designed our own, open questions.
 # Awesome AI Reverse Engineering
 
-[中文](README.zh-CN.md)
+中文
 
 Open-source **AI reverse engineering tools** for Claude Code, Codex and other agents: Ghidra MCP and IDA Pro MCP servers, jadx and Frida for mobile apps, reverse engineering skills, REA, and programs rebuilt with it. 117 repos, each one read and security-graded by [Agent Skills Hub (agentskillshub.top)](https://agentskillshub.top).
 
@@ -397,7 +407,7 @@ The questions are answered by a decision model reading each README, not by hand.
 
 **Security** is the grade of the repo's README and install steps on Agent Skills Hub. *pending* means the catalog has not graded it yet.
 
-Preview images are reduced copies of pictures from each project's own README, included only for projects under a permissive license. Sources and licenses: [assets/previews/NOTICE.md](assets/previews/NOTICE.md). Open an issue to have one removed.
+Preview images are reduced copies of pictures from each project's own README, included only for projects under a permissive license. Sources and licenses: `assets/previews/NOTICE.md`. Open an issue to have one removed.
 
 ## Related collections
 
@@ -409,4 +419,4 @@ Open an issue with the GitHub URL. It goes through the same review as every entr
 
 ---
 
-Machine-readable copy: [`data/skills.json`](data/skills.json). Generated 2026-11-05.
+Machine-readable copy: `data/skills.json`. Generated 2026-11-05.

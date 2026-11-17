@@ -1,3 +1,13 @@
+---
+id: JAVA_J2EE
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: backend-platform
+depends_on: [BACKEND]
+---
+
 # PLAYBOOK_JAVA_J2EE.md — Java enterprise backend playbook (J2EE · Jakarta EE 11)
 
 Architecture contract for a Java enterprise backend — the stack historically

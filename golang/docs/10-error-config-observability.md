@@ -5,7 +5,7 @@ deliberate cut: no OpenTelemetry in the template.
 
 ## 1. The error envelope
 
-Every non-2xx body is `{"detail": string, "code": STABLE_CODE}` — stable
+Every non-2xx body is `{"error": {"code": STABLE_CODE, "message": string}}` — stable
 codes are constants in `internal/shared/apperr`, domain errors carry them,
 and `httpx` maps code → HTTP status in exactly one place:
 
@@ -21,7 +21,7 @@ const (
 ```
 
 Rules: adapters never invent codes; use cases return sentinel-wrapped errors;
-the envelope is written only by `httpx` helpers — grep for `"detail":` and you
+the envelope is written only by `httpx` helpers — grep for `"error":` and you
 find one definition. Client code keys on the *code*, not the message.
 
 ## 2. Error handling posture

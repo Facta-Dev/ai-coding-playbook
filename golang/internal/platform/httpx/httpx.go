@@ -15,10 +15,18 @@ import (
 	"github.com/<scope>/<app>/internal/shared/apperr"
 )
 
-// Envelope is the stable error shape (ctx0 parity).
+// Envelope is the stable error shape (PLAYBOOK_URLS §Granular permissions):
+// {"error":{"code","message","requiredPermission?","correlationId?"}}.
 type Envelope struct {
-	Detail string `json:"detail"`
-	Code   string `json:"code"`
+	Error ErrorBody `json:"error"`
+}
+
+// ErrorBody is the inner error object shared by every backend.
+type ErrorBody struct {
+	Code               string `json:"code"`
+	Message            string `json:"message"`
+	RequiredPermission string `json:"requiredPermission,omitempty"`
+	CorrelationID      string `json:"correlationId,omitempty"`
 }
 
 var validate = validator.New()
@@ -30,13 +38,13 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// WriteErr writes the {"detail","code"} envelope.
+// WriteErr writes the canonical {"error":{"code","message"}} envelope.
 func WriteErr(w http.ResponseWriter, err error) {
 	ae := apperr.From(err)
 	if ae == nil {
 		ae = apperr.E(500, apperr.InternalError, "internal server error")
 	}
-	WriteJSON(w, ae.HTTP, Envelope{Detail: ae.Detail, Code: ae.Code})
+	WriteJSON(w, ae.HTTP, Envelope{Error: ErrorBody{Code: ae.Code, Message: ae.Detail}})
 }
 
 // maxBody caps every JSON body at the edge (1 MiB) so no endpoint can

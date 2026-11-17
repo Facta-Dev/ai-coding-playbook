@@ -7,20 +7,28 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AppError, E, CodeUnprocessable, Validation, from } from "#shared/apperr.js";
 
-// Envelope is the stable error shape.
+// Envelope is the stable error shape (PLAYBOOK_URLS §Granular permissions):
+// {"error":{"code","message","requiredPermission?","correlationId?"}}.
 export interface Envelope {
-  detail: string;
-  code: string;
+  error: {
+    code: string;
+    message: string;
+    requiredPermission?: string;
+    correlationId?: string;
+  };
 }
 
-export const envelope = (e: AppError): Envelope => ({ detail: e.detail, code: e.code });
+export const envelope = (e: AppError): Envelope => ({
+  error: { code: e.code, message: e.detail },
+});
 
 // sendJSON writes v as JSON with the given status.
 export const sendJSON = (reply: FastifyReply, status: number, value: unknown): void => {
   void reply.code(status).type("application/json").send(value);
 };
 
-// sendErr writes the {"detail","code"} envelope from any thrown value.
+// sendErr writes the canonical {"error":{"code","message"}} envelope from any
+// thrown value.
 export const sendErr = (reply: FastifyReply, err: unknown): void => {
   const ae = from(err);
   sendJSON(reply, ae.http, envelope(ae));

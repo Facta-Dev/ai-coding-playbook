@@ -1,6 +1,7 @@
 // Package apperr carries the typed application error and the stable error
 // codes shared by all slices. The HTTP adapter translates an AppError into
-// the {"detail": ..., "code": ...} envelope; nothing else touches constants.
+// the canonical {"error":{"code","message"}} envelope; nothing else touches
+// constants.
 package apperr
 
 import "errors"

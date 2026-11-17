@@ -69,4 +69,4 @@ evals: ## Build the evals harness (EVALS=ON) and run its checks
 verify: ## Stage a renamed copy and run every gate on it
 	bash scripts/verify-template.sh
 
-ci: lint test ## The gate: format check, build and tests
+ci: lint test evals ## The gate: format check, build, tests and contract evals

@@ -1,3 +1,13 @@
+---
+id: CLI
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: client-platform
+depends_on: [URLS, SECURITY]
+---
+
 # PLAYBOOK_CLI.md — Cross-platform terminal CLI/TUI playbook (Linux · macOS · Windows)
 
 Architecture and engineering contract for building, shipping and operating a

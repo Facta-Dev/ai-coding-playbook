@@ -3,8 +3,10 @@
 Runnable template for an enterprise Java backend: **Jakarta EE 11** (the stack
 historically called J2EE), Java 21, Maven, CDI, JPA/Hibernate, Flyway, JAX-RS
 and PostgreSQL. The architecture is **hexagonal + vertical slices**; the
-`widgets` slice is the reference. The full contract is in
-`PLAYBOOK_BACKEND.md` (the J2EE playbook), with `PLAYBOOK_SECURITY.md`,
+`widgets` slice is the reference. The shared contract is
+`PLAYBOOK_BACKEND.md` (language-agnostic hexagonal architecture); the Java
+specialization is `PLAYBOOK_JAVA_J2EE.md` (Maven modules, CDI, JPA/JTA,
+JMS/outbox, JAX-RS). The remaining contracts are `PLAYBOOK_SECURITY.md`,
 `PLAYBOOK_TESTS.md`, `PLAYBOOK_URLS.md`, `PLAYBOOK_AUDIT.md` and
 `PLAYBOOK_CLAUDE_CODE.md`.
 

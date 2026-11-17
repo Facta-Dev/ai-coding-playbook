@@ -1,3 +1,13 @@
+---
+id: TESTS
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 180
+owner: testing
+depends_on: [BACKEND, URLS]
+---
+
 # PLAYBOOK_TESTS.md — Testing & compliance-evidence playbook
 
 Testing contract for the reference service. It follows the same **vertical

@@ -40,21 +40,23 @@ def test_error_envelope_for_unknown_login(client: Any) -> None:
     )
     assert response.status_code == 401
     assert response.json() == {
-        "detail": "invalid email or password",
-        "code": "AUTH_INVALID_CREDENTIALS",
+        "error": {
+            "code": "AUTH_INVALID_CREDENTIALS",
+            "message": "invalid email or password",
+        }
     }
 
 
 def test_unknown_route_uses_the_envelope(client: Any) -> None:
     response = client.get("/nope")
     assert response.status_code == 404
-    assert response.json()["code"] == "NOT_FOUND"
+    assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
 def test_validation_errors_use_the_envelope(client: Any) -> None:
     response = client.post("/api/v1/auth/signup", json={"email": "not-an-email"})
     assert response.status_code == 422
-    assert response.json()["code"] == "VALIDATION_FAILED"
+    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
 
 
 def test_security_headers_and_request_id(client: Any) -> None:
@@ -71,9 +73,11 @@ def test_every_failure_uses_the_same_envelope(
     response = client.request(method, path, json=payload)
     assert response.status_code == status, response.text
     body = response.json()
-    assert set(body) == {"detail", "code"}, body
-    assert body["code"] in {code.value for code in Code}, body
-    assert isinstance(body["detail"], str) and body["detail"], body
+    assert set(body) == {"error"}, body
+    inner = body["error"]
+    assert set(inner) <= {"code", "message", "requiredPermission", "correlationId"}, inner
+    assert inner["code"] in {code.value for code in Code}, body
+    assert isinstance(inner["message"], str) and inner["message"], body
 
 
 def test_unhandled_errors_use_the_envelope(
@@ -88,7 +92,7 @@ def test_unhandled_errors_use_the_envelope(
         "/api/v1/auth/login", json={"email": "ghost@example.com", "password": "whatever-123"}
     )
     assert response.status_code == 500
-    assert response.json() == {"detail": "internal server error", "code": "INTERNAL"}
+    assert response.json() == {"error": {"code": "INTERNAL", "message": "internal server error"}}
 
 
 def test_websocket_auth_failure_closes_with_4001(deps: Deps) -> None:

@@ -1,3 +1,13 @@
+---
+id: MOBILE_IOS_SWIFT
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: client-platform
+depends_on: [FRONTEND_MOBILE]
+---
+
 # PLAYBOOK_MOBILE_IOS_SWIFT.md — Native iOS playbook (Swift 6.x · SwiftUI in code · Game · Market · Avatar)
 
 Architecture and engineering contract for building the **same three-variant

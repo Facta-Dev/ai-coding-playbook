@@ -1,3 +1,13 @@
+---
+id: INSTALL
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: engineering-productivity
+depends_on: [CLAUDE_CODE, MASTER]
+---
+
 # The playbook — installation and bootstrap
 
 This is the runbook for a new machine (or a re-provisioned one) and for a fresh
@@ -57,7 +67,7 @@ Target: a full bootstrap with **zero model calls**; at most one cheap-tier probe
 | Tool | Minimum | Check |
 | --- | --- | --- |
 | git | any supported | `git --version` |
-| gh | any, authenticated | `gh auth status` |
+| gh | optional; authenticated for private repos | `gh auth status` |
 | claude | v2.1.251 or later (2.1.309+ recommended) | `claude --version` |
 | ollama | ≥ 0.33 with `ollama launch claude` | `ollama --version` |
 | python3 | 3.9+ (stdlib only) | `python3 --version` |

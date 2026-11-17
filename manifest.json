@@ -1,0 +1,531 @@
+{
+  "set": "ai-coding-playbook",
+  "manifestVersion": 1,
+  "updated": "2026-11-17",
+  "alwaysLoad": [
+    "MASTER#3"
+  ],
+  "playbooks": [
+    {
+      "id": "MASTER",
+      "file": "PLAYBOOK_MASTER.md",
+      "version": "1.0.0",
+      "layer": "governance",
+      "volatility": "fast",
+      "owner": "architecture",
+      "depends_on": [
+        "URLS",
+        "BACKEND",
+        "SECURITY",
+        "TESTS",
+        "AUDIT",
+        "CLAUDE_CODE"
+      ],
+      "appliesTo": {
+        "paths": [
+          "PLAYBOOK_*.md",
+          ".claude/**",
+          "scripts/**",
+          "kit/**"
+        ],
+        "keywords": [
+          "playbook",
+          "constitution",
+          "routing",
+          "precedence"
+        ]
+      }
+    },
+    {
+      "id": "INSTALL",
+      "file": "PLAYBOOK_INSTALL.md",
+      "version": "1.0.0",
+      "layer": "governance",
+      "volatility": "fast",
+      "owner": "engineering-productivity",
+      "depends_on": [
+        "CLAUDE_CODE",
+        "MASTER"
+      ],
+      "appliesTo": {
+        "paths": [
+          "install/**",
+          "scripts/claude-kit/**",
+          "kit/**"
+        ],
+        "keywords": [
+          "install",
+          "bootstrap",
+          "clone",
+          "kit"
+        ]
+      }
+    },
+    {
+      "id": "URLS",
+      "file": "PLAYBOOK_URLS.md",
+      "version": "1.0.0",
+      "layer": "foundation",
+      "volatility": "slow",
+      "owner": "architecture",
+      "depends_on": [],
+      "appliesTo": {
+        "paths": [
+          "**/routes/**",
+          "**/http/**",
+          "specs/**"
+        ],
+        "keywords": [
+          "route",
+          "url",
+          "permission",
+          "error envelope"
+        ]
+      }
+    },
+    {
+      "id": "BACKEND",
+      "file": "PLAYBOOK_BACKEND.md",
+      "version": "1.0.0",
+      "layer": "foundation",
+      "volatility": "slow",
+      "owner": "architecture",
+      "depends_on": [
+        "URLS"
+      ],
+      "appliesTo": {
+        "paths": [
+          "**/domain/**",
+          "**/usecase/**",
+          "**/ports/**",
+          "**/migrations/**"
+        ],
+        "keywords": [
+          "slice",
+          "hexagonal",
+          "outbox",
+          "repository",
+          "use case"
+        ]
+      }
+    },
+    {
+      "id": "SECURITY",
+      "file": "PLAYBOOK_SECURITY.md",
+      "version": "1.0.0",
+      "layer": "foundation",
+      "volatility": "medium",
+      "owner": "security",
+      "depends_on": [
+        "URLS",
+        "BACKEND"
+      ],
+      "appliesTo": {
+        "paths": [
+          "**/auth/**",
+          "**/security/**",
+          "**/Dockerfile*",
+          "**/*.tf"
+        ],
+        "keywords": [
+          "auth",
+          "token",
+          "secret",
+          "input",
+          "ssrf",
+          "dependency"
+        ]
+      }
+    },
+    {
+      "id": "TESTS",
+      "file": "PLAYBOOK_TESTS.md",
+      "version": "1.0.0",
+      "layer": "foundation",
+      "volatility": "slow",
+      "owner": "testing",
+      "depends_on": [
+        "BACKEND",
+        "URLS"
+      ],
+      "appliesTo": {
+        "paths": [
+          "tests/**",
+          "test/**",
+          "**/*_test.go",
+          "**/*.test.ts"
+        ],
+        "keywords": [
+          "test",
+          "gate",
+          "evidence",
+          "coverage"
+        ]
+      }
+    },
+    {
+      "id": "AUDIT",
+      "file": "PLAYBOOK_AUDIT.md",
+      "version": "1.0.0",
+      "layer": "foundation",
+      "volatility": "medium",
+      "owner": "compliance",
+      "depends_on": [
+        "SECURITY",
+        "TESTS"
+      ],
+      "appliesTo": {
+        "paths": [
+          "docs/compliance/**",
+          "docs/adr/**"
+        ],
+        "keywords": [
+          "soc 2",
+          "iso 27001",
+          "iso 9001",
+          "evidence",
+          "control"
+        ]
+      }
+    },
+    {
+      "id": "CLAUDE_CODE",
+      "file": "PLAYBOOK_CLAUDE_CODE.md",
+      "version": "1.0.0",
+      "layer": "process",
+      "volatility": "fast",
+      "owner": "engineering-productivity",
+      "depends_on": [
+        "MASTER"
+      ],
+      "appliesTo": {
+        "paths": [
+          ".claude/**",
+          "AGENTS.md",
+          "CLAUDE.md",
+          "scripts/**"
+        ],
+        "keywords": [
+          "claude code",
+          "agent",
+          "skill",
+          "hook",
+          "multi-session",
+          "sdd",
+          "tdd"
+        ]
+      }
+    },
+    {
+      "id": "FRONTEND",
+      "file": "PLAYBOOK_FRONTEND.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "medium",
+      "owner": "client-platform",
+      "depends_on": [
+        "URLS",
+        "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/views/**",
+          "src/viewmodels/**",
+          "src/sdk/**",
+          "src/core/**"
+        ],
+        "keywords": [
+          "react",
+          "mvvm",
+          "viewmodel",
+          "sdk",
+          "route"
+        ]
+      }
+    },
+    {
+      "id": "FRONTEND_MOBILE",
+      "file": "PLAYBOOK_FRONTEND_MOBILE.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND",
+        "URLS",
+        "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "app/**",
+          "src/**",
+          "packages/**"
+        ],
+        "keywords": [
+          "expo",
+          "react native",
+          "device tier",
+          "push"
+        ]
+      }
+    },
+    {
+      "id": "MOBILE_ANDROID_KOTLIN",
+      "file": "PLAYBOOK_MOBILE_ANDROID_KOTLIN.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND_MOBILE"
+      ],
+      "appliesTo": {
+        "paths": [
+          "android/**",
+          "app/**",
+          "src/**"
+        ],
+        "keywords": [
+          "android",
+          "kotlin",
+          "compose",
+          "gradle"
+        ]
+      }
+    },
+    {
+      "id": "MOBILE_IOS_SWIFT",
+      "file": "PLAYBOOK_MOBILE_IOS_SWIFT.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND_MOBILE"
+      ],
+      "appliesTo": {
+        "paths": [
+          "ios/**",
+          "Sources/**",
+          "Packages/**"
+        ],
+        "keywords": [
+          "ios",
+          "swift",
+          "swiftui",
+          "storekit"
+        ]
+      }
+    },
+    {
+      "id": "DESKTOP_QT",
+      "file": "PLAYBOOK_DESKTOP_QT.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND",
+        "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "cmake/**",
+          "src/**",
+          "packages/**"
+        ],
+        "keywords": [
+          "qt",
+          "desktop",
+          "cmake",
+          "signing"
+        ]
+      }
+    },
+    {
+      "id": "CHROME_EXTENSION",
+      "file": "PLAYBOOK_CHROME_EXTENSION.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND",
+        "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "entrypoints/**",
+          "src/**",
+          "manifest*.json"
+        ],
+        "keywords": [
+          "chrome",
+          "extension",
+          "mv3",
+          "service worker",
+          "permission"
+        ]
+      }
+    },
+    {
+      "id": "CLI",
+      "file": "PLAYBOOK_CLI.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "URLS",
+        "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/**",
+          "tests/**"
+        ],
+        "keywords": [
+          "cli",
+          "tui",
+          "exit code",
+          "stdout",
+          "pty"
+        ]
+      }
+    },
+    {
+      "id": "GOLANG",
+      "file": "PLAYBOOK_GOLANG.md",
+      "version": "1.0.0",
+      "layer": "backend stack",
+      "volatility": "medium",
+      "owner": "backend-platform",
+      "depends_on": [
+        "BACKEND"
+      ],
+      "appliesTo": {
+        "paths": [
+          "cmd/**",
+          "internal/**"
+        ],
+        "keywords": [
+          "go",
+          "chi",
+          "pgx",
+          "sqlc",
+          "river"
+        ]
+      }
+    },
+    {
+      "id": "NODEJS",
+      "file": "PLAYBOOK_NODEJS.md",
+      "version": "1.0.0",
+      "layer": "backend stack",
+      "volatility": "medium",
+      "owner": "backend-platform",
+      "depends_on": [
+        "BACKEND"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/**"
+        ],
+        "keywords": [
+          "node",
+          "fastify",
+          "kysely",
+          "outbox"
+        ]
+      }
+    },
+    {
+      "id": "PYTHON",
+      "file": "PLAYBOOK_PYTHON.md",
+      "version": "1.0.0",
+      "layer": "backend stack",
+      "volatility": "medium",
+      "owner": "backend-platform",
+      "depends_on": [
+        "BACKEND"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/**"
+        ],
+        "keywords": [
+          "python",
+          "fastapi",
+          "sqlalchemy",
+          "alembic"
+        ]
+      }
+    },
+    {
+      "id": "RUST",
+      "file": "PLAYBOOK_RUST.md",
+      "version": "1.0.0",
+      "layer": "backend stack",
+      "volatility": "medium",
+      "owner": "backend-platform",
+      "depends_on": [
+        "BACKEND"
+      ],
+      "appliesTo": {
+        "paths": [
+          "crates/**"
+        ],
+        "keywords": [
+          "rust",
+          "axum",
+          "sqlx",
+          "clippy"
+        ]
+      }
+    },
+    {
+      "id": "JAVA_J2EE",
+      "file": "PLAYBOOK_JAVA_J2EE.md",
+      "version": "1.0.0",
+      "layer": "backend stack",
+      "volatility": "medium",
+      "owner": "backend-platform",
+      "depends_on": [
+        "BACKEND"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/main/java/**"
+        ],
+        "keywords": [
+          "java",
+          "jakarta ee",
+          "cdi",
+          "jpa",
+          "jax-rs"
+        ]
+      }
+    },
+    {
+      "id": "REA",
+      "file": "PLAYBOOK_REA.md",
+      "version": "1.0.0",
+      "layer": "tooling",
+      "volatility": "fast",
+      "owner": "security",
+      "depends_on": [],
+      "appliesTo": {
+        "paths": [
+          ".claude/**",
+          "docs/rea/**"
+        ],
+        "keywords": [
+          "reverse engineering",
+          "binary",
+          "mcp",
+          "frida"
+        ]
+      }
+    }
+  ]
+}

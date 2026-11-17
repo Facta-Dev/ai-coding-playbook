@@ -1,253 +1,201 @@
-# PLAYBOOK_URLS.md — URL and route contract (Rust backend)
-
-Route-naming contract for the `<app>` HTTP API. The one rule that carries the
-whole file: **the URL never authorizes.** The prefix (`/admin`, `/auth`) is an
-experience namespace; permissions come from the verified JWT and are enforced
-by middleware plus a handler-side `can(role, action)` check.
-
-Premise for actors and roles: `MEMORY.md`.
-
+---
+id: URLS
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 180
+owner: architecture
+depends_on: []
 ---
 
-## 1. The model
+# PLAYBOOK_URLS.md — URL / route naming playbook
 
-`<app>` has no `{userType}` segment and no tenant segment.
+Route-naming contract for the reference service's backend API and SPA routes,
+adapted from the enterprise multi-tenant URL convention. Owner-provided
+template (2026-11-06), normalized to the service's actors. The one rule that
+carries the whole file: **the user-type segment never authorizes** — it is an
+experience namespace; permissions are validated by session, token and RBAC in
+the backend.
 
-- **Two API namespaces plus shared auth.** `/api/v1/admin/...` serves the
-  admin console; `/api/v1/...` serves every other client; `/api/v1/auth/...`
-  is shared.
-- **One role set per user**, ordered
-  `Viewer < Editor < Admin < Owner` (`<app>-core/src/rbac.rs`). The DB enum
-  `GUEST/MODERATOR/USER/ADMIN` maps onto it (`GUEST → Viewer`); RBAC reads the
-  role, never `user_type`.
-- **Path syntax is axum 0.8**: `{id}` placeholders, one `Router::route` call
-  per path with method chaining (`get(..).post(..)`). The older `:id` syntax
-  panics in axum 0.8 — do not use it.
-- **The spec is generated from the code.** Every handler carries
-  `#[utoipa::path(...)]` and is registered in `ApiDoc`'s `paths(...)` list in
-  `<app>-api/src/router.rs`. A route missing from that list is invisible to
-  `/docs` and to the committed `openapi.json`; `just gen-check` is the guard.
+## Enterprise template
 
----
-
-## 2. Canonical shape
+### Frontend
 
 ```text
-/api/v1/admin/{module}/{resource}                     admin list
-/api/v1/admin/{module}/{resource}/{id}                admin detail
-/api/v1/admin/{module}/{resource}/{id}/{sub}          admin nested
-/api/v1/{module}/{resource}[/{id}[/{sub}]]            user surface
-/api/v1/auth/{action}                                 shared auth
-/healthz, /readyz                                     health, outside the API
-/api/v1/ws                                            WebSocket upgrade
+/{userType}/{module}/{resource}
+/{userType}/{module}/{resource}/{resourceId}
+/{userType}/{module}/{resource}/{resourceId}/{subresource}
 ```
 
-### 2.1 Route inventory (shipped)
+Examples:
 
 ```text
-Health (outside auth)
-GET    /healthz
-GET    /readyz
-
-Transport
-GET    /api/v1/ws                          WebSocket, auth AFTER upgrade (?token=)
-
-Auth — public
-POST   /api/v1/auth/signup
-POST   /api/v1/auth/verify
-POST   /api/v1/auth/verify/resend
-POST   /api/v1/auth/login
-POST   /api/v1/auth/refresh
-POST   /api/v1/auth/forgot-password
-POST   /api/v1/auth/validate-code
-POST   /api/v1/auth/reset-password
-POST   /api/v1/auth/google
-GET    /api/v1/auth/github/login
-GET    /api/v1/auth/github/callback
-POST   /api/v1/auth/upgrade-to-admin       bootstrap whitelist only
-
-Auth — authenticated
-POST   /api/v1/auth/logout
-GET    /api/v1/auth/me
-PUT    /api/v1/auth/me
-GET    /api/v1/auth/sessions
-GET    /api/v1/auth/sessions/current
-POST   /api/v1/auth/sessions/revoke-current
-POST   /api/v1/auth/sessions/revoke-all
-POST   /api/v1/auth/change-password
-GET    /api/v1/auth/github/connect-url
-
-User surface — authenticated
-GET    /api/v1/widgets
-POST   /api/v1/widgets
-GET    /api/v1/widgets/{id}
-PUT    /api/v1/widgets/{id}
-DELETE /api/v1/widgets/{id}
-GET    /api/v1/widgets/events              SSE
-
-Admin surface — authenticated + Admin rank
-GET    /api/v1/admin/users
-GET    /api/v1/admin/users/{id}
-PUT    /api/v1/admin/users/{id}
-GET    /api/v1/admin/auth-session/users/{id}/sessions
-POST   /api/v1/admin/auth-session/users/{id}/revoke-all
-GET    /api/v1/admin/auth-session/anomalies
-
-Infrastructure
-GET    /metrics                            feature `metrics`, unguarded — see §7
-GET    /docs, /docs/openapi.json           Swagger UI, unguarded — see §7
+/app/funnels/leads/{leadId}
+/admin/tenants/{tenantId}/users
+/admin/billing/invoices/{invoiceId}
+/partner/campaigns/{campaignId}
 ```
 
-A new slice extends the same shape:
+### API
 
 ```text
-GET    /api/v1/orders
-GET    /api/v1/orders/{id}
-POST   /api/v1/orders/{id}/cancel          domain action, not CRUD
-GET    /api/v1/admin/orders
+/api/{version}/{userType}/{module}/{resource}
+/api/{version}/{userType}/{module}/{resource}/{resourceId}
+/api/{version}/{userType}/{module}/{resource}/{resourceId}/{subresource}
 ```
 
-Rules:
+Examples:
 
-- **Plural resources.** `/users`, `/sessions`, `/widgets`. A singular segment
-  is an action: `POST /api/v1/auth/login`.
-- **kebab-case** for multi-word segments (`auth-session`, `audit-logs`).
-- **IDs in the path, filters in the query.**
-  `/api/v1/admin/users?role=ADMIN&limit=50`, never `/users/by-role/ADMIN`.
-- **No verbs when the method says it.** Reserved exceptions are domain actions
-  that are not CRUD: `/auth/sessions/revoke-all`,
-  `/admin/auth-session/users/{id}/revoke-all`, `/orders/{id}/cancel`.
-- **One version segment**, `/api/v1`, shared by every slice. Additive changes
-  stay in `v1`; a breaking change creates `/api/v2` with a deprecation window.
-- **No trailing slash.**
-- **Pagination on every list**: `limit` + `offset` (or a cursor) with a hard
-  maximum. The shipped `GET /widgets` returns an unbounded `Vec<Widget>` —
-  fine for the example slice, not for a real collection; add pagination before
-  the collection grows.
-- **The prefix classifies; it never authorizes.** Every protected route is
-  mounted behind an auth middleware, `/api/v1/admin/*` additionally behind the
-  Admin rank gate, and the handler re-checks the action.
-- **Status codes**: `201` + the created body on create, `204` on a successful
-  delete/revoke, `409` on a uniqueness conflict, `422` is not used — invalid
-  input is `400`.
+```text
+GET  /api/v1/app/funnels/leads/{leadId}
+GET  /api/v1/admin/tenants/{tenantId}/users
+GET  /api/v1/partner/campaigns/{campaignId}/calls
+POST /api/v1/admin/tenants/{tenantId}/users/{userId}/suspend
+```
 
----
+## The {userType} segment
 
-## 3. Two auth middlewares — pick deliberately
+Use product roles/personas, never authentication details.
 
-| Middleware | Carriers | Used by |
+| Segment | Use | Example |
 |---|---|---|
-| `<app>_warden::require_auth` | `Authorization: Bearer` only | routes that are API-client-only |
-| `crate::auth::require_auth_cookie` | `Authorization: Bearer`, then the `<app>_access_token` cookie when `<APP>_AUTH_COOKIE` mode is on | identity, admin, SSE |
+| `/app` | End-user of the client company (seller/employee console) | `/app/funnels/leads` |
+| `/admin` | Platform's own console or super admin | `/admin/tenants` |
+| `/owner` | Account/tenant owner | `/owner/settings` |
+| `/manager` | Manager with extended permissions | `/manager/team` |
+| `/agent` | Operational user — sales agent, support | `/agent/inbox` |
+| `/partner` | Partner, agency, reseller | `/partner/clients` |
+| `/public` | Session-less routes | `/public/pricing` |
 
-Both attach a `Principal { id, roles }` to the request extensions and answer a
-401 envelope on failure. The cookie fallback is what lets a browser SPA rely on
-the `HttpOnly; SameSite=Strict` cookie; a bearer-only route silently excludes
-that client. Choose `require_auth_cookie` for anything a browser calls.
+Never use `/user` as the generic segment: `/app` is the end-user experience
+and `/admin` is reserved for administration. This avoids redundant URLs like
+`/user/user/leads`.
 
-Authorization is never only the middleware:
+## Authorization rules
 
-- a handler calls `require_action(&principal, Action::…)` (widgets) or the
-  admin rank gate (`require_admin`), which reads the token's roles;
-- a multi-role principal is allowed if **any** role permits the action;
-- the admin rank gate is strict `>` against the threshold (an actor cannot act
-  on a peer of equal rank);
-- an authenticated but disallowed caller gets `403`; a foreign or unowned row
-  gets `404`, never `403`.
+- `{userType}` defines **experience and navigation**, not security.
+- The backend must validate: user identity from the token; the active
+  tenant/organization; granular role and permissions; resource ownership.
+- Never trust the `/admin` prefix to grant access.
+- A user with multiple roles holds an active session role, or the backend
+  resolves permissions per resource.
 
----
+```text
+GET /api/v1/admin/tenants/{tenantId}/users
+Authorization: Bearer <token>
+X-Tenant-Id: tenant_123
+```
 
-## 4. Error envelope
+Even though the route says `/admin`, the backend must check the token belongs
+to a user with `tenant.users.read` for that `tenantId`.
 
-Every error response — API, auth middleware, 404 fallback — uses one shape:
+Reference mapping: the admin configures API keys, creates employee users and
+monitors one funnel per employee — so the admin console lives under `/admin`,
+each employee's funnel view under `/app/funnels`, and every cross-employee or
+cross-tenant read is an admin permission checked in the backend, never a URL
+assumption.
+
+## Multi-tenant structure
+
+Include the tenant when the resource can't be deduced from the token:
+
+```text
+/api/v1/app/tenants/{tenantId}/funnels/leads/{leadId}
+/api/v1/admin/tenants/{tenantId}/users
+/api/v1/admin/tenants/{tenantId}/billing/invoices
+```
+
+Frontend:
+
+```text
+/app/tenants/{tenantId}/funnels/leads/{leadId}
+/admin/tenants/{tenantId}/users
+/admin/tenants/{tenantId}/billing/invoices
+```
+
+If the app allows switching organizations, keep the active tenant in the
+session and use `{tenantId}` only where it is needed for clarity, auditing or
+cross-administration.
+
+## CRUD by role
+
+| Operation | End user | Admin |
+|---|---|---|
+| List | `GET /api/v1/app/funnels/leads` | `GET /api/v1/admin/tenants/{tenantId}/funnels/leads` |
+| Detail | `GET /api/v1/app/funnels/leads/{leadId}` | `GET /api/v1/admin/tenants/{tenantId}/funnels/leads/{leadId}` |
+| Create | `POST /api/v1/app/funnels/leads` | `POST /api/v1/admin/tenants/{tenantId}/funnels/leads` |
+| Update | `PATCH /api/v1/app/funnels/leads/{leadId}` | `PATCH /api/v1/admin/tenants/{tenantId}/funnels/leads/{leadId}` |
+| Delete | `DELETE /api/v1/app/funnels/leads/{leadId}` | `DELETE /api/v1/admin/tenants/{tenantId}/funnels/leads/{leadId}` |
+| Suspend user | — | `POST /api/v1/admin/tenants/{tenantId}/users/{userId}/suspend` |
+
+## Granular permissions
+
+Permissions by **resource and action**, never by URL:
+
+```text
+funnels.leads.read
+funnels.leads.create
+funnels.leads.update
+funnels.leads.delete
+campaigns.launch
+tenant.users.manage
+billing.invoices.read
+platform.tenants.manage
+```
+
+Forbidden response shape:
 
 ```json
 {
   "error": {
-    "code": "forbidden",
-    "title": "Forbidden",
-    "detail": "role(s) [Viewer] may not Create widgets",
-    "request_id": "req_0192f3…",
-    "extra": {}
+    "code": "FORBIDDEN",
+    "message": "You do not have permission to manage users in this tenant.",
+    "requiredPermission": "tenant.users.manage"
   }
 }
 ```
 
-| Field | Rule |
-|---|---|
-| `code` | stable snake_case string; clients branch on it |
-| `title` | short human label for the code |
-| `detail` | human-readable; 5xx is redacted to `"An internal error occurred."` |
-| `request_id` | present when the request-id layer ran; same value as `x-request-id` |
-| `extra` | optional object: `retry_after_secs`, quota counters |
-
-Codes: `not_found`, `invalid_request`, `unauthorized`, `unauthenticated`,
-`forbidden`, `conflict`, `rate_limited`, `quota_exceeded`, `upstream_failure`,
-`internal_error`.
-
-Additional headers: `401` carries `WWW-Authenticate: Bearer realm="<app>-api"`;
-`429` carries `Retry-After` matching `extra.retry_after_secs`.
-
-The mapper lives in `<app>-api/src/error.rs`; the warden re-exports the same
-envelope types so the middleware cannot drift. Never hand-build a JSON error in
-a handler.
-
----
-
-## 5. Streaming routes
-
-Streams are declared paths, never a query flag that changes the response shape:
+## Frontend: guards and layouts
 
 ```text
-GET /api/v1/widgets/events     SSE, normal bearer-or-cookie auth
-GET /api/v1/ws                 WebSocket upgrade, auth after upgrade via ?token=
+/app/(authenticated)/funnels/leads/[leadId]/page
+/admin/(admin)/tenants/[tenantId]/users/page
+/partner/(partner)/campaigns/[campaignId]/page
 ```
 
-- SSE frames are `event: <type>` + `data: <json>` with `retry: 2000`; a
-  heartbeat keeps proxies from idling the connection out.
-- The WebSocket handshake cannot carry an `Authorization` header from a
-  browser, so the route reads `?token=` **after** the upgrade and closes with
-  `4001 / authentication_failed` when the token is missing or invalid. The
-  token is the short-lived access token, never the refresh token.
-- **Never log the query string of `/api/v1/ws`.** The tracing middleware logs
-  `uri`, which includes `?token=`; redact it at the span (see
-  `PLAYBOOK_SECURITY.md` §4.2).
-- A stream never widens visibility: it delivers only what the same identity
-  could read through the REST surface.
+- `/app`: end-user navigation layout.
+- `/admin`: separate layout — admin sidebar + admin role guard.
+- `/partner`: partner layout.
+- Guards redirect to `/login`, `/403` or the allowed dashboard; hiding a
+  button is never the actual protection.
 
----
+## Concrete example
 
-## 6. Template deviations — fix on instantiation
+```text
+Frontend
+/app/projects/{projectId}
+/app/projects/{projectId}/funnels/{funnelId}
+/app/funnels/leads/{leadId}
+/admin/tenants/{tenantId}/users
+/admin/tenants/{tenantId}/usage
+/admin/tenants/{tenantId}/billing
 
-The shipped skeleton does not fully satisfy the contract above. These are
-known defects carried from the template, not design decisions. Each has a
-mechanical fix; do them in the first instantiation PR.
+API
+GET  /api/v1/app/projects/{projectId}/runs            # external extraction runs
+POST /api/v1/app/projects/{projectId}/launch          # launch the campaign
+GET  /api/v1/app/funnels/leads/{leadId}
+GET  /api/v1/admin/tenants/{tenantId}/users
+POST /api/v1/admin/tenants/{tenantId}/users/{userId}/suspend
+```
 
-| # | Deviation | Why it matters | Fix |
-|---|---|---|---|
-| D1 | Widget CRUD is mounted at `/widgets` and `/widgets/{id}`, not `/api/v1/widgets` (only SSE uses the prefix) | every other resource lives under `/api/v1`; clients and the SDK cannot assume one base path | change the two `Router::route` paths and the `#[utoipa::path(path = …)]` attributes in `routes/widgets.rs`; update the `ROUTE_TABLE` test and regenerate `openapi.json` |
-| D2 | `GET /me` is mounted at the root as a legacy seam, duplicating `GET /api/v1/auth/me` | two identity endpoints with different bodies confuse every client | delete the `me` handler, `MeResponse`, `me_routes` and their tests; `auth_me` is the only identity read |
-| D3 | Widget CRUD uses bearer-only `require_auth` | cookie-mode SPAs receive 401 on every widget call | mount the widget sub-router behind `require_auth_cookie` (it already has `AppState`) |
-| D4 | `GET /widgets` is unpaginated | unbounded response and unbounded DB read | add `limit`/`offset` with a hard maximum before the slice becomes a real collection |
-| D5 | `/metrics` and `/docs` are mounted unguarded | leaks traffic shape and the full surface area | gate both behind an internal listener or the admin rank check; disable Swagger in production builds |
-| D6 | `docs/02-architecture.md`, `docs/08-persistence-and-migrations.md`, `docs/09-testing-strategy.md` describe a different stack (`query_as!`, `.sqlx/`, testcontainers, wiremock, toolchain 1.85) | an agent following the docs writes code that does not fit the workspace | treat `PLAYBOOK_*.md` + `AGENTS.md` as authoritative; correct the docs in the same PR |
+## Checklist
 
----
-
-## 7. Checklist
-
-- [ ] Admin routes under `/api/v1/admin/...`; user routes under `/api/v1/...`;
-      shared auth under `/api/v1/auth/...`; no resource at the root.
-- [ ] No `{userType}`, no `{tenantId}`, no `X-Tenant-Id` header.
-- [ ] Plural resources, kebab-case, IDs in path, filters in query.
-- [ ] Lists paginated with a hard maximum page size.
-- [ ] Non-CRUD domain actions are verbs on a sub-resource.
-- [ ] Every route registered in `ApiDoc` `paths(...)` and `just gen-check` green.
-- [ ] Protected routes mounted behind the middleware a browser can satisfy
-      (`require_auth_cookie`).
-- [ ] Handler-side `can(role, action)` / rank gate present for every
-      mutation, not only the route layer.
-- [ ] A foreign or unowned row answers `404`.
-- [ ] Errors use `ApiError` and the `{"error": {…}}` envelope.
-- [ ] Streams are declared paths; the WS `?token=` never reaches the log.
-- [ ] `/metrics` and `/docs` restricted before production exposure.
+- [ ] `/app`, `/admin`, `/partner`, … are experience namespaces.
+- [ ] No generic `/user`; use `/app`.
+- [ ] `{userType}` never replaces authentication or RBAC.
+- [ ] Validate tenant, role, permission and resource ownership in the backend.
+- [ ] Include `{tenantId}` on admin and multi-tenant routes.
+- [ ] plural resources, IDs in path, filters in query.
+- [ ] Permissions of the form `module.resource.action` — URLs are never the
+      source of truth.
+- [ ] Separate layouts and guards per user type in the frontend.

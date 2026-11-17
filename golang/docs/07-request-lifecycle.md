@@ -31,7 +31,7 @@ graph LR
 - `RequireAuth` resolves the token — `Authorization: Bearer`, else the cookie
   when a cookie name is configured — parses it with the HS256 verifier, builds
   `authx.Identity`, stores it in context; failures answer `401` with the
-  `{detail, code}` envelope, `AUTH_TOKEN_INVALID`.
+  `{"error":{"code","message"}}` envelope, `AUTH_TOKEN_INVALID`.
 - `RequireRole(min)` then checks `rolex.AtLeast(identity.Role, min)`; failure
   is 403 `AUTH_FORBIDDEN`.
 
@@ -65,7 +65,7 @@ sequenceDiagram
     A->>A: gen/db query, map rows → domain
     A-->>U: domain value or wrapped error
     U-->>H: domain result or stable-code error
-    H-->>client: 200/201 JSON · or {"detail","code"}
+    H-->>client: 200/201 JSON · or {"error":{"code","message"}}
 ```
 
 Edge rules: `http.go` validates at the trust boundary (`validator/v10` +

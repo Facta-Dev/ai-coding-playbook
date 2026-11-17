@@ -106,7 +106,7 @@ clone_one() {
 say "group=$GROUP dest=$DEST depth=$DEPTH dry_run=$DRY_RUN"
 
 SEEN=" "
-while IFS='|' read -r group slug why; do
+while IFS='|' read -r group slug why || [[ -n "${group}${slug}${why}" ]]; do
   group="${group#"${group%%[![:space:]]*}"}"
   slug="${slug#"${slug%%[![:space:]]*}"}"
   why="${why#"${why%%[![:space:]]*}"}"

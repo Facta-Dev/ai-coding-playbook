@@ -1,3 +1,13 @@
+---
+id: FRONTEND
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: client-platform
+depends_on: [URLS, SECURITY]
+---
+
 # PLAYBOOK_FRONTEND.md — Frontend architecture playbook
 
 Architecture contract for every client of the reference service: **React (web
@@ -29,7 +39,7 @@ The rules that carry the whole file:
 
 ```text
 ┌──────────────────────────── client (web | native | extension) ────────────────────────────┐
-│  View (platform UI)  ──►  ViewModel (hook, shared)  ──►  SDK (shared)  ──►  Backend API   │
+│  View (platform UI)  ──►  ViewModel (framework-free, shared)  ──►  SDK (shared)  ──►  Backend API   │
 │        ▲                        │                            │                            │
 │        └──── state + commands ──┘                            └── ports: TokenStore,       │
 │                                  └── ports: Navigator,           Transport, Clock         │
@@ -40,7 +50,7 @@ The rules that carry the whole file:
 | Layer | Responsibility | Knows about | Must not know about |
 |---|---|---|---|
 | **View** | Render JSX/native components, forward user events, layout, styling, a11y | Its ViewModel's output, UI kit, platform APIs for rendering | SDK, HTTP, tokens, business rules, router internals |
-| **ViewModel** | Presentation state, derived values, form state, validation messages, commands (`save`, `launch`), orchestration of SDK calls, loading/error states | SDK, ports (`Navigator`, `Notifier`), shared domain types | JSX, DOM, `react-dom`, `react-native`, `chrome.*`, router/library imports |
+| **ViewModel** | Presentation state, derived values, form state, validation messages, commands (`save`, `launch`), orchestration of SDK calls, loading/error states | SDK, ports (`Navigator`, `Notifier`), shared domain types | React/React Native, JSX, DOM, `chrome.*`, router/library imports |
 | **Model / SDK** | Typed API client, DTOs, error normalization, auth/tenant headers, pagination, retries | HTTP contract, ports (`TokenStore`, `Transport`) | React, UI, navigation, any platform global |
 
 ### 1.1 Dependency rules (enforced)
@@ -48,7 +58,7 @@ The rules that carry the whole file:
 | From | May import | Must not import |
 |---|---|---|
 | `views` | own feature's `viewmodels`, `ui-*` kit, platform libs | `sdk` (except types re-exported by the ViewModel), other features' internals |
-| `viewmodels` | `sdk`, `core` (ports, types), `react` (hooks only) | `react-dom`, `react-native`, `chrome`, router libs, `views` |
+| `viewmodels` | `sdk`, `core` (ports, types) | `react`, `react-dom`, `react-native`, `chrome`, router libs, `views` |
 | `sdk` | `core` ports and types | `react`, any UI, any platform API |
 | `core` | nothing | everything else |
 
@@ -196,38 +206,54 @@ const sdk = createSdk({
 |---|---|---|
 | Web | In-memory access token + refresh via `httpOnly`, `Secure`, `SameSite` cookie | Never `localStorage` for refresh tokens |
 | React Native | Keychain / Keystore (secure storage) | Biometric unlock optional |
-| Extension | `chrome.storage.session` (access) and `chrome.storage.local` encrypted or cookie-based refresh | Held only by the service worker |
+| Extension | `chrome.storage.session` (access only) + a backend-issued extension-scoped, revocable token for refresh; never a refresh token in `storage.local` | Held only by the service worker |
 
 ## 4. MVVM conventions
 
 ### 4.1 ViewModel contract
 
-A ViewModel is a hook that returns **state** and **commands**, with no JSX:
+A ViewModel is a **framework-free** object that returns **state** and
+**commands**. It imports no React, no platform API and no view code; a thin
+binding in the view layer subscribes to it. This is what makes the same
+ViewModel run on web, native and extension.
 
 ```ts
-// packages/viewmodels/funnels/useLeadDetailViewModel.ts
-export function useLeadDetailViewModel(leadId: string) {
-  const { sdk, navigator, notifier, permissions } = useServices();
+// packages/viewmodels/funnels/lead-detail-view-model.ts
+export interface LeadDetailServices {
+  readonly sdk: Sdk;
+  readonly navigator: Navigator;
+  readonly notifier: Notifier;
+  readonly permissions: Permissions;
+}
 
-  const lead = useQuery({
-    queryKey: ['app', 'funnels', 'leads', leadId],
-    queryFn: ({ signal }) => sdk.app.funnels.leads.get(leadId, { signal }),
-  });
-
-  const move = useMutation({
-    mutationFn: (stage: Stage) =>
-      sdk.app.funnels.leads.update(leadId, { stage }),
-    onSuccess: () => notifier.success('lead.moved'),
-  });
+export function createLeadDetailViewModel(
+  leadId: string,
+  { sdk, navigator, notifier, permissions }: LeadDetailServices,
+) {
+  const lead = sdk.query.lead(leadId);            // injected cache/query port
+  const move = sdk.command.updateLeadStage(leadId);
 
   return {
-    status: toViewStatus(lead),                       // 'loading' | 'ready' | 'forbidden' | 'not-found' | 'error'
-    lead: lead.data && toLeadVM(lead.data),           // presentation-ready data
-    canEdit: permissions.can('funnels.leads.update'), // UI affordance only
-    moveToStage: move.mutate,
-    isMoving: move.isPending,
-    openCampaign: () => navigator.go(routes.app.campaign(lead.data!.campaignId)),
+    get status() { return lead.status; },          // 'loading' | 'ready' | 'empty' | 'forbidden' | 'not-found' | 'error' | 'offline'
+    get lead() { return lead.value && toLeadVM(lead.value); },
+    get canEdit() { return permissions.can('funnels.leads.update'); }, // UI affordance only
+    moveToStage(stage: Stage) { return move.run({ stage }); },
+    get isMoving() { return move.pending; },
+    openCampaign() { navigator.go(routes.app.campaign(lead.value!.campaignId)); },
+    subscribe(listener: () => void) { return lead.subscribe(listener); },
   };
+}
+```
+
+The React binding lives in the view layer and only subscribes and re-renders:
+
+```ts
+// apps/web/src/views/useLeadDetailViewModel.ts
+export function useLeadDetailViewModel(leadId: string) {
+  const services = useServices();                  // platform composition root
+  const vm = useMemo(() => createLeadDetailViewModel(leadId, services), [leadId, services]);
+  useSyncExternalStore(vm.subscribe, () => vm);    // or the platform equivalent
+  return vm;
 }
 ```
 
@@ -241,13 +267,16 @@ Rules:
 - Side effects (navigation, toasts, analytics, clipboard, share) go through
   **ports** (`Navigator`, `Notifier`, `Analytics`). That is what makes the
   ViewModel identical on web, native and extension.
-- Services come from a React context (`useServices`), provided at the app
-  root of each platform. ViewModels do not import singletons.
+- Services come from the platform composition root and are passed in as
+  arguments. ViewModels do not import singletons, React context or hooks.
+- The framework binding is per platform and disposable: React uses
+  `useSyncExternalStore` (or an equivalent subscription hook), native uses the
+  platform's observation mechanism, the extension uses its RPC client.
 
 ### 4.2 View contract
 
-- A View calls one ViewModel hook and renders. No `fetch`, no SDK import, no
-  business conditions beyond "show this status".
+- A View calls one framework binding hook and renders. No `fetch`, no SDK
+  import, no business conditions beyond "show this status".
 - Views are **not shared** between DOM and native. They share ViewModels, SDK,
   tokens and test fixtures. If the team later adopts a cross-platform view
   layer (for example `react-native-web`), it changes `ui-*` only, never the
@@ -259,10 +288,10 @@ Rules:
 
 | State | Where |
 |---|---|
-| Server state (lists, details) | Query cache (TanStack Query or equivalent) inside ViewModels, keyed by `[userType, module, resource, tenantId?, params]` |
-| Session | `Session` object from the SDK, exposed through a hook |
+| Server state (lists, details) | Owned by the ViewModel through an injected cache/query port, keyed by `[userType, module, resource, tenantId?, params]`; the platform binding may use TanStack Query or an equivalent |
+| Session | `Session` object from the SDK, exposed to the ViewModel through a port |
 | Filters, sort, pagination, selected tab | **URL query string** on web and extension pages; navigation params on native |
-| Form state | ViewModel (form library inside the hook) |
+| Form state | ViewModel (plain state); the platform binding may use a form library |
 | Ephemeral UI state (open/closed) | Local component state in the View |
 | Global client store | Avoid; add only for a proven cross-screen need |
 

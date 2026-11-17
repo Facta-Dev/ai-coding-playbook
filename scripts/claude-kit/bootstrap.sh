@@ -4,7 +4,8 @@
 #
 # Decision tree:
 #
-#   PRECONDITIONS: git, python3 >= 3.9, claude >= 2.1.x, gh authenticated
+#   PRECONDITIONS: git, python3 >= 3.9, claude >= 2.1.x (gh optional; needed
+#   only to clone private repositories)
 #        |
 #   OS?
 #        |- Linux / macOS / WSL2  -> continue
@@ -104,22 +105,17 @@ esac
 say "os: $OS"
 
 # --- 2. prereq checks ------------------------------------------------------------
-for tool in git python3 claude gh; do
+for tool in git python3 claude; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "bootstrap: missing prerequisite: $tool" >&2
     case "$tool" in
       claude) echo "bootstrap:   install per https://code.claude.com/docs (npm install -g @anthropic-ai/claude-code)" >&2;;
-      gh)     echo "bootstrap:   install per https://cli.github.com, then: gh auth login" >&2;;
       *)      echo "bootstrap:   install the standard package for your OS" >&2;;
     esac
     exit 1
   fi
 done
-if ! gh auth status -h github.com >/dev/null 2>&1; then
-  echo "bootstrap: gh is not authenticated for github.com — run: gh auth login" >&2
-  exit 1
-fi
-say "prereqs: git $(git --version | awk '{print $3}'), python3 $(python3 --version | awk '{print $2}'), claude $(claude --version 2>/dev/null | awk '{print $1}'), gh ok"
+say "prereqs: git $(git --version | awk '{print $3}'), python3 $(python3 --version | awk '{print $2}'), claude $(claude --version 2>/dev/null | awk '{print $1}')"
 
 # --- 3. provider branch -----------------------------------------------------------
 detect_ollama() {

@@ -47,7 +47,9 @@ def response_status(ctx: Ctx, status: str) -> None:
 @step(parsers.re(r'the response code is "(?P<want>[^"]*)"'))
 def response_code(ctx: Ctx, want: str) -> None:
     body = json_map(ctx.last.text)
-    assert sprint(body.get("code")) == want, ctx.last.text
+    inner = body.get("error")
+    assert isinstance(inner, dict), ctx.last.text
+    assert sprint(inner.get("code")) == want, ctx.last.text
 
 
 @step(parsers.re(r'the response field "(?P<field>[^"]*)" is "(?P<want>[^"]*)"'))

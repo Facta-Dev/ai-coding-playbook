@@ -2,6 +2,8 @@
 # docker-publish tags every main commit with the git sha; run with tag=<sha>
 # to revert, tag=latest to re-arm on the current build.
 name: rollback
+permissions:
+  contents: read
 on:
   workflow_dispatch:
     inputs:
@@ -16,13 +18,17 @@ jobs:
     environment: production
     steps:
       - name: pin the stack to the chosen image
-        uses: appleboy/ssh-action@v1
+        env:
+          TAG: ${{ github.event.inputs.tag }}
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1
         with:
+          envs: TAG
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            case "$TAG" in *[!A-Za-z0-9_.-]*) echo "invalid tag"; exit 1;; esac
             cd /srv/<app>
-            sed -i "s#image: ghcr.io/<scope>/<app>/api:.*#image: ghcr.io/<scope>/<app>/api:${{ github.event.inputs.tag }}#" docker-compose.prod.yml
+            sed -i "s#image: ghcr.io/<scope>/<app>/api:.*#image: ghcr.io/<scope>/<app>/api:${TAG}#" docker-compose.prod.yml
             docker compose -f docker-compose.prod.yml up -d api
             docker compose -f docker-compose.prod.yml ps api

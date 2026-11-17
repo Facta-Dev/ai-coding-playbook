@@ -57,7 +57,7 @@ Go 1.27 · stdlib `net/http` ServeMux (method-first patterns) · `pgx/v5` +
   reset 30m.
 - Migrations: expand/contract, applied by the deploy step, never at API
   startup.
-- Errors: stable codes in `internal/shared/apperr` → `{detail, code}` at the
+- Errors: stable codes in `internal/shared/apperr` → `{"error":{"code","message"}}` at the
   HTTP edge only.
 
 ## Gates

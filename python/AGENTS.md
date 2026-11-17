@@ -196,7 +196,8 @@ them wholesale:
 
 | File                      | Covers                                                               |
 | ------------------------- | -------------------------------------------------------------------- |
-| `PLAYBOOK_BACKEND.md`     | Slices, dependency edges, ports/adapters, SQL, outbox, realtime      |
+| `PLAYBOOK_BACKEND.md`     | Hexagonal architecture, slices, dependency edges, outbox, realtime (language-agnostic) |
+| `PLAYBOOK_PYTHON.md`      | Python specialization: FastAPI, pydantic v2, SQLAlchemy 2 async, Alembic, import-linter |
 | `PLAYBOOK_TESTS.md`       | Test pyramid, pytest/pytest-bdd, contract evals, gates, audit evidence |
 | `PLAYBOOK_SECURITY.md`    | Threat model, authn/authz, input, secrets, supply chain, incident    |
 | `PLAYBOOK_URLS.md`        | Route naming, auth postures, error envelope, streaming               |
@@ -216,7 +217,7 @@ logged pitfall.
   accept the signal they need to cancel (`asyncio.Event` / `CancelledError`)
   and honor it at loop yields.
 - Errors: raise `AppError` subclasses (or `E(Code, detail, status)`); stable
-  codes live in `src/app/shared/apperr.py`, rendered as `{detail, code}` only
+  codes live in `src/app/shared/apperr.py`, rendered as `{"error":{"code","message"}}` only
   in `http.py` / `platform/envelope.py`.
 - Interfaces live in the consumer slice's `ports.py`, kept small (1–3
   methods), typed with `typing.Protocol`.

@@ -14,10 +14,10 @@ from app.shared.apperr import AppError, Code
 _log = logging.getLogger("app.error")
 
 
-def error_body(code: Code | str, detail: str) -> dict[str, str]:
-    """The only error shape clients ever see."""
+def error_body(code: Code | str, detail: str) -> dict[str, object]:
+    """The only error shape clients ever see (PLAYBOOK_URLS)."""
     value = code.value if isinstance(code, Code) else code
-    return {"detail": detail, "code": value}
+    return {"error": {"code": value, "message": detail}}
 
 
 def install_error_handlers(app: FastAPI) -> None:

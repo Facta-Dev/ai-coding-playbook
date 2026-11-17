@@ -36,26 +36,31 @@ export interface AppSdk {
   };
 }
 
+/** The canonical envelope is `{error:{...}}`; tolerate a flat body for
+ *  older backends while the fleet migrates. */
+function errorPayload(body: unknown): Record<string, unknown> | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const record = body as Record<string, unknown>;
+  const nested = record["error"];
+  return typeof nested === "object" && nested !== null
+    ? (nested as Record<string, unknown>)
+    : record;
+}
+
 function readString(body: unknown, key: string): string | undefined {
-  if (typeof body === "object" && body !== null) {
-    const value = (body as Record<string, unknown>)[key];
-    if (typeof value === "string") return value;
-  }
+  const value = errorPayload(body)?.[key];
+  if (typeof value === "string") return value;
   return undefined;
 }
 
 function readFields(body: unknown): Record<string, string> {
-  if (typeof body === "object" && body !== null) {
-    const fields = (body as Record<string, unknown>)["fields"];
-    if (typeof fields === "object" && fields !== null) {
-      const entries: [string, string][] = [];
-      for (const [key, value] of Object.entries(fields as Record<string, unknown>)) {
-        if (typeof value === "string") entries.push([key, value]);
-      }
-      return Object.fromEntries(entries);
-    }
+  const fields = errorPayload(body)?.["fields"];
+  if (typeof fields !== "object" || fields === null) return {};
+  const entries: [string, string][] = [];
+  for (const [key, value] of Object.entries(fields as Record<string, unknown>)) {
+    if (typeof value === "string") entries.push([key, value]);
   }
-  return {};
+  return Object.fromEntries(entries);
 }
 
 /** Maps the backend status + error envelope into the typed SdkError. */

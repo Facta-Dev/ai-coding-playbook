@@ -1,6 +1,16 @@
+---
+id: AUDIT
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: compliance
+depends_on: [SECURITY, TESTS]
+---
+
 # PLAYBOOK_AUDIT.md — Audit, certification & compliance playbook
 
-Operating contract for how `<app>` prepares for, passes and sustains audits:
+Operating contract for how a team prepares for, passes and sustains audits:
 **SOC 2, ISO/IEC 27001, ISO 9001** and the other software-relevant
 certifications and regulations. It consumes the other playbooks as *control
 implementations* and *evidence sources*:
@@ -8,7 +18,8 @@ implementations* and *evidence sources*:
 | Playbook | Role in audits |
 |---|---|
 | `PLAYBOOK_URLS.md` | Permission catalog and RBAC model → logical-access evidence |
-| `PLAYBOOK_BACKEND.md` | Architecture, slice isolation, ownership checks, job idempotency, DR design → security, availability, processing-integrity evidence |
+| `PLAYBOOK_BACKEND.md` | Architecture, tenant isolation, batch idempotency, DR design → security, availability, processing-integrity evidence |
+| `PLAYBOOK_FRONTEND.md` | Client-side token handling, extension permissions, secrets rules → secure-development evidence |
 | `PLAYBOOK_TESTS.md` | Automated tests, scans and release bundles → the main continuous evidence stream |
 | **This file** | Governance, risk, policies, control library, audit lifecycle, vendors, privacy, certifications roadmap |
 
@@ -51,19 +62,20 @@ The rules that carry the whole file:
   considerations in context analysis.
 - **ISO 9001**: the revised **ISO 9001:2026** was published on 16 September
   2026; a three-year transition runs to about 30 September 2029, and
-  certification bodies must first be accredited for the new edition. Build the
-  QMS to the 2026 text; confirm clause numbering and exact requirements
-  against the published standard (the revision is evolutionary: process
-  approach, PDCA and risk-based thinking stay, with explicit emphasis on
-  quality culture and ethical behavior and a clearer separation of
+  certification bodies must first be accredited for the new edition.
+  Build the QMS to the 2026 text; confirm clause numbering and exact
+  requirements against the published standard (the revision is evolutionary:
+  process approach, PDCA and risk-based thinking stay, with explicit emphasis
+  on quality culture and ethical behavior and a clearer separation of
   opportunities from risks).
 - **EU Cyber Resilience Act**: manufacturer reporting duties (actively
   exploited vulnerabilities, severe incidents) apply from **11 September
   2026**; most other obligations from 11 December 2027. Assess whether the
-  distributed Rust binary is a "product with digital elements"; a hosted SaaS
-  instance is treated differently. Get counsel's view.
+  Chrome extension and mobile app (distributed software) are "products with
+  digital elements"; pure hosted SaaS is treated differently. Get counsel's
+  view.
 
-### 1.3 Recommended roadmap for `<app>`
+### 1.3 Recommended roadmap
 
 Overlap between SOC 2 and ISO 27001 is high, so they share one control
 library and one evidence stream.
@@ -77,7 +89,7 @@ library and one evidence stream.
 | **4 — Expand** | Month 12+ | ISO 9001 certification, ISO 27701 / privacy program, plus market-driven items (section 14) |
 
 SOC 2 categories for the first cycle: **Security + Availability +
-Confidentiality**. Add **Processing Integrity** (outbox correctness and
+Confidentiality**. Add **Processing Integrity** (batch correctness and
 idempotency are a differentiator) and **Privacy** when customers require them.
 
 ## 2. Scope and system description
@@ -85,34 +97,21 @@ idempotency are a differentiator) and **Privacy** when customers require them.
 Maintained in `compliance/scope/` and reviewed at least annually and on any
 architecture change.
 
-**Deployment model first.** `<app>` ships as software the customer runs: a
-statically linked Rust binary (server + worker) plus docker-compose, with
-Postgres in the customer's network.
-For a self-hosted deployment `<app>`-the-vendor is not in the data path at
-all, so the audit scope is the **software product and its supply chain**
-(secure development, build integrity, vulnerability handling, release
-evidence, support tooling), not a service desk over customer data. If
-`<app>` also runs a hosted instance, that instance is a second, separate
-scope with the service-provider controls (availability, backups, incident
-response over customer data); do not blur the two in one system description.
-
-- **In-scope system**: backend crates (`PLAYBOOK_BACKEND.md`), the binaries
-  built from `crates/<app>-api` and `crates/<app>-loom` (worker), CI/CD, build
-  and release artifacts, the dependency graph, documentation. For a hosted
-  instance add: infrastructure, Postgres, observability, support tooling,
-  corporate IT (identity provider, endpoints, ticketing, code host).
-- **Boundary and data flows**: diagrams of trust boundaries, the
-  single-`public`-schema data model reached only through the ports adapters
-  (`PLAYBOOK_BACKEND.md` §6), external connections (SMTP, OAuth providers), and
-  data stores by classification.
-- **Data classification**: Public / Internal / Confidential / Restricted.
-  Restricted covers credentials and provider keys, session and refresh-token
-  metadata, password hashes, audit-log records, and personal data in user
-  profiles.
-- **Subservice organizations**: code host, CI runners, artifact registry, SMTP
-  provider, OAuth providers. A self-hosted deployment adds the customer as the
-  operator of the runtime environment — that boundary and its CUECs belong in
-  the contract, not in our evidence.
+- **In-scope system**: backend slices (`PLAYBOOK_BACKEND.md`), web SPA, React
+  Native app, Chrome extension, CI/CD, infrastructure, data stores (relational,
+  vector, Dragonfly/Redis), observability, support tooling, corporate IT
+  (identity provider, endpoints, ticketing, code host).
+- **Boundary and data flows**: diagrams of trust boundaries, tenant isolation
+  model, external connections (external providers, payment, telephony/messaging,
+  LLM providers, email), data stores by classification.
+- **Data classification**: Public / Internal / Confidential / Restricted
+  (tenant lead data, credentials, provider API keys, personal data). Each
+  class has handling rules (encryption, access, retention, logging).
+- **Subservice organizations**: cloud provider, external provider, payment
+  processor, LLM and telephony vendors, Redis/Dragonfly hosting. Choose
+  **carve-out** (their controls excluded, ours monitored) or **inclusive** method
+  per SOC 2; document complementary subservice-organization controls (CSOCs)
+  and the complementary user-entity controls (CUECs) we require from customers.
 - **Exclusions** are written down with a reason. Anything claimed in marketing
   or a questionnaire must be inside the scope statement.
 
@@ -154,24 +153,24 @@ the named approver, with version, owner and next-review date in front matter.
 ### 4.1 Control definition
 
 Each control is a file in `compliance/controls/` with a stable ID
-`<APP>-<DOMAIN>-<NN>`.
+`CTL-<DOMAIN>-<NN>`.
 
 ```yaml
-id: <APP>-ACC-03
+id: CTL-ACC-03
 title: Quarterly user access review
-objective: Detect and remove inappropriate or stale access to production systems and customer data.
+objective: Detect and remove inappropriate or stale access to production systems and tenant data.
 owner: security-lead
 type: detective            # preventive | detective | corrective
 frequency: quarterly
 automation: partial        # full | partial | manual
-scope: [idp, cloud-iam, code-host, production-db]
+scope: [idp, cloud-iam, code-host, production-db, admin-console]
 procedure: procedures/access-review.md
 evidence:
   - source: idp-export
     artifact: access-review/{quarter}/permissions.csv
   - source: ticketing
     artifact: access-review/{quarter}/signoff.json
-tests: [role-matrix, ownership-isolation]    # links to PLAYBOOK_TESTS suites
+tests: [authz-matrix, tenant-isolation]      # links to PLAYBOOK_TESTS suites
 mappings:
   soc2: [CC6.1, CC6.2, CC6.3]
   iso27001: [A.5.15, A.5.18, A.8.2, A.8.3]
@@ -196,15 +195,15 @@ SOC 2 = 2017 Trust Services Criteria; ISO 27001 = 2022 Annex A / clauses;
 ISO 9001 clause references follow the 2015 structure and should be re-checked
 against the 2026 text.
 
-| Domain | Typical `<app>` control | Implementing playbook | SOC 2 | ISO 27001 | ISO 9001 |
+| Domain | Typical control | Implementing playbook | SOC 2 | ISO 27001 | ISO 9001 |
 |---|---|---|---|---|---|
 | GOV | Policies approved and reviewed annually; roles assigned; management review | this file | CC1.1–CC1.5, CC2.1, CC5.3 | 5.2, 5.3, 9.3; A.5.1, A.5.2, A.5.4 | 5.1–5.3, 9.3 |
 | RSK | Annual and event-driven risk assessment; treatment plan; Statement of Applicability | this file | CC3.1–CC3.4, CC9.1 | 6.1.2, 6.1.3, 8.2, 8.3 | 6.1 |
 | HR | Screening, signed confidentiality, security training, joiner/mover/leaver | this file | CC1.4, CC1.5, CC2.2 | A.6.1–A.6.5, A.6.7 | 7.2, 7.3 |
 | AST | Asset inventory, data classification, retention and deletion | `BACKEND` (schemas), this file | CC6.5, C1.1, C1.2 | A.5.9–A.5.13, A.7.14, A.8.10 | 7.1.3, 7.5 |
-| ACC | RBAC by role and action, least privilege, session revocation, quarterly review, ownership isolation | `URLS`, `BACKEND`, `TESTS` | CC6.1–CC6.3 | A.5.15, A.5.16, A.5.18, A.8.2, A.8.3, A.8.5 | — |
-| CRY | Encryption in transit/at rest, key rotation, secrets manager, write-only provider keys | `BACKEND`, `SECURITY` | CC6.1, CC6.7, C1.1 | A.8.24, A.5.14 | — |
-| SDL | Peer review, protected branches, SAST/SCA/secrets scans, architecture tests, release evidence bundle | `TESTS`, `BACKEND`, `SECURITY` | CC8.1 | A.8.25–A.8.29, A.8.32 | 8.3, 8.5.6, 8.6 |
+| ACC | RBAC by permission, MFA, least privilege, session revocation, quarterly review, tenant isolation | `URLS`, `BACKEND`, `TESTS` | CC6.1–CC6.3 | A.5.15, A.5.16, A.5.18, A.8.2, A.8.3, A.8.5 | — |
+| CRY | Encryption in transit/at rest, key rotation, secrets manager, write-only provider keys | `BACKEND`, `FRONTEND` | CC6.1, CC6.7, C1.1 | A.8.24, A.5.14 | — |
+| SDL | Peer review, protected branches, SAST/SCA/secrets scans, architecture tests, release evidence bundle | `TESTS`, `BACKEND`, `FRONTEND` | CC8.1 | A.8.25–A.8.29, A.8.32 | 8.3, 8.5.6, 8.6 |
 | VUL | Vulnerability scanning with SLAs, patching, hardened baselines, pen test | `TESTS` | CC7.1 | A.8.8, A.8.9 | — |
 | LOG | Centralized immutable logs, audit-log of security events, alerting, time sync | `BACKEND`, `TESTS` | CC7.2, CC7.3 | A.8.15, A.8.16, A.8.17 | 9.1.1 |
 | INC | Incident response plan, severity matrix, post-mortems, notification clocks, tabletop exercises | this file | CC7.3–CC7.5 | A.5.24–A.5.28, A.6.8 | 8.7, 10.2 |
@@ -229,13 +228,12 @@ against the 2026 text.
 - **Statement of Applicability**: generated from the control library and
   register (every Annex A control marked applicable / not applicable with
   justification and implementation status).
-- **Top risks to track for `<app>`**: an authorization regression that lets
-  one user read another user's profile, sessions or widgets (ownership
-  isolation); leak of session tokens, refresh-token rows or OAuth secrets;
-  duplicate or lost email delivery from the outbox; a compromised crate in the
-  cargo dependency graph; a stale committed `openapi.json` silently diverging
-  from the code (`just gen-check` catches it); a reachable panic aborting the
-  process in release; insider access on a hosted instance.
+- **Top risks to track**: cross-tenant data exposure; leak of
+  tenant provider API keys; unlawful processing of scraped personal data;
+  duplicate or lost batch effects; provider (scraping provider, telephony)
+  outage or policy change; abuse of outreach features (spam/harassment); insider
+  access to tenant data; supply-chain compromise in dependencies or the
+  extension store listing.
 
 ## 6. Policy set
 
@@ -265,6 +263,7 @@ review date.
 | Quality policy and objectives | QA lead / executive sponsor |
 | Document and record control | Compliance lead |
 | Internal audit and management review | Compliance lead |
+| Responsible use of outreach features (consent, opt-out, anti-abuse) | Product / DPO |
 | AI use and governance (if applicable) | CTO |
 
 ## 7. Compliance as code
@@ -273,7 +272,7 @@ review date.
 compliance/
   scope/                 # system description, data-flow diagrams, inventory, classification
   policies/  standards/  procedures/
-  controls/              # <APP>-*.yaml control library
+  controls/              # CTL-*.yaml control library
   frameworks/            # soc2.yaml, iso27001.yaml, iso9001.yaml, gdpr.yaml ...
                          #   requirement/criterion → control IDs
   risk/                  # methodology, register, treatment plans
@@ -304,7 +303,7 @@ Automation:
 
 ## 8. Evidence management
 
-Builds on section 9 of `PLAYBOOK_TESTS.md`.
+Builds on section 10 of `PLAYBOOK_TESTS.md`.
 
 - **Prefer system-generated evidence** (exports, logs, pipeline records) over
   screenshots and hand-written attestations.
@@ -348,8 +347,8 @@ Builds on section 9 of `PLAYBOOK_TESTS.md`.
 ### 9.2 ISO 27001 and ISO 9001
 
 1. Select an **accredited** certification body (accreditation by a body that
-   is signatory of the relevant IAF multilateral arrangement). For ISO
-   9001:2026 confirm the body is accredited for the new edition.
+   is signatory of the relevant IAF multilateral arrangement). For ISO 9001:2026
+   confirm the body is accredited for the new edition.
 2. **Stage 1**: documentation and readiness review.
 3. **Stage 2**: implementation and effectiveness audit; nonconformities must
    be corrected (major before certification; minor with an agreed plan).
@@ -406,18 +405,18 @@ output.
 
 | Process | Cadence | Key requirements |
 |---|---|---|
-| **Change management** | Every change | Ticket → PR → independent review → required checks (`PLAYBOOK_TESTS.md` §8–9) → release evidence bundle; emergency path with retrospective approval |
-| **Access reviews** | Quarterly | Export of roles from the identity provider, code host, and (for a hosted instance) production datastores; compared with the role hierarchy in `crates/<app>-core/src/rbac.rs` and `PLAYBOOK_URLS.md` §5; sign-off by system owner; removals ticketed |
+| **Change management** | Every change | Ticket → PR → independent review → required checks (`PLAYBOOK_TESTS.md` §9–10) → release evidence bundle; emergency path with retrospective approval |
+| **Access reviews** | Quarterly | Export of permissions from identity provider, cloud IAM, code host, production datastores and admin console; compared with `authz-matrix`; sign-off by system owner; removals ticketed |
 | **Joiner / mover / leaver** | Per event | Screening, signed agreements, role-based access request approved by manager, offboarding checklist with access revoked within the policy deadline (for example same day), device return |
 | **Privileged access** | Continuous | Just-in-time elevation, MFA, session logging, break-glass accounts monitored and reviewed |
 | **Vulnerability management** | Continuous | Scanning, triage, remediation SLAs by severity set in policy, exceptions with expiry |
-| **Penetration test** | Annual + major change | Independent tester, scoped to web and API; remediation tracked to closure and retested |
+| **Penetration test** | Annual + major change | Independent tester, scoped to web, API, mobile, extension; remediation tracked to closure and retested |
 | **Incident response** | Per event | Severity matrix, on-call, communications, evidence preservation, post-mortem, customer and regulator notification within legal clocks (e.g., GDPR 72 hours to the authority where applicable; CRA early warning within 24 hours if in scope), tabletop exercise at least annually |
 | **Backup and DR** | Daily backups; restore and DR tests per policy | Documented RPO/RTO; test report with measured values (`PLAYBOOK_TESTS.md` DR suite) |
 | **Vendor management** | Onboarding + annual | Section 12 |
 | **Security awareness training** | Onboarding + annual + targeted | Completion tracked; secure-coding module for engineers; phishing simulations optional |
-| **Key and secret rotation** | Per policy | Automated rotation where possible; JWT signing key, password pepper and OAuth secrets rotatable by the operator |
-| **Data retention and deletion** | Scheduled | Retention jobs, deletion cascades across tables and backups; deletion evidence |
+| **Key and secret rotation** | Per policy | Automated rotation where possible; tenant provider keys rotatable by the tenant |
+| **Data retention and deletion** | Scheduled | Retention jobs, deletion cascades to vector index, caches, backups per policy; deletion evidence |
 | **Customer support and complaints** | Continuous | Ticket SLAs, classification (defect / incident / request), feed into quality KPIs and CAPA |
 | **Capacity and availability** | Continuous | SLOs, alerting, load tests (`PLAYBOOK_TESTS.md`), status page |
 | **Endpoint management** | Continuous | Disk encryption, screen lock, patching, EDR, MDM enforcement, evidence by device report |
@@ -428,14 +427,14 @@ output.
 ISO 9001 is process- and customer-focused, so it complements the security
 frameworks. Map the QMS onto what already exists:
 
-| QMS element | `<app>` implementation |
+| QMS element | Reference implementation |
 |---|---|
 | Context, interested parties, scope (4) | `compliance/scope/`, customers, regulators, partners, vendors |
 | Leadership, quality policy, roles (5) | Policy set, RACI, management review; quality culture and ethical behavior as an explicit leadership duty (2026 edition) |
 | Risks and opportunities, objectives (6) | Risk register + opportunity register; quality objectives with owners |
 | Resources, competence, awareness, documented information (7) | Training records, onboarding, `compliance/` repository as controlled documents |
 | Customer requirements and communication (8.2) | Product requirements process, SLAs, trust center, change notices |
-| **Design and development (8.3)** | `PLAYBOOK_BACKEND.md` (architecture), ADRs, design reviews, threat models, planned verification (`PLAYBOOK_TESTS.md`), validation with customers/beta |
+| **Design and development (8.3)** | `PLAYBOOK_BACKEND.md` / `PLAYBOOK_FRONTEND.md` (architecture), ADRs, design reviews, threat models, planned verification (`PLAYBOOK_TESTS.md`), validation with customers/beta |
 | Externally provided processes (8.4) | Vendor management (section 12), open-source dependency policy |
 | Production and service provision (8.5) | Release and deployment procedure, controlled changes, operations runbooks, support |
 | Release of products and services (8.6) | Release gates and the release evidence bundle |
@@ -445,7 +444,7 @@ frameworks. Map the QMS onto what already exists:
 | Improvement, CAPA (10) | Section 9.5, retrospectives |
 
 Suggested quality KPIs (reviewed in management review): defect escape rate,
-change failure rate, mean time to restore, SLO attainment per slice, outbox
+change failure rate, mean time to restore, SLO attainment per slice, queue
 drain time, flaky-test rate, customer-reported incidents per release, support
 first-response and resolution times, CSAT/NPS, audit findings per cycle,
 CAPA on-time closure.
@@ -460,9 +459,9 @@ security maturity (see section 14).
 - **Register** (`compliance/vendors/register.yaml`): vendor, service, data
   processed and classification, tier, owner, contract and DPA link,
   certifications and reports, sub-processors, region, last review, exit plan.
-- **Tiering**: *Critical* (code host, CI runners, artifact registry, and any
-  email/OAuth provider enabled by default), *Important*, *Low*. Tier sets
-  due-diligence depth and review frequency.
+- **Tiering**: *Critical* (cloud, external provider, payment, LLM/telephony
+  providers with tenant data), *Important*, *Low*. Tier sets due-diligence depth
+  and review frequency.
 - **Due diligence before onboarding**: SOC 2 report or ISO certificate
   (check scope, period, exceptions and CUECs), security questionnaire,
   pen-test summary, data-processing agreement, breach-notification terms,
@@ -472,42 +471,47 @@ security maturity (see section 14).
   incidents and changes in terms, re-assessment on scope change.
 - **Contractual**: security requirements, audit rights where justified,
   incident notification time, return/deletion of data on exit.
-- **Technical containment**: provider access through a slice port/adapter
-  with least privilege (`PLAYBOOK_BACKEND.md` §2); OAuth client secrets and
-  SMTP credentials are configured by the operator and never returned by the
-  API (`PLAYBOOK_SECURITY.md` §8); any provider can be swapped behind its port
-  without touching a use case. `<APP>_OFFLINE=true` must keep the binary fully
-  functional with no provider calls, which is also the evidence that a
-  provider is optional.
+- **Technical containment**: provider access via adapters with least
+  privilege; tenant provider keys encrypted and write-only in the UI; ability
+  to swap a provider behind its port (`PLAYBOOK_BACKEND.md`).
 - **Customer visibility**: published sub-processor list with change
   notification.
 
-## 13. Privacy and product-compliance for `<app>`
+## 13. Privacy and product compliance
 
-`<app>` is a user-facing backend: it stores account data (email, name,
-password hash), session metadata, user-generated records and an audit log.
+The product extracts and enriches lead data and supports outreach,
+which makes privacy and responsible-use controls central. Frameworks and laws
+to review with counsel include GDPR/UK GDPR where EU/UK data subjects are
+involved, Argentina's personal data protection law (Ley 25.326) and its
+authority (AAIP), Brazil LGPD, US state laws (for example CCPA/CPRA), and the
+communication rules for the markets where customers operate.
 
-- **Roles**: for a self-hosted deployment the **operator is the controller**
-  and `<app>`-the-vendor processes nothing; `<app>` is controller of its own
-  website, license, support and billing data only. For a hosted instance the
-  operator is the controller of the workspace and `<app>` is a processor under
-  a DPA. Write the role per deployment model, not per feature.
-- **Records of processing** and a **DPIA** for account data, session metadata
-  and the audit log, because each can contain personal data.
-- **Retention**: expired sessions and verification/reset codes are purged by
-  the janitor; user records and audit logs follow the operator's retention
-  policy; deletion cascades are documented and tested.
-- **Data-subject rights**: search, export, rectify and erase a subject's data
-  across relational tables, the audit log and backups. Deletion is a
-  documented cascade with evidence, not a row delete.
+- **Roles**: normally the tenant is the controller of lead data and the
+  organization the processor (DPA with each tenant); the organization is
+  controller of its own account, billing and usage data. Document the role per
+  data category.
+- **Records of processing**, **DPIA** for extraction/enrichment, similarity
+  search (vector embeddings are personal data when derived from personal
+  data) and any profiling or AI scoring.
+- **Lawful basis and transparency** are the tenant's responsibility, but the
+  product supports them: source tracking per lead, notice templates,
+  suppression/opt-out lists honored by every campaign, retention limits.
+- **Data-subject rights**: search, export, rectify and erase by subject across
+  relational data, vector index, caches and backups (tested in
+  `PLAYBOOK_TESTS.md` privacy suite).
 - **International transfers**: mechanisms and transfer assessments for each
-  sub-processor and region; a self-hosted deployment keeps the data in the
-  customer's own region and needs no transfer mechanism of ours.
-- **AI features**: if any are added, inventory the models and providers,
-  require explicit enablement per provider, no training on customer data,
-  prompt/response logging rules, human oversight for any decision affecting a
-  person, and evaluation against the EU AI Act and ISO/IEC 42001 as
-  applicable. `<APP>_OFFLINE=true` must remain a complete product experience.
+  sub-processor and region.
+- **Scraping and provider terms**: review the terms of the sources and of the
+  external provider's data products used; keep a register of permitted sources
+  and prohibit categories (for example sensitive data) at the product level.
+- **Outreach compliance guardrails**: consent and opt-out handling, do-not-call
+  and do-not-contact lists, call-recording consent rules, sending limits,
+  abuse detection and a documented acceptable-use policy tenants accept. These
+  are product controls (`campaigns` slice) with tests and evidence.
+- **AI features** (if introduced): inventory of models and providers,
+  no training on customer data without consent, prompt/response logging rules,
+  human oversight where decisions affect individuals, evaluation against the
+  EU AI Act and ISO/IEC 42001 as applicable.
 - **Breach handling**: privacy incidents follow the incident process with
   regulator and customer notification clocks.
 
@@ -516,30 +520,30 @@ password hash), session metadata, user-generated records and an audit log.
 Pursue only what customers, regulators or the market demand; reuse the
 control library.
 
-| Item | Type | Relevance to `<app>` | Notes |
+| Item | Type | Relevance to the product | Notes |
 |---|---|---|---|
-| **SOC 2 (+ SOC 3)** | Attestation report (SOC 3 = public summary) | Core for B2B procurement, whether the product is self-hosted or hosted | SOC 3 is a public marketing version of a clean SOC 2 |
-| **SOC 1 (SSAE 18 / ISAE 3402)** | Attestation on controls relevant to customers' financial reporting | Only if customers rely on `<app>` for financial-reporting processes; usually not | |
+| **SOC 2 (+ SOC 3)** | Attestation report (SOC 3 = public summary) | Core for B2B SaaS | SOC 3 is a public marketing version of a clean SOC 2 |
+| **SOC 1 (SSAE 18 / ISAE 3402)** | Attestation on controls relevant to customers' financial reporting | Only if customers rely on the product for financial-reporting processes (for example billing); usually not | |
 | **ISO/IEC 27001:2022** | Certificate | Core | |
 | **ISO 9001** | Certificate | Quality and enterprise-procurement signal | 2026 edition, see 1.2 |
-| **ISO/IEC 27701** | Certificate (privacy information management) | Fit given account and session data; extends the ISMS to a PIMS | Verify the current edition and whether it is pursued standalone or as an extension to 27001 |
+| **ISO/IEC 27701** | Certificate (privacy information management) | Strong fit given lead data; extends the ISMS to a PIMS | Verify the current edition and whether it is pursued standalone or as an extension to 27001 |
 | **ISO/IEC 27017 / 27018** | Cloud security / PII in public cloud guidance, certifiable as extensions | Cloud-delivered service handling PII | Often added to the 27001 audit |
 | **ISO/IEC 42001** | AI management system certificate | If AI features become core | |
 | **ISO 22301** | Business continuity certificate | If customers demand BCMS | DR rehearsal evidence already exists |
 | **ISO/IEC 20000-1** | IT service management certificate | Rare for SaaS startups | |
 | **CSA STAR** (CAIQ, Level 1/2) | Self-assessment / third-party assessment | Frequently requested in questionnaires | Cheap, reuses control library |
 | **HITRUST / HIPAA** | Certification / US regulation (no official HIPAA certificate) | Only with healthcare data | Heavy; avoid unless required |
-| **PCI DSS (v4.0.1)** | Standard with attestation | Only if card data is handled | **Avoid scope**: use the payment provider's hosted fields/redirect so card data never reaches `<app>` (lowest SAQ) |
+| **PCI DSS (v4.0.1)** | Standard with attestation | Only if card data is handled | **Avoid scope**: use the payment provider's hosted fields/redirect so card data never reaches the service (lowest SAQ) |
 | **FedRAMP / GovRAMP** | US government authorization | Only for US public sector | Very heavy |
 | **TISAX** | Automotive information security assessment | If customers are automotive | |
 | **BSI C5** | German cloud attestation | If selling to German public sector or regulated entities | |
 | **Cyber Essentials / Plus** | UK baseline certification | UK public-sector demands | |
 | **NIST CSF 2.0 / NIST 800-53 / CIS Controls** | Frameworks (no certificate) | Mapping targets for customer questionnaires | Add as mappings in `frameworks/` |
 | **OWASP ASVS / SAMM, SLSA** | Application security verification and maturity, supply-chain levels | Directly improves the engineering controls | ASVS levels map to the security tests; SLSA to build provenance |
-| **WCAG 2.2 AA / VPAT (ACR) / EN 301 549** | Accessibility conformance | Only if the product ships a UI | Not applicable to a backend-only distribution |
+| **WCAG 2.2 AA / VPAT (ACR) / EN 301 549** | Accessibility conformance | Enterprise and public-sector procurement | Covered by the a11y suite |
 | **GDPR / UK GDPR / LGPD / Ley 25.326 / CCPA** | Laws | Section 13 | Codes of conduct and certification mechanisms exist but are optional |
-| **NIS2, DORA** | EU regulations | Customers in scope will flow requirements down to `<app>` as an ICT supplier (contracts, audit rights, incident timelines) | |
-| **EU Cyber Resilience Act** | EU regulation | Likely the distributed Rust binary; reporting duties from 11 Sep 2026 | See 1.2 |
+| **NIS2, DORA** | EU regulations | Customers in scope will flow requirements down to the organization as an ICT supplier (contracts, audit rights, incident timelines) | |
+| **EU Cyber Resilience Act** | EU regulation | Possibly the extension and mobile app; reporting duties from 11 Sep 2026 | See 1.2 |
 | **EU AI Act** | EU regulation | If AI features fall in scope | Check applicable timelines at the time |
 
 ## 15. Customer-facing assurance
@@ -605,22 +609,23 @@ quarterly summary to management review.
 | Q3 | Management review, access review, external audit fieldwork window (align with period end), chaos/game day |
 | Q4 | SOC 2 period close and report; ISO surveillance/recertification audit; access review; budget and roadmap for next year; playbook and control-map review |
 
-Align actual dates to the SOC 2 period and the certification body's schedule.
+Align actual dates to the SOC 2 period and the certification body's
+schedule.
 
-## 19. Concrete example: quarterly access review (`<APP>-ACC-03`)
+## 19. Concrete example: quarterly access review (`CTL-ACC-03`)
 
 1. **Trigger**: scheduler creates a ticket on the first business day of the
    quarter, assigned to the system owners.
-2. **Collection**: collector exports roles from the identity provider, code
-   host, and (for a hosted instance) production datastores and the admin
-   console (`/api/v1/admin/users` as defined in `PLAYBOOK_URLS.md`) into
-   `evidence/<APP>-ACC-03/{quarter}/`.
-3. **Comparison**: the export is diffed against the backend role hierarchy in
-   `crates/<app>-core/src/rbac.rs`; unexpected grants are flagged.
+2. **Collection**: collector exports permissions from the identity provider,
+   cloud IAM, code host, production datastores and the admin console
+   (`/admin` users and their granular permissions, as defined in
+   `PLAYBOOK_URLS.md`) into `evidence/CTL-ACC-03/{quarter}/`.
+3. **Comparison**: the export is diffed against the expected role→permission
+   matrix used by `_platform/authz-matrix`; unexpected grants are flagged.
 4. **Review**: each owner approves or marks removals; removals are executed
    and ticketed; the sign-off JSON records reviewer, time and decisions.
-5. **Verification**: the `role-matrix` and `ownership-isolation` suites run
-   against staging to prove the authorization model itself still holds.
+5. **Verification**: the `tenant-isolation` and `authz-matrix` suites run
+   against staging to prove the permission model itself still holds.
 6. **Evidence**: export, diff, sign-off, removal tickets and test results with
    hashes in the manifest.
 7. **Auditor sample**: for the SOC 2 Type II window the auditor selects one or
@@ -653,7 +658,7 @@ Align actual dates to the SOC 2 period and the certification body's schedule.
 - [ ] Vendor register, tiering, due diligence and annual reviews are current;
       sub-processor list is published.
 - [ ] Privacy program: roles, records of processing, DPIAs, data-subject
-      rights flows and transfer mechanisms are in place.
+      rights flows, transfer mechanisms and outreach guardrails are in place.
 - [ ] Certification bodies are accredited (including for ISO 9001:2026);
       SOC 2 auditor is a licensed CPA firm.
 - [ ] Marketing and questionnaire claims match the scope and reports.

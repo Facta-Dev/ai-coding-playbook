@@ -7,7 +7,7 @@ versioned files. `scripts/claude-kit/install-user-kit.sh` copies it into
 | Path | Ownership |
 | --- | --- |
 | `CLAUDE.md` | user-owned content, repo-canonical |
-| `agents/*.md` | user-owned content, repo-canonical (`advisor`, `kit-curator`) |
+| `agents/*.md` | user-owned content, repo-canonical (`advisor`, `kit-curator`, `playbook-reviewer`, `playbook-curator`) |
 | `skills/*/SKILL.md` | user-owned content, repo-canonical (8 SDD + audit skills) |
 | `templates/sdd/*.md` | user-owned content, repo-canonical |
 | `settings.fragment.json` | managed — base fragment (default model + deny list), merged into `settings.json` on every machine |

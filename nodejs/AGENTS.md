@@ -189,14 +189,15 @@ INV-T7), **`/review`**, **`/spec`**, **`/plan`**, **`/learn`**, **`/ship`**
 Full contracts live next to this file; read the one you need, do not import
 them wholesale:
 
-| File                      | Covers                                                               |
-| ------------------------- | -------------------------------------------------------------------- |
-| `PLAYBOOK_BACKEND.md`     | Slices, dependency edges, ports/adapters, SQL, outbox, realtime      |
-| `PLAYBOOK_TESTS.md`       | Test pyramid, vitest/cucumber, contract evals, gates, audit evidence |
-| `PLAYBOOK_SECURITY.md`    | Threat model, authn/authz, input, secrets, supply chain, incident    |
-| `PLAYBOOK_URLS.md`        | Route naming, auth postures, error envelope, streaming               |
-| `PLAYBOOK_AUDIT.md`       | Self-hosting an audit program (SOC 2 / ISO 27001 / ISO 9001)         |
-| `PLAYBOOK_CLAUDE_CODE.md` | The Claude Code kit, SDD + TDD loop, multi-session governance        |
+| File                      | Covers                                                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `PLAYBOOK_BACKEND.md`     | Hexagonal architecture, slices, dependency edges, outbox, realtime (language-agnostic) |
+| `PLAYBOOK_NODEJS.md`      | Node specialization: Fastify 5, Kysely, migrations, realtime hub, ESLint layer walls   |
+| `PLAYBOOK_TESTS.md`       | Test pyramid, vitest/cucumber, contract evals, gates, audit evidence                   |
+| `PLAYBOOK_SECURITY.md`    | Threat model, authn/authz, input, secrets, supply chain, incident                      |
+| `PLAYBOOK_URLS.md`        | Route naming, auth postures, error envelope, streaming                                 |
+| `PLAYBOOK_AUDIT.md`       | Self-hosting an audit program (SOC 2 / ISO 27001 / ISO 9001)                           |
+| `PLAYBOOK_CLAUDE_CODE.md` | The Claude Code kit, SDD + TDD loop, multi-session governance                          |
 
 ## Learnings
 
@@ -210,7 +211,7 @@ logged pitfall.
 - `AbortSignal` threads the request/deploy signal through every I/O boundary;
   use cases take and honor it (`signal.throwIfAborted()` at loop yields).
 - Errors: wrap with the message + `cause`, branch on `code`; stable codes live
-  in `src/shared/apperr`, rendered as `{detail, code}` only in `http.ts` /
+  in `src/shared/apperr`, rendered as `{"error":{"code","message"}}` only in `http.ts` /
   `httpx`.
 - Interfaces live in the consumer slice's `ports.ts`, kept small (1–3
   methods).

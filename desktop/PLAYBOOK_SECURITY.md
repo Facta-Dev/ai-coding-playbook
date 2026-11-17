@@ -1,3 +1,13 @@
+---
+id: SECURITY
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 90
+owner: security
+depends_on: [URLS, BACKEND]
+---
+
 # PLAYBOOK_SECURITY.md — Backend cybersecurity playbook
 
 Security contract for every backend, whatever the language. The
@@ -15,8 +25,10 @@ The rules that carry the whole file:
    edge → gateway → controller → use case → domain → data → network.
 3. **Authorization lives in the use case**, with identity, tenant, permission
    and ownership checked on every call. The URL prefix never authorizes.
-4. **Tenant isolation is the primary security boundary.** Cross-tenant data
-   exposure is the worst-case incident for this product.
+4. **In the multi-tenant profile, tenant isolation is the primary security
+   boundary.** Cross-tenant data exposure is the worst-case incident there.
+   A single-tenant deployment still enforces identity, permission and
+   ownership on every call; it has no tenant predicate to check.
 5. **All input is hostile**: HTTP, queue messages, events, webhooks, provider
    responses and, above all, scraped lead data.
 6. **Secrets never live in code, images, logs or client bundles**, and
@@ -179,13 +191,15 @@ Implements `PLAYBOOK_URLS.md`; verified by `authz-matrix` and
 `tenant-isolation` suites in `PLAYBOOK_TESTS.md`.
 
 1. **Every use case authorizes**: permission (`module.resource.action`),
-   **tenant match**, **resource ownership** and state-based rules. Controller
-   checks are an early reject, not the authority.
+   **resource ownership** and state-based rules; in the multi-tenant profile,
+   a **tenant match** as well. Controller checks are an early reject, not the
+   authority.
 2. **Deny by default**: a route or use case without a declared permission
    fails startup/CI.
-3. **Tenant context comes from the token/session**, never from the body or an
-   unvalidated header. `X-Tenant-Id` and path `{tenantId}` are validated
-   against the caller's membership or the admin permission scope.
+3. **Tenant context comes from the token/session** in the multi-tenant
+   profile, never from the body or an unvalidated header. `X-Tenant-Id` and
+   path `{tenantId}` are validated against the caller's membership or the
+   admin permission scope.
 4. **Object-level (BOLA)**: every load by ID includes the tenant (and owner
    where applicable) in the query predicate. Return `404` rather than `403`
    when existence would leak.

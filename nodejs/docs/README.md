@@ -49,7 +49,7 @@ Jump to [13 — Project Skeleton](13-project-skeleton.md) and
 | 07  | [Request Lifecycle](07-request-lifecycle.md)                       | Hooks → identity → use case → port → adapter; WS/SSE aside                                        |
 | 08  | [Persistence & Migrations](08-persistence-and-migrations.md)       | pg Pool, Kysely per-slice queries, paired reversible node-pg-migrate migrations, never at startup |
 | 09  | [Realtime & Streaming](09-realtime-and-streaming.md)               | Hub contract, WebSocket frames + close 4001, SSE hijack flushing, Redis evolution                 |
-| 10  | [Errors, Config & Observability](10-error-config-observability.md) | `{detail, code}` envelope, zod env Load, pino-json logs, health gates, `pnpm audit`               |
+| 10  | [Errors, Config & Observability](10-error-config-observability.md) | `{"error":{"code","message"}}` envelope, zod env Load, pino-json logs, health gates, `pnpm audit` |
 | 11  | [Testing & CI](11-testing-and-ci.md)                               | Test pyramid, fakes over mocks, cucumber acceptance, `make ci`                                    |
 | 12  | [Playbooks](12-playbooks.md)                                       | Add a slice, add a port+adapter, ship a migration, expose an endpoint, add an email template      |
 | 13  | [Project Skeleton](13-project-skeleton.md)                         | Annotated tree of the shipped `skeleton/`                                                         |

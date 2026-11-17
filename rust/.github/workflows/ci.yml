@@ -35,7 +35,7 @@ jobs:
     name: fmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - uses: dtolnay/rust-toolchain@stable
       # Materialize the rust-toolchain.toml channel so the cache key is stable.
       - run: rustup show
@@ -45,10 +45,10 @@ jobs:
     name: clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - uses: dtolnay/rust-toolchain@stable
       - run: rustup show
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo check --workspace --all-targets --all-features
 
@@ -71,10 +71,10 @@ jobs:
     env:
       <APP>_DATABASE_URL: postgres://<app>:<app>@localhost:5432/<app>
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - uses: dtolnay/rust-toolchain@stable
       - run: rustup show
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
       # One-shot schema runner (go cmd/migrate parity): the DDL rides inside
       # the binary (embedded sqlx::migrate!), no sqlx-cli install.
       - name: run migrations
@@ -87,16 +87,16 @@ jobs:
     name: audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - uses: dtolnay/rust-toolchain@stable
       - run: rustup show
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
       - name: cargo-deny
-        uses: EmbarkStudios/cargo-deny-action@v2
+        uses: EmbarkStudios/cargo-deny-action@70f81531115945ba6eb6b941ec9d39d063438eb9  # v2
         with:
           arguments: --workspace
       - name: cargo-audit
-        uses: rustsec/audit-check@v2.0.0
+        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998  # v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: cargo-machete
@@ -112,10 +112,10 @@ jobs:
     name: eval
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - uses: dtolnay/rust-toolchain@stable
       # Materialize the rust-toolchain.toml channel so the cache key is stable.
       - run: rustup show
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2
       - name: test:contracts
         run: cargo test --manifest-path evals/Cargo.toml

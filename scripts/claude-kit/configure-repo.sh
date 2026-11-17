@@ -98,8 +98,12 @@ DENY_RULES=(
   'Read(./secrets/**)'
   'Read(**/*.pem)'
   'Read(**/*.key)'
+  'Read(~/.ssh/**)'
+  'Read(~/.aws/**)'
+  'Read(~/.claude/.credentials.json)'
   'Bash(git push --force*)'
   'Bash(git reset --hard*)'
+  'Bash(rm -rf *)'
 )
 
 GITIGNORE_ENTRIES=(

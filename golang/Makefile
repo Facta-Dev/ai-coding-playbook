@@ -6,7 +6,7 @@ GO      ?= go
 GOOSE_DSN ?= postgres://postgres:postgres@localhost:5432/<app>?sslmode=disable
 
 .DEFAULT_GOAL := help
-.PHONY: help tidy build fmt-check vet lint test test-int accept generate gen-check \
+.PHONY: help tidy build fmt-check vet lint test test-int accept evals generate gen-check \
         migrate-up migrate-down migrate-add run ci vuln verify
 
 help: ## Show targets
@@ -34,18 +34,21 @@ test-int: ## Adapter + migration tests against testcontainers Postgres
 	$(GO) test -tags=integration ./internal/... ./test/...
 
 accept: ## godog acceptance suite only
-	$(GO) test ./test/acceptance/... -run TestAcceptance
+	$(GO) test ./test/acceptance/...
+
+evals: ## Native contract tests for the .claude layer (offline)
+	cd evals && $(GO) test ./...
 
 generate: ## sqlc (internal/gen/db) + oapi-codegen models (internal/gen/api)
 	$(GO) tool sqlc generate
 	$(GO) tool oapi-codegen -config specs/api.gen.yaml specs/openapi.yaml
 
 gen-check: ## Fail if committed generated code is stale
-	@rm -rf /tmp/<app>-gencheck
-	@cp -R internal/gen /tmp/<app>-gencheck
-	@$(MAKE) --no-print-directory generate
-	@diff -ru /tmp/<app>-gencheck internal/gen || { \
-	  echo "generated code stale — run make generate and commit"; exit 1; }
+	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	  cp -R internal/gen "$$tmp/gen"; \
+	  $(MAKE) --no-print-directory generate; \
+	  diff -ru "$$tmp/gen" internal/gen || { \
+	    echo "generated code stale — run make generate and commit"; exit 1; }
 
 # goose v3.29 resolves the driver/connection/dir from the env keys only —
 # the legacy `-dir migrations "dsn" up` flag form misparses.

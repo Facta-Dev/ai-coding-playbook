@@ -21,7 +21,7 @@ bash ~/ai-coding-playbook/scripts/claude-kit/bootstrap.sh             # install
 ```
 
 ```text
-              PRECONDITIONS: git · python3 ≥ 3.9 · claude ≥ 2.1.251 · gh auth
+              PRECONDITIONS: git · python3 ≥ 3.9 · claude ≥ 2.1.251
                        │
                   OS?
              ├─ Linux / macOS / WSL2 ──────► continue
@@ -125,6 +125,7 @@ never duplicate a baseline plugin in a project file.
 
 | File | Governs | Use when |
 | --- | --- | --- |
+| [`PLAYBOOK_MASTER.md`](PLAYBOOK_MASTER.md) | Master index: catalog, precedence, cross-playbook invariants, Claude Code operating model, graphs, maintenance | First read of a session; resolving a conflict between playbooks |
 | [`PLAYBOOK_INSTALL.md`](PLAYBOOK_INSTALL.md) | Installation and bootstrap: clone order, idempotent kit configuration, user-scope validation, minimal-token install path | Preparing a new machine or re-provisioning one |
 | [`PLAYBOOK_CLAUDE_CODE.md`](PLAYBOOK_CLAUDE_CODE.md) | The Claude Code implementation kit: files, agents, skills, rules, hooks, permissions, memory, collaboration protocol, parallel sessions, SDD + TDD loop | Starting a repo, or auditing whether a repo is agent-ready |
 | [`PLAYBOOK_BACKEND.md`](PLAYBOOK_BACKEND.md) | Backend architecture: hexagonal + vertical slices, language-agnostic folder and dependency rules | Any backend service, any language |
@@ -149,18 +150,20 @@ never duplicate a baseline plugin in a project file.
 
 ### Playbook copies per kit
 
-Every kit ships its own byte-specialized copies of the root playbooks. The
-backend kits carry the six shared contracts; the client kits add their stack
-playbook and `PLAYBOOK_FRONTEND.md`. Together with the table above, this
-covers every `PLAYBOOK_*.md` file in the repository.
+Every kit ships **byte-identical** copies of the root playbooks it includes:
+the five shared contracts (`SECURITY`, `TESTS`, `URLS`, `AUDIT`,
+`CLAUDE_CODE`), the language-agnostic `BACKEND` or `FRONTEND`, and the kit's
+stack playbook. Stack-specific rules belong in the stack playbook, never in a
+hand-edited copy. `scripts/claude-kit/check-playbook-copies.sh` fails on any
+drift.
 
 | Kit | Playbook copies |
 | --- | --- |
-| [`golang/`](golang/) | [`PLAYBOOK_BACKEND.md`](golang/PLAYBOOK_BACKEND.md), [`PLAYBOOK_TESTS.md`](golang/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](golang/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](golang/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](golang/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](golang/PLAYBOOK_CLAUDE_CODE.md) |
-| [`rust/`](rust/) | [`PLAYBOOK_BACKEND.md`](rust/PLAYBOOK_BACKEND.md), [`PLAYBOOK_TESTS.md`](rust/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](rust/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](rust/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](rust/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](rust/PLAYBOOK_CLAUDE_CODE.md) |
-| [`nodejs/`](nodejs/) | [`PLAYBOOK_BACKEND.md`](nodejs/PLAYBOOK_BACKEND.md), [`PLAYBOOK_TESTS.md`](nodejs/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](nodejs/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](nodejs/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](nodejs/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](nodejs/PLAYBOOK_CLAUDE_CODE.md) |
-| [`python/`](python/) | [`PLAYBOOK_BACKEND.md`](python/PLAYBOOK_BACKEND.md), [`PLAYBOOK_TESTS.md`](python/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](python/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](python/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](python/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](python/PLAYBOOK_CLAUDE_CODE.md) |
-| [`java/`](java/) | [`PLAYBOOK_BACKEND.md`](java/PLAYBOOK_BACKEND.md), [`PLAYBOOK_TESTS.md`](java/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](java/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](java/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](java/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](java/PLAYBOOK_CLAUDE_CODE.md) |
+| [`golang/`](golang/) | [`PLAYBOOK_BACKEND.md`](golang/PLAYBOOK_BACKEND.md), [`PLAYBOOK_GOLANG.md`](golang/PLAYBOOK_GOLANG.md), [`PLAYBOOK_TESTS.md`](golang/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](golang/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](golang/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](golang/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](golang/PLAYBOOK_CLAUDE_CODE.md) |
+| [`rust/`](rust/) | [`PLAYBOOK_BACKEND.md`](rust/PLAYBOOK_BACKEND.md), [`PLAYBOOK_RUST.md`](rust/PLAYBOOK_RUST.md), [`PLAYBOOK_TESTS.md`](rust/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](rust/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](rust/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](rust/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](rust/PLAYBOOK_CLAUDE_CODE.md) |
+| [`nodejs/`](nodejs/) | [`PLAYBOOK_BACKEND.md`](nodejs/PLAYBOOK_BACKEND.md), [`PLAYBOOK_NODEJS.md`](nodejs/PLAYBOOK_NODEJS.md), [`PLAYBOOK_TESTS.md`](nodejs/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](nodejs/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](nodejs/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](nodejs/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](nodejs/PLAYBOOK_CLAUDE_CODE.md) |
+| [`python/`](python/) | [`PLAYBOOK_BACKEND.md`](python/PLAYBOOK_BACKEND.md), [`PLAYBOOK_PYTHON.md`](python/PLAYBOOK_PYTHON.md), [`PLAYBOOK_TESTS.md`](python/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](python/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](python/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](python/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](python/PLAYBOOK_CLAUDE_CODE.md) |
+| [`java/`](java/) | [`PLAYBOOK_BACKEND.md`](java/PLAYBOOK_BACKEND.md), [`PLAYBOOK_JAVA_J2EE.md`](java/PLAYBOOK_JAVA_J2EE.md), [`PLAYBOOK_TESTS.md`](java/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](java/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](java/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](java/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](java/PLAYBOOK_CLAUDE_CODE.md) |
 | [`extension/`](extension/) | [`PLAYBOOK_CHROME_EXTENSION.md`](extension/PLAYBOOK_CHROME_EXTENSION.md), [`PLAYBOOK_FRONTEND.md`](extension/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](extension/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](extension/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](extension/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](extension/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](extension/PLAYBOOK_CLAUDE_CODE.md) |
 | [`desktop/`](desktop/) | [`PLAYBOOK_DESKTOP_QT.md`](desktop/PLAYBOOK_DESKTOP_QT.md), [`PLAYBOOK_FRONTEND.md`](desktop/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](desktop/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](desktop/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](desktop/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](desktop/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](desktop/PLAYBOOK_CLAUDE_CODE.md) |
 | [`frontend-mobile/`](frontend-mobile/) | [`PLAYBOOK_FRONTEND_MOBILE.md`](frontend-mobile/PLAYBOOK_FRONTEND_MOBILE.md), [`PLAYBOOK_FRONTEND.md`](frontend-mobile/PLAYBOOK_FRONTEND.md), [`PLAYBOOK_TESTS.md`](frontend-mobile/PLAYBOOK_TESTS.md), [`PLAYBOOK_SECURITY.md`](frontend-mobile/PLAYBOOK_SECURITY.md), [`PLAYBOOK_URLS.md`](frontend-mobile/PLAYBOOK_URLS.md), [`PLAYBOOK_AUDIT.md`](frontend-mobile/PLAYBOOK_AUDIT.md), [`PLAYBOOK_CLAUDE_CODE.md`](frontend-mobile/PLAYBOOK_CLAUDE_CODE.md) |
@@ -177,12 +180,12 @@ machine is one command away; [`scripts/claude-kit/`](scripts/claude-kit/) is the
 | Path | What it is |
 | --- | --- |
 | [`kit/CLAUDE.md`](kit/CLAUDE.md) | User-scope instructions (English artifacts, model tiers, kit governance) |
-| [`kit/agents/`](kit/agents/) | [`advisor`](kit/agents/advisor.md) (read-only decision advisor) and [`kit-curator`](kit/agents/kit-curator.md) (kit maintenance) |
+| [`kit/agents/`](kit/agents/) | [`advisor`](kit/agents/advisor.md) (read-only decision advisor), [`kit-curator`](kit/agents/kit-curator.md) (kit maintenance), [`playbook-reviewer`](kit/agents/playbook-reviewer.md) (diff vs playbooks) and [`playbook-curator`](kit/agents/playbook-curator.md) (playbook set maintenance) |
 | [`kit/skills/`](kit/skills/) | The 8 SDD + audit skills: [`spec-new`](kit/skills/spec-new/), [`spec-clarify`](kit/skills/spec-clarify/), [`spec-plan`](kit/skills/spec-plan/), [`spec-tasks`](kit/skills/spec-tasks/), [`tdd-cycle`](kit/skills/tdd-cycle/), [`spec-verify`](kit/skills/spec-verify/), [`retro`](kit/skills/retro/), [`kit-audit`](kit/skills/kit-audit/) |
 | [`kit/templates/sdd/`](kit/templates/sdd/) | Spec, plan, tasks and lessons templates |
 | [`kit/settings.fragment.json`](kit/settings.fragment.json) | Base settings fragment merged into `~/.claude/settings.json` on every machine: default model (`sonnet` — the cost lever) and the deny list. Provider-agnostic |
 | [`kit/settings.ollama.json`](kit/settings.ollama.json) | Ollama-only fragment, merged on top when Ollama is the provider: tier aliases (`opus`/`sonnet`/`haiku` → Ollama cloud models), local endpoint and the fixed literal token `ollama`, cheap subagent routing |
-| [`scripts/claude-kit/`](scripts/claude-kit/) | [`bootstrap.sh`](scripts/claude-kit/bootstrap.sh) (decision tree: OS + Ollama/Claude detection, chains the installers), [`install-user-kit.sh`](scripts/claude-kit/install-user-kit.sh) (kit into `~/.claude`, `--provider` picks the settings env), [`clone-repos.sh`](scripts/claude-kit/clone-repos.sh) (working set by group), [`install-skill-packs.sh`](scripts/claude-kit/install-skill-packs.sh) (register + install the skill-pack plugins), [`configure-repo.sh`](scripts/claude-kit/configure-repo.sh) (wire one repo, `--check` to verify), [`kit_check.py`](scripts/claude-kit/kit_check.py) (read-only validator), [`dedupe_plugins.py`](scripts/claude-kit/dedupe_plugins.py) (move user copies of plugin components aside) — flags and the no-delete contract: [scripts/claude-kit/README.md](scripts/claude-kit/README.md) |
+| [`scripts/claude-kit/`](scripts/claude-kit/) | [`bootstrap.sh`](scripts/claude-kit/bootstrap.sh) (decision tree: OS + Ollama/Claude detection, chains the installers), [`install-user-kit.sh`](scripts/claude-kit/install-user-kit.sh) (kit into `~/.claude`, `--provider` picks the settings env), [`clone-repos.sh`](scripts/claude-kit/clone-repos.sh) (working set by group), [`install-skill-packs.sh`](scripts/claude-kit/install-skill-packs.sh) (register + install the skill-pack plugins), [`configure-repo.sh`](scripts/claude-kit/configure-repo.sh) (wire one repo, `--check` to verify), [`kit_check.py`](scripts/claude-kit/kit_check.py) (read-only validator), [`check-playbook-copies.sh`](scripts/claude-kit/check-playbook-copies.sh) (copy-drift gate), [`generate-playbook-rules.py`](scripts/claude-kit/generate-playbook-rules.py) (path-scoped rules), [`pin-actions.py`](scripts/claude-kit/pin-actions.py) (Action SHA pinning), [`dedupe_plugins.py`](scripts/claude-kit/dedupe_plugins.py) (move user copies of plugin components aside) — flags and the no-delete contract: [scripts/claude-kit/README.md](scripts/claude-kit/README.md) |
 | [`install/repos.txt`](install/repos.txt) | The working-set inventory — one `group\|org/repo\|why` per line, mirrored from §4. Single source of truth for [`clone-repos.sh`](scripts/claude-kit/clone-repos.sh) |
 
 The installers never delete and never overwrite without `--force`; see
@@ -194,7 +197,7 @@ verify) and [`kit/README.md`](kit/README.md) for the ownership rules.
 Each kit directory ships a runnable template for its stack, the playbooks
 specialized to it, and the matching `.claude/` plane:
 
-Every kit also carries nine adapted MIT skills, each with a 1:1 command and a
+Every kit also carries the adapted MIT skills, each with a 1:1 command and a
 `CREDITS.md`: five from `mattpocock/skills` (`diagnosing-bugs`, `domain-modeling`,
 `grilling`, `research`, `tdd`) and four doctrine skills (`claim-check`,
 `clean-room-rebuild`, `verified-status`, `corpus-retrieval`); the visual kits add
@@ -202,11 +205,11 @@ Every kit also carries nine adapted MIT skills, each with a 1:1 command and a
 
 | Directory | Content | Status |
 | --- | --- | --- |
-| [`golang/`](golang/) | Runnable Go template (slices, auth core, worker, realtime) + [`AGENTS.md`](golang/AGENTS.md), [`MEMORY.md`](golang/MEMORY.md), 6 backend playbooks, 11 agents, 18 skills/commands, kit linters | Ready |
-| [`rust/`](rust/) | Runnable Rust workspace (11 crates, axum 0.8, sqlx 0.8, sessions, outbox, realtime) + [`AGENTS.md`](rust/AGENTS.md), [`MEMORY.md`](rust/MEMORY.md), 6 backend playbooks, 11 agents (incl. `unsafe-reviewer`), 18 skills/commands, contract evals | Ready |
-| [`nodejs/`](nodejs/) | Runnable Node 24 + TypeScript template (Fastify 5, Kysely, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](nodejs/docs/) 00–14, [`AGENTS.md`](nodejs/AGENTS.md), [`MEMORY.md`](nodejs/MEMORY.md), 6 backend playbooks, 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
-| [`python/`](python/) | Runnable Python 3.12 + uv template (FastAPI, pydantic v2, SQLAlchemy 2 async, Alembic, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](python/docs/) 00–14, [`AGENTS.md`](python/AGENTS.md), [`MEMORY.md`](python/MEMORY.md), 6 backend playbooks, 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
-| [`java/`](java/) | Runnable Jakarta EE 11 template (Java 21, Maven, CDI, JPA/Hibernate, Flyway, JAX-RS, widgets slice, JUnit/ArchUnit tests) + [`docs/`](java/docs/) 00–14 + ADRs, [`AGENTS.md`](java/AGENTS.md), [`MEMORY.md`](java/MEMORY.md), 6 backend playbooks, 7 agents, 15 skills/commands, contract evals | Ready (Maven gates in CI) |
+| [`golang/`](golang/) | Runnable Go template (slices, auth core, worker, realtime) + [`AGENTS.md`](golang/AGENTS.md), [`MEMORY.md`](golang/MEMORY.md), 7 backend playbooks, 11 agents, 18 skills/commands, kit linters | Ready |
+| [`rust/`](rust/) | Runnable Rust workspace (11 crates, axum 0.8, sqlx 0.8, sessions, outbox, realtime) + [`AGENTS.md`](rust/AGENTS.md), [`MEMORY.md`](rust/MEMORY.md), 7 backend playbooks, 11 agents (incl. `unsafe-reviewer`), 18 skills/commands, contract evals | Ready |
+| [`nodejs/`](nodejs/) | Runnable Node 24 + TypeScript template (Fastify 5, Kysely, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](nodejs/docs/) 00–14, [`AGENTS.md`](nodejs/AGENTS.md), [`MEMORY.md`](nodejs/MEMORY.md), 7 backend playbooks, 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
+| [`python/`](python/) | Runnable Python 3.12 + uv template (FastAPI, pydantic v2, SQLAlchemy 2 async, Alembic, full auth core, outbox worker, WebSocket + SSE) + [`docs/`](python/docs/) 00–14, [`AGENTS.md`](python/AGENTS.md), [`MEMORY.md`](python/MEMORY.md), 7 backend playbooks, 11 agents, 18 skills/commands, 14 kit contract evals | Ready |
+| [`java/`](java/) | Runnable Jakarta EE 11 template (Java 21, Maven, CDI, JPA/Hibernate, Flyway, JAX-RS, widgets slice, JUnit/ArchUnit tests) + [`docs/`](java/docs/) 00–14 + ADRs, [`AGENTS.md`](java/AGENTS.md), [`MEMORY.md`](java/MEMORY.md), 7 backend playbooks, 10 agents, 15 skills/commands, contract evals | Ready (Maven gates in CI) |
 | [`extension/`](extension/) | Runnable Chrome MV3 template (Vite 7, React 19 side panel, classic service worker, zod message protocol with sender validation, versioned storage, managed policy, zero host permissions) + [`docs/`](extension/docs/) 00–14, [`AGENTS.md`](extension/AGENTS.md), [`MEMORY.md`](extension/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready |
 | [`desktop/`](desktop/) | Runnable Qt 6 Widgets template (C++20, CMake presets, one static library per layer with link-time rules, MVVM notes slice, SQLite, managed policy, headless Qt Test) + [`docs/`](desktop/docs/) 00–14, [`AGENTS.md`](desktop/AGENTS.md), [`MEMORY.md`](desktop/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, C++ contract evals | Ready |
 | [`frontend-mobile/`](frontend-mobile/) | Runnable React Native + Expo template (SDK 58, React 19.3, RN 0.88, plain App entry, device tiers + quality governor, typed route table, MVVM notes slice, vitest architecture tests, Metro export gate) + [`docs/`](frontend-mobile/docs/) 00–14, [`AGENTS.md`](frontend-mobile/AGENTS.md), [`MEMORY.md`](frontend-mobile/MEMORY.md), 7 client playbooks, 11 agents, 19 skills/commands, node contract evals | Ready |
@@ -228,8 +231,10 @@ tiers, frozen domain-adapted fixtures, local playbook copies — is
 
 ### 3.3 Client families and the instruction budget
 
-Each client family gets its own playbook and its own path-scoped rule
-(`frontend.md`, `desktop.md`, `mobile.md`, `android.md`, `extension.md`), and **none is
+Each kit ships a path-scoped rule,
+[`.claude/rules/playbooks.md`](golang/.claude/rules/playbooks.md), generated by
+[`scripts/claude-kit/generate-playbook-rules.py`](scripts/claude-kit/generate-playbook-rules.py): it
+names the code roots and points at the local playbooks; **none is
 `@`-imported**. The harness keeps the first 40,000 chars of an instruction
 file and caps the always-on set ([CLAUDE.md](kit/CLAUDE.md)/[AGENTS.md](golang/AGENTS.md) + imports + path-less
 rules) at 120,000 chars; importing a playbook set is how a repo silently loses
@@ -237,9 +242,15 @@ half its contract while warning every session.
 
 [`scripts/instruction-budget.sh`](scripts/instruction-budget.sh) ships in every kit and runs from
 [`verify-template.sh`](golang/scripts/verify-template.sh); it fails when a file would be truncated or the set is
-over budget. To adopt a playbook, add the rule that names it — not an import.
-When a playbook passes ~40k chars it stops working as one instruction file:
-split it by concern.
+over budget. To adopt another playbook, add its path to the rule — not an
+import.
+
+The 40,000-char limit is hard for **always-on** instruction files. A playbook
+is loaded on demand, so [`scripts/playbook-lint.py`](scripts/playbook-lint.py)
+reports one over that size as an advisory, not an error: split it by concern
+when it stops being navigable, not to satisfy a harness limit that does not
+apply to on-demand references. See
+[`docs/adr/0002-playbook-size-is-advisory.md`](docs/adr/0002-playbook-size-is-advisory.md).
 
 ### 3.4 The Beautiful series
 
@@ -328,3 +339,9 @@ A repo belongs here when it is actively worked on. To add one:
 5. Configure it with [`scripts/claude-kit/configure-repo.sh`](scripts/claude-kit/configure-repo.sh) `<repo> --kit=<lang>`
    and confirm with `--check`; then run [`kit_check.py`](scripts/claude-kit/kit_check.py) and confirm the repo
    carries no user-scope duplicate of a plugin command or agent.
+
+## 6. License
+
+Proprietary, all rights reserved — see [`LICENSE`](LICENSE). The Agent Skills
+adapted from MIT-licensed upstreams keep their MIT notices in each
+`CREDITS.md`.

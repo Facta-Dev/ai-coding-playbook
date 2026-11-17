@@ -36,7 +36,7 @@ fakes. [01, 13]
 stable-code errors. Imports the stdlib and `app.shared.*` only; zero I/O
 (enforced by import-linter). [00, 04]
 
-**Envelope** — The error body `{"detail": string, "code": STABLE_CODE}` on
+**Envelope** — The error body `{"error": {"code": STABLE_CODE, "message": string}}` on
 every non-2xx. Codes are `Code` members in `app/shared/apperr.py`; only the
 handlers in `app/platform/envelope.py` write the envelope. [10]
 

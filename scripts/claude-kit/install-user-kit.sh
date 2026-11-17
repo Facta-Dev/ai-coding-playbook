@@ -158,6 +158,9 @@ for f in "$KIT_DIR"/templates/sdd/*.md; do
   install_file "$f" "templates/sdd/$(basename "$f")"
 done
 
+# The kit-audit skill and the kit-curator agent invoke this validator by path.
+install_file "$SCRIPT_DIR/kit_check.py" "scripts/kit_check.py"
+
 # --- merge the settings fragments into settings.json --------------------------
 if [[ "$MERGE_SETTINGS" -eq 1 ]]; then
   FRAGMENTS=("$KIT_DIR/settings.fragment.json")

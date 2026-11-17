@@ -120,7 +120,7 @@ Dependency direction: `app.bin.* → any`; a slice's `http.py`/`postgres.py`/
 5. **Paired migrations** — every revision implements both `upgrade` and
    `downgrade`; an empty `downgrade` is a review block. Migrations never run
    at server startup.
-6. **One error envelope** — every non-2xx body is `{"detail","code"}` written
+6. **One error envelope** — every non-2xx body is `{"error":{"code","message"}}` written
    by `install_error_handlers` (AppError, validation, HTTP, and a catch-all
    `Exception` → 500 `INTERNAL`). Stable codes live in
    `src/app/shared/apperr.py`. Adapters map driver errors inward once.

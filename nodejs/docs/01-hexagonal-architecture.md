@@ -56,7 +56,7 @@ touches one file.
 
 - **Driving** (left): HTTP handlers, the WS handler — the _world calls us_. In
   this layout they are the `http.ts` adapter: decode request, call the use
-  case, encode the `{detail, code}` envelope.
+  case, encode the `{"error":{"code","message"}}` envelope.
 - **Driven** (right): Postgres, mail queue, hub, clock — _we call the world_.
   These are the `postgres.ts` adapters and platform packages.
 

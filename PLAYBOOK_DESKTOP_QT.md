@@ -1,3 +1,13 @@
+---
+id: DESKTOP_QT
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 60
+owner: client-platform
+depends_on: [FRONTEND, SECURITY]
+---
+
 # PLAYBOOK_DESKTOP_QT.md — Cross-platform Qt desktop application playbook
 
 Architecture and engineering contract for building, shipping and operating a

@@ -1,24 +1,39 @@
-# PLAYBOOK_BACKEND.md — Backend architecture playbook (Go)
+---
+id: BACKEND
+version: 1.0.0
+status: active
+last_reviewed: 2026-11-17
+review_cadence_days: 180
+owner: architecture
+depends_on: [URLS]
+---
 
-Architecture contract for a Go backend built from this kit: **hexagonal
-architecture (ports & adapters) organized by vertical slices**. The rules are
-expressed as folders, dependency directions and contracts; the bundled
-skeleton (`cmd/`, `internal/`, `migrations/`, `.claude/`) is the reference
-implementation. Companion of `PLAYBOOK_URLS.md` (routes and authorization) and
-`PLAYBOOK_TESTS.md` (the proof).
+# PLAYBOOK_BACKEND.md — Backend architecture playbook
+
+Architecture contract for the reference service's backend: **hexagonal
+architecture (ports & adapters) organized by vertical slices**.
+Language-agnostic: every rule is expressed in terms of folders, dependencies
+and contracts, not frameworks. Companion of `PLAYBOOK_URLS.md` (routes and
+authorization model).
+
+The runnable, machine-checkable companions are the Go, Node.js, Python and
+Rust skill packs: three Agent Skills (write, review, port) and a drop-in
+linter config per language, enforcing this contract.
+
+The language-specific specialization for Java enterprise (J2EE / Jakarta EE)
+is `PLAYBOOK_JAVA_J2EE.md`.
 
 The rules that carry the whole file:
 
 1. **A slice owns a business capability end to end** (routes → use cases →
    domain → tables). Code is grouped by capability, never by technical type.
 2. **Dependencies point inward**: adapters → application → domain. The domain
-   imports nothing but the standard library and `internal/shared`.
+   imports nothing.
 3. **Slices talk only through published contracts**, never through each
-   other's tables, sqlc models or internals. `internal/features/**` never
-   imports another slice.
-4. **Postgres is the ledger; the outbox and the in-process hub are the
-   couriers.** Correctness comes from idempotency and database constraints,
-   not from a queue.
+   other's tables, ORM models or internals.
+4. **Redis/Dragonfly coordinates, the database decides.** Locks and queues
+   prevent duplicate work; correctness is guaranteed by idempotency and
+   database constraints.
 5. **Extract a slice into a service only when measurements demand it**, and
    the hexagon makes that a swap of adapters, not a rewrite.
 
@@ -27,253 +42,230 @@ The rules that carry the whole file:
 ### 1.1 What is a slice
 
 A slice is a cohesive business capability with its own language, data and
-lifecycle. Every slice lives at `internal/features/<name>/`.
-
-The skeleton ships seven slices:
+lifecycle. The service's initial slices:
 
 | Slice | Responsibility |
 |---|---|
-| `authsignup` | Signup, email verification code, resend |
-| `authpassword` | Forgot / validate / reset / change password |
-| `authsession` | Login, refresh rotation, logout, me/update-me, session listing and revocation |
-| `authoauth` | Google One-Tap, GitHub OAuth login/callback/connect |
-| `adminusers` | Admin user list, detail, partial update, audit trail, upgrade-to-admin |
-| `widgets` | Reference owner-scoped CRUD slice; publishes lifecycle events (replace with your domain) |
-| `realtime` | WebSocket endpoint: authenticate via `?token=`, stream hub events |
+| `identity` | Authentication, sessions, tokens, users, roles, RBAC permissions |
+| `tenants` | Organizations, membership, API key configuration |
+| `projects` | Projects and their configuration |
+| `extraction` | External-provider extraction runs, raw results, normalization |
+| `funnels` | Funnels, leads, stages, per-employee funnel view |
+| `campaigns` | Campaign definition, launch, calls/messages |
+| `usage` | Metering of runs, tokens, calls per tenant |
+| `billing` | Plans, invoices, payment provider |
 
-Slice naming follows the URL module of `PLAYBOOK_URLS.md`: the folder, the
-route prefix and the table prefix align (`adminusers` → `/api/v1/admin/users`
-→ `users`). A new product slice (`orders`, `billing`, …) follows the same
-rule and starts from the `widgets` example.
+Slice naming follows the `{module}` segment of `PLAYBOOK_URLS.md`: the URL
+module, the slice folder and the permission prefix match
+(`funnels` → `/api/v1/app/funnels/...` → `funnels.leads.read`).
 
 ### 1.2 Slice boundaries — how to decide
 
 - One slice = one aggregate root family that changes together.
 - If two things must be consistent in the same transaction, they belong to the
   same slice.
-- If a feature needs data from another slice, it declares a port and the
-  composition root supplies an adapter (section 7); it never imports the other
-  slice and never joins its tables. `slice-isolation` enforces the import half.
-- Splitting too early is worse than splitting late. Start with one slice and
-  split when the capabilities start changing independently.
-- The shared kernel (`internal/shared/`) exists but stays tiny (section 2.3).
+- If a feature needs data from another slice, it asks through that slice's
+  contract (section 7); it never joins its tables.
+- Splitting too early is worse than splitting late. Start with fewer, larger
+  slices and split when the language or the change rate diverges.
+- A `shared-kernel` exists but stays tiny (section 2.3).
 
 ## 2. Repository layout
 
-One flat folder per slice with a fixed six-file (plus `queries.sql`) shape:
-
 ```text
-<app>/
-  cmd/
-    api/              # composition root: env → pool → adapters → Register → serve
-    worker/           # email outbox (FOR UPDATE SKIP LOCKED) + janitor loops
-    migrate/          # goose up/down; the API never migrates itself
-  internal/
-    features/
-      <slice>/
-        domain.go     # pure types, invariants, typed errors — stdlib + shared only
-        ports.go      # the interfaces the consumer declares
-        usecase.go    # plain funcs / small structs over ports
-        http.go       # ServeMux adapters + request/response encoding
-        postgres.go   # adapter over internal/gen/db (sqlc)
-        module.go     # Register(mux, deps) — the only exported wiring function
-        queries.sql   # sqlc input for this slice's queries
-        *_test.go     # colocated tests (fakes in the package)
-    platform/         # authx, config, email, httpx, oauthx, pgx, realtime
-    shared/           # apperr, authz, clockx, idgen, rolex
-    gen/              # committed generated code: db (sqlc), api (oapi)
-  migrations/         # goose SQL, shared file sequence, prefixed tables per slice
-  specs/              # openapi.yaml + godog .feature files
-  test/
-    acceptance/       # godog over the real mux with fakes
-    integration/      # testcontainers Postgres (build tag `integration`)
-    testutil/
-  evals/              # separate Go module: contract evals
-  .claude/            # agents, skills, commands, schemas, settings
-  scripts/            # rename.sh, verify-template.sh, lint-*.sh, hooks/
+src/
+  slices/
+    funnels/
+      domain/                  # pure business rules
+        model/                 # entities, aggregates, value objects
+        events/                # domain events
+        services/              # domain services (stateless rules)
+        errors/
+      application/             # use cases and ports
+        commands/              # write use cases (CreateLead, MoveLeadStage)
+        queries/               # read use cases (ListLeads, GetLeadDetail)
+        ports/
+          in/                  # use-case interfaces (optional if handlers are the API)
+          out/                 # LeadRepository, LeadSimilarityIndex, EventPublisher, Clock...
+        policies/              # permission checks, ownership checks
+      adapters/
+        in/
+          http/                # presentation: routes, controllers, DTOs
+            app/               # /api/v1/app/funnels/...
+            admin/             # /api/v1/admin/tenants/{tenantId}/funnels/...
+          jobs/                # batch entrypoints (consumers, schedulers)
+          events/              # inbound event handlers from other slices
+        out/
+          persistence/         # data layer (section 3)
+            orm/               # ORM models + repository implementations
+            sql/               # hand-written SQL for read models
+            migrations/        # this slice's migrations only
+          vector/              # vector index adapter
+          cache/               # Dragonfly/Redis cache adapter
+          clients/             # adapters to other slices or external APIs
+      contracts/               # PUBLISHED API of the slice (section 7)
+      module.<ext>             # composition: wires ports to adapters
+    extraction/ ...
+    identity/ ...
+  shared-kernel/               # ids, money, pagination, error model, Clock, Result
+  platform/                    # cross-cutting infra: config, logging, tracing,
+                               # db pool, redis client, http server, outbox runner
+  bootstrap/                   # process entrypoints: api, worker, scheduler
+tests/
+  architecture/                # dependency rule tests
 ```
-
-A slice may add files when the capability demands it. The six core files stay;
-extras are named for what they do, never `helpers.go` or `utils.go`.
 
 ### 2.1 Dependency rules (enforced, not suggested)
 
 | From | May import | Must not import |
 |---|---|---|
-| `domain.go` | stdlib, `internal/shared` | `net/http`, `database/sql`, `pgx`, `internal/gen`, `internal/platform`, other slices |
-| `ports.go` / `usecase.go` | own `domain`, `internal/shared` | transport (`net/http`), `pgx`, `database/sql`, `internal/gen`, `internal/platform` |
-| `http.go` | own `usecase`/`domain`/`ports`, `internal/platform/httpx`, `internal/platform/authx` | another slice |
-| `postgres.go` | own `ports`, `internal/gen/db`, `internal/platform/pgx` | another slice |
-| `internal/platform/**` | stdlib, `internal/shared` | `internal/features/**` |
-| `internal/features/**` | own slice, `internal/shared`, `internal/platform` | another `internal/features/**` |
+| `domain` | `shared-kernel` only | application, adapters, any framework, ORM, HTTP |
+| `application` | own `domain`, `shared-kernel`, other slices' `contracts` | adapters, ORM, HTTP types, another slice's internals |
+| `adapters` | own `application` + `domain`, `platform`, libraries | another slice's adapters or domain |
+| `contracts` | `shared-kernel` | everything else |
 
-These are `depguard` rules in `.golangci.yml` (`domain-pure`,
-`usecase-transport-free`, `slice-isolation`, `platform-no-features`).
-`make ci` fails on a violation. No `//nolint:depguard`; fix the boundary
-instead.
+Enforce in CI with an architecture test (ArchUnit, dependency-cruiser,
+import-linter, depguard, Deptrac, or the equivalent for the language). A
+violation fails the build. Rules that are not enforced decay within weeks.
 
 ### 2.2 Composition root
 
-`cmd/api/main.go` is the only place that constructs adapters and calls
-`Register`:
-
-```go
-pool := pgx.Connect(ctx, cfg.DatabaseURL)
-users := adminusers.New(pgxadapter.New(pool), auditLog)
-adminusers.Register(mux, users)   // module.go owns the route table
-```
-
-Business code never instantiates infrastructure, and a slice never imports
-another slice's `module.go`.
+Each slice has one `module` file that binds ports to adapters. Process
+entrypoints in `bootstrap/` decide which modules and which inbound adapters
+are active (section 8). Business code never instantiates infrastructure.
 
 ### 2.3 Shared kernel rules
 
-`internal/shared/` holds exactly: `apperr` (typed errors + stable codes),
-`authz` (role-hierarchy checks), `clockx` (injectable clock), `idgen` (UUIDs /
-opaque tokens), `rolex` (the role vocabulary `ADMIN > MODERATOR > USER >
-GUEST`). Forbidden: business entities, helpers "used by two slices", anything
-that would make `shared` depend on `features`. Duplicate a small piece of code
-before sharing a domain concept.
+Allowed: identifiers, pagination, error envelope, `Clock`, `Result`, tenant
+context type. Forbidden: business entities, helpers "used by two slices".
+Duplicate a small piece of code before sharing a domain concept.
 
 ## 3. Data layer (outbound adapters)
 
-The data layer is `postgres.go` in each slice, over `internal/gen/db` (sqlc).
-The domain and use case never see a SQL string, a pgx type or a sqlc model.
+The data layer lives in `adapters/out/persistence`, `vector`, and `cache`.
+The domain and application never see an ORM model, a SQL string or a vector
+client.
 
 ### 3.1 Ownership
 
-- **Each slice owns its tables**, in one Postgres database and one `public`
-  schema. Ownership is carried by the table prefix: `email_verifications`,
-  `sessions`, `password_resets`, `audit_logs`, `widgets`.
-- **No cross-slice joins.** Reference another slice by ID. The one shared root
-  is `users(id)`: several slices carry `REFERENCES users`, and that is the
-  only cross-slice foreign key allowed. Adding a second one requires removing
-  the ownership rule, so it is an architecture decision, not a PR detail.
-- There is **no tenant column**. Ownership is `user_id`, checked by the backend
-  on every call (`authz.CanManageSelf` / `CanManageSubordinate`). Do not add a
-  `tenant_id` because a future feature might need one.
-- Standard columns: `id` (uuid), `created_at`, `updated_at`, plus `version` or
-  `status` where the row has a lifecycle. Soft delete only where the product
-  needs an audit trail, not by default.
+- **Each slice owns its tables.** Use one database schema per slice
+  (`funnels.leads`, `extraction.runs`) in a shared Postgres instance at the
+  start, so the split into separate databases later is a configuration change.
+- **No cross-slice foreign keys, no cross-slice joins.** Reference other
+  slices by ID only (`lead.projectId` is an opaque value). Integrity across
+  slices is eventual and handled by events (section 7.2).
+- Every tenant-scoped table has `tenant_id NOT NULL`, indexed as the first
+  column of composite indexes. Enable row-level security as a second line of
+  defense where the database supports it; the application still filters by
+  tenant explicitly.
+- Standard columns: `id`, `tenant_id`, `created_at`, `updated_at`,
+  `version` (optimistic locking), `deleted_at` where soft delete is needed.
 
-### 3.2 sqlc, not an ORM
+### 3.2 ORM vs SQL — when to use which
 
 | Use | For |
 |---|---|
-| **sqlc queries** (`queries.sql` in the slice) | Every read and write. `make generate` produces `internal/gen/db`; `make gen-check` fails if the committed output is stale |
-| **Hand-written SQL inside `queries.sql`** | Read models, reports, aggregates, window functions — still via sqlc so the result is typed |
+| **ORM** (repository implementations) | Aggregate loading and saving, writes, simple lookups by ID |
+| **Hand-written SQL** (query adapters) | Read models, reports, dashboards, funnel aggregates, anything with joins, window functions or heavy filtering |
 
-- `postgres.go` implements the slice's ports over the generated `db.Queries`
-  and maps generated rows ↔ domain types. Generated types never leave the
+- Commands go through repositories (`LeadRepository.save(lead)`) and map
+  ORM model ↔ domain entity inside the adapter. ORM entities never leave the
   adapter.
-- SQL is always parameterized by sqlc; no string concatenation, no
-  `fmt.Sprintf` into a query.
-- One transaction boundary per use case. A multi-statement use case takes a
-  `pgx.Tx` through the port; the use case decides the boundary, `postgres.go`
-  executes inside it. **Shipped deviation:** the auth slices write state and
-  then enqueue on the outbox's own pool connection, so the two are not one
-  transaction — a crash between them can lose the mail. The upgrade is a
-  tx-capable port that takes the caller's `pgx.Tx`; do not claim atomicity
-  before the code has it.
-- `context.Context` is the first parameter of every query. No `context.TODO()`
-  in request paths (`contextcheck` and `noctx` enforce this).
+- Queries may bypass the aggregate and return DTOs straight from SQL
+  (CQRS-lite). The query port returns a read DTO, not a domain entity.
+- SQL lives in versioned files or a query builder inside `sql/`, always
+  parameterized. No string concatenation. Every query has the tenant filter.
+- One transaction boundary per use case, opened in the application layer via a
+  `UnitOfWork` port. Adapters never commit on their own.
 
-### 3.3 Vector data
+### 3.3 Vector database
 
-No vector database and no `pgvector` extension is shipped. Introducing an
-embedding index is a new architecture decision: it goes behind a port in the
-owning slice, defaults to `pgvector`, is keyed by
-`entityID + contentHash + modelVersion`, and is rebuildable from the database.
-Do not add one speculatively.
+- Hidden behind a port that speaks the domain language, for example
+  `LeadSimilarityIndex.upsert(leadId, text)` /
+  `findSimilar(tenantId, query, limit)`. No vendor types in signatures.
+- **Default**: `pgvector` inside the slice's own schema (one fewer system,
+  transactional with the rest). **Move to a dedicated engine** (Qdrant,
+  Weaviate, Pinecone, Milvus) when measured recall/latency or index size
+  requires it; only the adapter changes.
+- Tenant isolation is mandatory: a tenant filter or a collection/namespace per
+  tenant. A similarity query without a tenant scope must be impossible to
+  express through the port.
+- Embeddings are derived data: the relational table is the source of truth.
+  Indexing is done asynchronously by a batch job (section 5), is idempotent
+  (keyed by `entityId + contentHash + modelVersion`), and the index can always
+  be rebuilt from the database.
+- Store `embedding_model` and `dimension` with each vector; re-embedding on a
+  model change is a batch job, not a deploy.
 
 ### 3.4 Migrations
 
-- One goose directory: `migrations/`, shared by all slices.
-  Naming `YYYYMMDDHHMMSS_<description>.sql`, created with
-  `make migrate-add NAME=add_field`.
-- The file is `-- +goose Up` / `-- +goose Down`; every migration has a real
-  down step (or an explicit comment saying why it is irreversible).
-- Forward-only once merged. A migration that touches a table owned by another
-  slice is rejected in review.
+- Migrations live in the slice (`adapters/out/persistence/migrations`) and run
+  against that slice's schema only. A migration that touches another slice's
+  table is rejected in review.
+- Forward-only, immutable once merged. Naming:
+  `YYYYMMDDHHMM__slice__description`.
 - **Expand → migrate → contract** for every breaking change: add the new
-  column/table (compatible with old code), backfill in a worker, switch
+  column/table (compatible with old code), backfill in a batch job, switch
   reads/writes, drop the old structure in a later release. Never rename or drop
   in the same release as the code change.
-- Migrations run via `cmd/migrate` (`make migrate`) as a separate deploy step.
-  The API never migrates itself.
-- Large backfills are worker jobs with checkpoints, not migration scripts.
+- Migrations run as a separate deploy step (a one-shot job), never at API
+  startup in multi-replica environments.
+- Large backfills are batch jobs with checkpoints, not migration scripts.
 
 ### 3.5 Cache
 
-No Redis is shipped. The only cache is **in-process** and it is a decorator,
-not an adapter. Rules for a new cache:
+- Cache is an outbound adapter (`CachePort`), used for read acceleration only.
+  Losing the cache must never lose data or break correctness.
+- Keys follow section 5.4. Every entry has a TTL.
+- Invalidate on domain events from the owning slice; never from another slice.
 
-- It is a decorator over a use case in the same slice, so the use case stays
-  pure and the cache can be removed without touching domain code.
-- It is bounded and TTL'd; losing it never loses data or breaks correctness.
-- It never caches an authorization decision, and it is invalidated by the
-  slice that owns the data.
-- A cross-replica cache is a new infrastructure decision: introduce it behind
-  a port, document the consistency window, and keep Postgres authoritative.
-
-## 4. Services layer (domain + use case)
+## 4. Services layer (application + domain)
 
 ### 4.1 Responsibilities
 
-| File | Contains | Does not contain |
+| Layer | Contains | Does not contain |
 |---|---|---|
-| `domain.go` | Entities, value objects, invariants, domain errors, pure helpers | I/O, transactions, HTTP, pgx, config |
-| `ports.go` | The interfaces **the consumer declares** (`Store`, `Verifier`, `Mailer`, `Publisher`) — 1–2 methods where possible | implementations, framework types |
-| `usecase.go` | The use case struct over the ports, one method per command/query, orchestration, transaction boundaries | SQL, HTTP, pgx, generated types |
+| `domain` | Entities, value objects, invariants, domain events, stateless domain services | I/O, transactions, permissions, framework types |
+| `application` | Use cases (one class/function per command or query), orchestration, transactions, permission and ownership checks, port definitions | SQL, HTTP, ORM, queue clients |
 
 ### 4.2 Use case contract
 
 Every use case:
 
-1. Takes `context.Context` first, then explicit inputs. The caller identity is
-   passed as data — `actorID string`, `actorRole rolex.Role` — or read from
-   `authx.IdentityFrom(ctx)` in `http.go` and passed down. A use case never
-   reads the URL to learn who is calling.
-2. Authorizes in the use case, not the router: role hierarchy via
-   `internal/shared/authz` (`CanManageSelf`, `CanManageSubordinate`) plus an
-   ownership check on the loaded row. `http.go` may reject early with
-   `authx.RequireRole`, but it is not the authority.
-3. Loads through ports, runs domain behavior, persists, and returns a result
-   or an `apperr` typed error. No HTTP status codes here.
-4. Never names a transport. `usecase-transport-free` fails the build if
-   `net/http`, `pgx` or `internal/gen` appear in the file.
+1. Receives an explicit input object and a **`RequestContext`**
+   (`userId`, `tenantId`, `activeRole`, `permissions`, `correlationId`)
+   derived from the token and session — never from the URL segment.
+2. Authorizes through a policy: permission (`funnels.leads.update`) **and**
+   resource ownership/tenant match. This is where the rule "`{userType}` never
+   authorizes" is enforced. Controllers may reject early, but the use case is
+   the authority.
+3. Loads aggregates through ports, executes domain behavior, saves, and
+   publishes domain events through the outbox (section 7.2). When the
+   deployment promises at-least-once delivery, the outbox write is in the
+   **same transaction** as the state change.
+4. Returns a result object or typed error; it never throws transport-level
+   errors (no HTTP codes here).
 
-The same use case serves owner and admin routes where the capability is the
-same. The difference is the identity and the ownership check, not duplicated
-business logic.
+The same use case serves `/app` and `/admin` routes. The difference is the
+`RequestContext` and the policy, not duplicated business logic.
 
 ### 4.3 Conventions
 
-- Commands change state and return minimal data; queries never change state.
-- Errors: wrap with `%w`, match with `errors.Is` / `errors.As`, use the stable
-  codes from `internal/shared/apperr`. `http.go` maps them once to
-  `{detail, code}`.
-- Time, randomness and IDs come from `clockx` / `idgen` so tests are
-  deterministic.
-- Business invariants live in `domain.go`, not in handlers or SQL.
-- A use case that exceeds ~200 lines is a sign the slice owns two aggregates;
-  split it before adding a `helpers.go`.
+- Commands change state and return minimal data (ID, version). Queries never
+  change state.
+- Domain errors are typed and mapped to the error envelope in the
+  presentation layer (`FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED`).
+- Time, randomness and IDs come from ports (`Clock`, `IdGenerator`) so tests
+  are deterministic.
+- Business invariants live in the domain, not in validators or controllers.
 
-## 5. Batch and asynchronous work
+## 5. Batch processes layer (inbound adapters + coordination)
 
-Work that outlives a request (email delivery, backfills, provider sync) enters
-the slice through a **worker**, not through a request handler. The worker calls
-the same use case; jobs contain no business logic.
-
-The mechanisms shipped in the skeleton:
-
-| Need | Mechanism |
-|---|---|
-| Email delivery | `cmd/worker` claims `email_jobs` with `SELECT ... FOR UPDATE SKIP LOCKED` |
-| Expired-row purges | `cmd/worker` janitor loops, idempotent and replica-safe |
-| In-process events | `internal/platform/realtime` hub (single-process fan-out) |
-| Slice work that outlives a request | A slice worker polling its own run table |
-| Cross-process events | **Not shipped.** Add a bus behind a port when a second process needs the event; Postgres stays the source of truth |
+Batch work (external-provider runs, enrichment, embedding, campaign dispatch,
+usage rollups, billing cycles, backfills) enters the slice through **inbound
+adapters in `adapters/in/jobs`**, the same way HTTP does: it parses the
+message, builds a `RequestContext` (a system actor with explicit permissions)
+and calls a use case. Jobs contain no business logic.
 
 ### 5.1 Principles
 
@@ -281,167 +273,232 @@ The mechanisms shipped in the skeleton:
   of work must produce its effect once.
 - **At-least-once delivery + idempotent handlers = effectively once.**
   Exactly-once delivery does not exist; design for redelivery.
-- **Postgres is the source of truth; the courier is replaceable.** If a queue
-  loses a message, the system may repeat or delay work, but never corrupt
-  state.
-- Work is scoped to a user or a run, never partitioned by a tenant (there are
-  none). A heavy run must not block another run's worker loop.
+- **Dragonfly/Redis coordinates; the database is the source of truth.** If
+  Redis loses data, the system may repeat or delay work, but never corrupt it.
+- Work is **partitioned by `tenantId`** (and by entity where useful) so one
+  heavy tenant cannot starve the others.
 
-### 5.2 Rules for every job
+### 5.2 Building blocks
 
-1. **Idempotent by design.** Re-running a job with the same id yields the same
-   final state. The "already done?" check is a database constraint or a status
-   transition, not a lock.
-2. **State transitions are explicit.** A run moves `pending → running →
-   succeeded|failed`; the worker claims only `pending` rows in one statement
-   and never resumes a terminal one.
-3. **Cancellable.** Every loop selects on `ctx.Done()`; shutdown drains
-   in-flight work and leaves the run resumable.
-4. **Bounded.** Retries have a maximum, a backoff, and a dead-letter state.
-   Never an infinite retry loop.
-5. **Observable.** Every job logs the run id, attempt and final status. No PII,
-   no tokens.
+| Need | Mechanism |
+|---|---|
+| Distributed work queue | Redis Streams with consumer groups (or a queue library built on them, such as BullMQ). One message is delivered to one consumer in the group |
+| Dedup at enqueue | Deterministic `jobId` (`{jobType}:{entityId}:{windowOrVersion}`) with `SET NX`; a second enqueue of the same id is a no-op |
+| Mutual exclusion on a resource | Lease lock: `SET key token NX PX ttl`; release only if the token matches (compare-and-delete script); renew while working |
+| Single scheduler (cron ticks) | Leader lease: only the holder of `scheduler:leader` enqueues scheduled jobs; others stand by. Failover when the lease expires |
+| Idempotency of effects | Idempotency record in the **database** (`processed_jobs` table or a unique constraint on the natural key), written in the same transaction as the effect |
+| Crash recovery | Visibility timeout + reclaim of pending messages (`XAUTOCLAIM`) for jobs whose worker stopped heartbeating |
+| Poison messages | Max attempts → dead-letter stream + alert; never infinite retry |
+| Fairness and limits | Per-tenant concurrency cap and token-bucket rate limit (per API key for external providers) kept in Redis |
+| Fallback without Redis | `SELECT ... FOR UPDATE SKIP LOCKED` on a jobs table for low-volume or critical jobs |
 
-### 5.3 Job types
+### 5.3 Rules for every job
+
+1. **Idempotent by design.** Re-running a job with the same `jobId` yields the
+   same final state. Effects check "already done?" through a database
+   constraint, not through the lock.
+2. **A lock is an optimization, not a guarantee.** A lease can expire while a
+   worker is paused. Protect effects with a **fencing token** or a version
+   check (`UPDATE ... WHERE version = :expected`) so a stale worker cannot
+   overwrite newer state.
+3. **Lease longer than the work, renewed by heartbeat**, and shorter than the
+   acceptable recovery time. A worker that loses its lease stops.
+4. **Chunk long work** into resumable steps with a persisted checkpoint
+   (cursor, page, run id). A restart continues, it does not start over.
+5. **Retries with exponential backoff and jitter**; classify errors as
+   retryable (timeouts, 429, 5xx) or terminal (validation, 4xx) and send
+   terminal ones to the dead-letter stream immediately.
+6. **Bounded blast radius.** Timeouts on every external call, global and
+   per-tenant concurrency limits, backpressure when the queue depth exceeds a
+   threshold.
+7. **Observable.** Every job logs `jobId`, `jobType`, `tenantId`, `attempt`,
+   `correlationId`; emits metrics (queue depth, age of oldest message,
+   duration, success/failure, retries, DLQ size).
+
+### 5.4 Key naming in Dragonfly/Redis
+
+```text
+{app}:{env}:{slice}:{purpose}:{id}
+
+app:prod:extraction:lock:run:{runId}
+app:prod:extraction:queue:runs                 # stream
+app:prod:funnels:dedup:enrich:{leadId}:{hash}
+app:prod:platform:scheduler:leader
+app:prod:extraction:ratelimit:provider:{apiKeyId}
+```
+
+- Every key carries a TTL unless it is a stream with a trimming policy.
+- Where cluster mode or multi-key scripts are used, put a hash tag
+  (`{tenantId}`) so related keys land on the same shard.
+- A slice only touches keys under its own prefix. `platform` owns the shared
+  primitives (lock, leader election, rate limiter) and exposes them as ports.
+- Dragonfly is wire-compatible with Redis for streams, locks and scripts. Keep
+  the code on plain Redis commands so either engine is interchangeable, and
+  configure persistence and replication according to how costly a lost queue
+  entry is. Remember that a failover can drop the last acknowledged writes:
+  this is why idempotency lives in the database.
+
+### 5.5 Job types
 
 | Type | Trigger | Example |
 |---|---|---|
-| Outbox worker | Row claimed from `email_jobs` | Send a verification or reset email |
-| Janitor loop | `cmd/worker` tick | Purge expired sessions and stale codes |
-| Slice worker | Pending run row | A domain pipeline added in a new slice |
-| Event consumer | Bus subject (when a bus is added) | Realtime fan-out, reconciliation |
-| Operator command | `cmd/*` | Backfill, eval run |
+| Queue worker | Message on a stream | Execute an external-provider run, enrich a lead, embed text |
+| Scheduled | Leader enqueues on a cron tick | Hourly usage rollup, nightly billing close |
+| Event-driven | Domain event from another slice | `LeadCreated` → index embedding |
+| One-off / backfill | Operator command | Re-embed all leads with a new model |
 
-A scheduled job enqueues small, idempotent units, never one giant task.
+Scheduled jobs enqueue small, idempotent units ("rollup tenant X for hour H"),
+not one giant task.
 
 ## 6. Presentation layer (inbound HTTP adapters)
 
-Lives in `http.go` of each slice. Routes follow `PLAYBOOK_URLS.md` exactly.
+Lives in `adapters/in/http`. Routes follow `PLAYBOOK_URLS.md` exactly.
 
 ### 6.1 Structure
 
-Routes are declared in each slice's `http.go` with stdlib `ServeMux` patterns:
-
 ```text
-internal/features/adminusers/http.go
-  mux.Handle("GET /api/v1/admin/users", listHandler)
-  mux.Handle("PATCH /api/v1/admin/users/{id}", updateHandler)
-  mux.Handle("POST /api/v1/auth/upgrade-to-admin", upgradeHandler)
+adapters/in/http/
+  app/          # /api/v1/app/...      end-user experience
+  admin/        # /api/v1/admin/...    platform/tenant administration
+  partner/      # /api/v1/partner/...
+  dto/          # request/response schemas per version
+  mappers/      # DTO <-> use-case input/output
 ```
 
-The prefix encodes the audience: `/api/v1/admin/...` requires
-`authx.RequireRole(rolex.Admin)`; `/api/v1/...` requires
-`authx.RequireAuth` + ownership. There is no `/api/v1/{userType}` segment.
+One folder per `{userType}` mirrors the frontend namespaces and layouts.
 
-### 6.2 Handler rules
+### 6.2 Controller rules
 
-A handler does five things and nothing else:
+A controller does five things and nothing else:
 
-1. Authenticate through `authx` middleware (mounted by `module.go`).
-2. Resolve the actor with `authx.IdentityFrom(r.Context())` → `userID`,
-   `role`. There is no tenant resolution and no `X-Tenant-Id` header.
-3. Decode and validate the request body (`httpx.Decode`, limit/offset bounds).
+1. Authenticate (verify token, resolve session) through `identity`'s contract.
+2. Build the `RequestContext` (user, **tenant from the token/session or from
+   `X-Tenant-Id` validated against membership**, active role, permissions).
+3. Validate and map the request DTO to the use-case input.
 4. Call the use case.
-5. Map the result or `apperr` to JSON and to the `{detail, code}` envelope.
+5. Map the result or typed error to the response and the error envelope.
 
-It contains no business rules and no SQL. A role check in the handler is an
-early rejection, not the authority — the use case re-checks ownership.
+It contains no business rules and no SQL. The `{userType}` path segment may
+select which controller group serves the route; it must never grant anything.
 
 ### 6.3 Contract rules
 
 - Version in the path (`/api/v1`). Additive changes stay in the same version;
   breaking changes create `v2` and a deprecation window.
 - Plural resources, IDs in the path, filters/sort/pagination in the query
-  string, as in the URL playbook. Actions are `POST` on a verb sub-resource
-  (`.../revoke`, `.../sync`).
-- List endpoints are paginated with a hard maximum page size
-  (`httpx` limit/offset; the SDK clamps client-side too).
-- Long operations return a run resource to poll or stream; the work is done by
-  a slice worker. Do not hold HTTP connections open for pipeline work.
+  string, as in the URL playbook. State transitions are `POST` on a verb
+  sub-resource (`.../suspend`, `.../launch`).
+- List endpoints are paginated (cursor by default) with a hard maximum page
+  size.
+- Mutating endpoints that can be retried accept an `Idempotency-Key` header;
+  the key is stored in the database with the response.
+- Long operations return `202 Accepted` with a resource to poll
+  (`/api/v1/app/projects/{projectId}/runs/{runId}`), the work being done by a
+  batch job. Do not hold HTTP connections open for extraction work.
 - Error envelope (same shape as the URL playbook):
 
 ```json
 {
-  "detail": "forbidden: admin role required",
-  "code": "FORBIDDEN"
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You do not have permission to manage users in this tenant.",
+    "requiredPermission": "tenant.users.manage",
+    "correlationId": "c0a8..."
+  }
 }
 ```
 
-- Responses never leak internal details (stack traces, SQL, provider keys).
-  A resource the caller does not own answers `404`, not `403`, when revealing
-  existence would be a leak.
+- Responses never leak internal details (stack traces, SQL, internal ids of
+  other tenants). Cross-tenant access to an existing resource answers
+  `404`, not `403`, when revealing existence would be a leak.
 
 ### 6.4 Other inbound protocols
 
-The same use cases are exposed through other adapters without changing the
-core: SSE (widget lifecycle events), WebSocket (`internal/platform/realtime`,
-`GET /api/v1/ws`), and CLI entrypoints under `cmd/`. Streaming adapters use
-the same authorization path as HTTP.
+The same use cases can be exposed through other adapters without changing the
+core: gRPC for service-to-service calls, webhooks (external provider, payment
+provider) as `adapters/in/http/webhooks` with signature verification and
+idempotent processing, CLI for operations, WebSocket/SSE for live funnel
+updates.
 
 ## 7. Connecting slices
 
-`slice-isolation` makes the boundary absolute: **a slice never imports another
-slice.** A slice that needs data another slice owns has two options, in this
-order.
+Three levels, in this order of preference. Use the cheapest one that meets the
+need.
 
-### 7.1 Level 1 — a port supplied by the composition root (default)
+### 7.1 Level 1 — In-process contract (default)
 
-- The consuming slice declares the dependency in its own `ports.go`
-  (`type Users interface { GetUser(ctx, id) (domain.User, error) }`) and
-  `cmd/api/main.go` supplies an adapter over the owning slice's use case or
-  HTTP route. The consumer never imports the producer's package.
-- In the monolith the adapter is wired in-process; after extraction (section 9)
-  it becomes a network client. The port does not change either way.
-- DTOs cross the boundary, not domain entities. The adapter maps.
-- Read-mostly calls only. A write that spans slices goes through an event.
+A slice publishes a small, versioned API in `contracts/` (interfaces + DTOs +
+event schemas). Another slice depends only on that package, through its own
+outbound port:
 
-### 7.2 Level 2 — asynchronous events (when a bus is added)
+```text
+funnels/application/ports/out/ProjectDirectory      # port owned by funnels
+funnels/adapters/out/clients/ProjectsInProcessAdapter  # calls projects/contracts
+```
 
-- Add the broker behind a port in `internal/platform`; do not let a slice talk
-  to NATS/Redis directly.
-- Event fields are additive: `<type, version, occurredAt, payload>`. Add
-  fields; never repurpose them.
-- Consumers are idempotent and keyed by event id. At-least-once, not
-  exactly-once.
-- Cross-slice workflows with compensation are owned by the initiating slice,
+- The consuming slice defines the port in **its own language** and an adapter
+  translates (anti-corruption layer). It never reuses the other slice's
+  entities.
+- Calls are read-mostly and cheap. Writes across slices are not made through a
+  synchronous call chain; use events.
+- Contracts are DTOs only: no domain entities, no ORM models, no
+  framework types.
+
+### 7.2 Level 2 — Asynchronous events (eventual consistency)
+
+- Slices publish **domain events** (`LeadCreated`, `RunCompleted`,
+  `TenantSuspended`) through an **outbox**. The target for a system that
+  promises at-least-once delivery is a **transactional outbox**: the event is
+  written in the same database transaction as the state change, and a relay
+  publishes it. A shipped template that hands the event to a queue after the
+  commit has **weaker delivery guarantees**: mark it as a deviation, keep the
+  event id and idempotency key stable, and never call it at-least-once until
+  the outbox row is durable in the same transaction.
+- Consumers are inbound adapters (`adapters/in/events`), idempotent, keyed by
+  event id, and tolerant to duplicates and reordering within a tenant.
+- Events are versioned (`type`, `version`, `occurredAt`, `tenantId`,
+  `correlationId`, `payload`). Add fields; never repurpose them.
+- Cross-slice workflows that need compensation (launch campaign → reserve
+  usage → charge) use a saga/process manager owned by the initiating slice,
   with explicit compensating actions.
-- A task ledger (leases, receipts, artifacts) lives in Postgres, in the same
-  transaction as its effect. Do not add a second source of truth.
 
-### 7.3 Level 3 — network protocols between deployed services
+### 7.3 Level 3 — Network protocols between deployed services
 
 When a slice runs as its own service (section 9) the same port gets a
 different adapter:
 
 | Interaction | Protocol |
 |---|---|
-| Synchronous request/response, internal | gRPC or HTTP/JSON |
-| Asynchronous, durable | The bus added in Level 2, same event envelope |
-| External clients | HTTP/JSON, versioned, under `/api/v1/...` |
+| Synchronous request/response, internal | gRPC (or HTTP/JSON with an OpenAPI contract) |
+| Asynchronous, durable | Stream/broker with the same event schemas as Level 2 |
+| External or partner-facing | HTTP/JSON, versioned, under `/api/v1/{userType}/...` |
 
-Network calls require timeouts, retries only for idempotent operations,
-circuit breaking, and service authentication. Trust is never implied by
-network position; the callee authorizes.
+Network calls require: timeouts, retries only for idempotent operations,
+circuit breaker, bulkhead, propagation of `correlationId` and tenant context,
+and **service authentication** (mTLS or signed service tokens). The caller
+forwards the end-user identity; the callee still authorizes with RBAC. Trust is
+never implied by network position.
 
 ## 8. Deployment modes: one codebase, several processes
 
 Before any microservice, run the same artifact in different **modes**,
-selected by the entrypoint under `cmd/`:
+selected by the entrypoint in `bootstrap/`:
 
 | Mode | Runs | Scales by |
 |---|---|---|
-| `cmd/api` | HTTP adapters of all slices; starts the in-process slice workers | Request rate |
-| `cmd/worker` | Email outbox + janitor loops | Queue depth |
-| `cmd/migrate` | One-shot goose migrations | Run once per release |
-| Additional `cmd/*` | Operator tools | On demand |
+| `api` | HTTP inbound adapters of all slices | Request rate |
+| `worker` | Queue consumers (optionally limited to chosen slices/queues) | Queue depth |
+| `scheduler` | Leader-elected cron enqueuer (1 active, N standby) | Not scaled |
+| `migrate` | One-shot migrations | Run once per release |
 
-This isolates heavy batch load from interactive latency and keeps one image
-with several entrypoints.
+This isolates heavy batch load from interactive latency (a burst of
+external-provider runs cannot slow the API) and lets `worker` pools be
+dedicated per queue, with no network boundary introduced and no
+distributed-system cost paid yet.
 
 ## 9. When to extract a slice into a microservice
 
-Default: **modular monolith, several entrypoints**. Extract only with
-evidence.
+Default: **modular monolith, multiple modes**. Extract only with evidence.
 
 ### 9.1 Triggers (any one, measured, sustained)
 
@@ -449,135 +506,160 @@ evidence.
 |---|---|
 | Independent scaling | The slice needs more than ~5x the replicas/CPU/memory of the rest, or a different resource profile (GPU, large memory, long-lived connections) |
 | Load isolation | The slice's p95 CPU/DB load degrades other slices even with separate worker pools |
-| Data profile | Its dataset or write rate needs its own engine, sharding or retention policy |
-| Failure isolation | Its outages or deploys must not take down the core |
-| Team / release cadence | A dedicated team ships it independently |
-| Runtime fit | It benefits from a different language or runtime |
+| Data profile | Its dataset or write rate needs its own engine, sharding or retention policy (for example the vector index, or raw extraction results) |
+| Failure isolation | Its outages or deploys must not take down the core, and the core must keep working when it is down |
+| Team / release cadence | A dedicated team ships it independently and the shared release train is the bottleneck |
+| Security / compliance | It handles regulated data (payments, PII) that requires a separate boundary and audit scope |
+| Runtime fit | It benefits from a different language or runtime (for example a data/ML pipeline) |
 
 ### 9.2 Anti-triggers
 
 - "It would be cleaner." The module boundary already gives that.
 - No measurements, only intuition.
 - The slice is still changing together with its neighbors in most PRs.
-- The team has no observability or on-call capacity for another service.
+- The team has no observability, tracing or on-call capacity for another
+  service.
 
 ### 9.3 Readiness checklist (all required before extracting)
 
-- [ ] The slice owns its tables; no cross-slice FKs remain (only `users(id)`).
-- [ ] Every caller goes through an HTTP/event boundary, never an import.
-- [ ] Cross-slice writes already go through events.
-- [ ] Its workers are idempotent and its run rows carry explicit state.
+- [ ] The slice owns its schema; no cross-slice joins or FKs remain.
+- [ ] All callers use its `contracts/` package; no deep imports.
+- [ ] Cross-slice writes already go through events, not synchronous chains.
+- [ ] Its jobs are idempotent and its queues are namespaced under its prefix.
+- [ ] Tracing, metrics and `correlationId` propagation are in place.
 - [ ] A contract test suite exists for its API and events.
 
 ### 9.4 Extraction procedure (strangler)
 
-1. Deploy the slice as its own process against its own tables.
-2. Move its tables to their own database instance (config change + data
+1. Deploy the slice as its own process using the existing code (mode
+   `worker`/`api` limited to that slice) against its own schema.
+2. Move its schema to its own database instance (config change plus data
    migration).
-3. Replace in-process adapters in consumers with network adapters (gRPC or
+3. Replace the in-process adapters in consumers with network adapters (gRPC or
    events). Ports and use cases stay untouched.
-4. Run both paths in parallel with shadow traffic, then cut over.
+4. Run both paths in parallel with comparison or shadow traffic, then cut over.
 5. Remove the in-process path.
 
-### 9.5 Candidates, in likely order
+### 9.5 Candidates for extraction, in likely order
 
-Extract a long-running, network-bound slice first; keep the auth slices and
-`adminusers` in the core (everything depends on them and they are cheap to
-run). The `widgets` example is not a candidate — it is a template.
+1. **`extraction`** — bursty, long-running, provider-bound (the external
+   provider), the first one to isolate as a dedicated `worker` pool, and the
+   first candidate for a standalone service if load demands it.
+2. **Vector indexing / similarity** (inside `funnels`) — move to a dedicated
+   vector engine behind the same port before any service split.
+3. **`campaigns` dispatch** — external call/message providers, strict rate
+   limits.
+4. **`billing`** — likely extracted for compliance reasons rather than load.
+
+`identity`, `tenants` and `projects` stay in the core: everything depends on
+them and they are cheap to run.
 
 ## 10. Cross-cutting rules
 
-### 10.1 Authorization
+### 10.1 Multi-tenancy and authorization
 
-- There is no tenant context. The actor is `authx.Identity{UserID, Email,
-  Role, JTI}`, resolved once per request and passed to the use case as data.
-- Authorization = identity + role hierarchy (`rolex`, `authz`) + resource
-  ownership, enforced in the use case. The URL prefix, headers sent by the
-  client and hidden UI buttons are never the source of truth.
-- Admin routes use `authx.RequireRole(rolex.Admin)` at the router **and** the
-  use case re-checks; defense in depth, one authority.
-- Jobs run as a **system actor** with the minimum privileges needed, scoped to
-  the user or run they process.
-- Provider keys are encrypted at rest, decrypted only inside the adapter that
-  uses them, never logged and never returned in a response.
+- Tenant context is resolved once per request/job from the token or job
+  payload and carried in `RequestContext`. Every repository and query takes
+  the tenant explicitly.
+- Authorization = identity + active tenant + permission
+  (`module.resource.action`) + resource ownership, enforced in the use case.
+  The URL prefix, headers sent by the client and hidden UI buttons are never
+  the source of truth.
+- Jobs run as a **system actor** with the minimum permissions needed, and
+  always carry the `tenantId` of the data they process.
+- Secrets (tenant API keys for external providers) are stored encrypted,
+  decrypted only inside the outbound adapter that needs them, and never
+  logged or returned in responses.
 
 ### 10.2 Observability
 
-- Structured logs with `userID`, `slice`, `useCase`, `runID` where relevant.
-  Never log secrets or full PII.
-- Per-slice metrics: use-case latency and error rate, run state counts,
-  worker lag.
-- Health endpoints: `readyz` (database probe via `internal/platform/pgx`),
-  `livez` (process).
+- Structured logs with `correlationId`, `tenantId`, `userId`, `slice`,
+  `useCase`. Never log secrets or full PII.
+- Distributed tracing across HTTP, queue messages and events (propagate the
+  trace context in message headers).
+- Per-slice metrics: use-case latency and error rate, queue depth and age,
+  DLQ size, lock contention, outbox lag.
+- Health endpoints per mode: liveness (process) and readiness (database,
+  Redis reachable).
 
 ### 10.3 Configuration and environments
 
-- Typed env configuration (`internal/platform/config`, `<APP>_` prefix),
-  validated at startup; the process fails fast on missing or invalid values,
-  including secret strength.
-- `<APP>_OFFLINE=true` is the switch every network adapter must honor before
-  touching a socket (OAuth provider calls, email, eval live paths); tests run
-  offline.
-- Same artifact in every environment.
+- Twelve-factor configuration from the environment, validated at startup;
+  the process fails fast on missing or invalid values.
+- Per-slice feature flags for risky rollouts. Same artifact in every
+  environment.
 
 ### 10.4 Testing pyramid
 
 | Level | Scope | Notes |
 |---|---|---|
-| Domain unit | `domain.go` invariants and pure helpers | No mocks, no I/O, fastest |
-| Use-case | `usecase.go` with in-package fakes of the ports (`fakes_test.go`) | Covers authorization and ownership paths |
-| Adapter integration | `postgres.go`, migrations, real Postgres | `-tags=integration`, testcontainers, `make test-int` |
-| Acceptance | godog over the real mux with fakes | `make accept`, `specs/features/*.feature` |
-| Contract evals | `evals/` (separate module) | `contracts_test.go` + fixtures |
+| Domain unit | Entities, value objects, domain services | No mocks, no I/O, fastest |
+| Use-case | Application layer with in-memory fakes of the ports | Covers permissions and ownership paths |
+| Adapter integration | Repositories, SQL, vector index, Redis locks/streams against real containers | Includes migration run from scratch |
+| Contract | Slice `contracts/` and event schemas, consumer-driven | Required before extraction |
 | End-to-end | A few critical flows through HTTP | Keep thin |
-| Architecture | depguard: domain purity, slice isolation, platform purity | `make lint`, every PR |
-| Performance | Absolute budgets, serial and quiet host | `-tags=perf`, `make test-perf`, not in `make test` |
+| Architecture | Dependency rules, no cross-slice imports | Runs on every PR |
+| Concurrency | Two workers on the same job, crash mid-job, duplicate delivery | Proves "no overlap, no duplicates" |
 
-## 11. Concrete example: a widget lifecycle
+## 11. Concrete example
 
-Flow: an authenticated user creates a widget, then watches its lifecycle
-events.
+Flow: the end user launches a campaign from a project.
 
 ```text
-POST /api/v1/widgets          { name }
-GET  /api/v1/widgets/{id}
-GET  /api/v1/widgets/events   SSE
+POST /api/v1/app/projects/{projectId}/launch
 ```
 
-1. `widgets/http.go` authenticates, reads the identity, validates the body
-   (`domain.go`), calls the `Create` use case.
-2. `Create` persists a `widgets` row and returns it. The handler answers `201`
-   with the row.
-3. The use case publishes a lifecycle event to the in-process hub;
-   `realtime` streams it over the existing WebSocket, and `widgets` exposes an
-   SSE adapter for the same events.
-4. Reads load the row through `postgres.go` and re-check ownership before
-   returning it. A foreign id answers `404`.
-5. If the process restarts, state is rediscovered from Postgres — the
-   database, not the hub, is the ledger.
+1. `projects` HTTP adapter (`app/`) authenticates, builds `RequestContext`,
+   maps the DTO, returns `202` with a `runId`.
+2. `LaunchCampaign` use case (application) checks `campaigns.launch` and that
+   the project belongs to the tenant, creates the run aggregate, and writes
+   `RunRequested` to the outbox in the same transaction.
+3. The outbox relay publishes the event to the `extraction` queue
+   (`jobId = extraction:run:{runId}`, deduplicated by `SET NX`).
+4. `extraction` worker (any replica) claims the message through the consumer
+   group, takes the lease `extraction:lock:run:{runId}`, checks the
+   per-API-key rate limit, calls the external provider through its outbound
+   adapter and persists a checkpoint after every page.
+5. Results are written idempotently (unique key on
+   `tenantId + externalResultId`) and `LeadsExtracted` is published via the
+   outbox.
+6. `funnels` consumes `LeadsExtracted`, creates leads in each employee's
+   funnel, and enqueues an embedding job per lead; the vector adapter upserts
+   by `leadId + contentHash`.
+7. `usage` consumes `RunCompleted` and meters the run for `billing`.
+8. The user polls `GET /api/v1/app/projects/{projectId}/runs/{runId}` and
+   sees progress; an admin sees the tenant-wide view under
+   `/api/v1/admin/tenants/{tenantId}/...` through a different policy, not a
+   different use case.
+
+If a worker dies at step 4, its lease expires, another worker reclaims the
+message and resumes from the checkpoint; the unique key makes repeated
+writes harmless. If Redis is wiped, runs in `RUNNING` state without a
+heartbeat are re-enqueued by the scheduler sweeper from the database.
 
 ## 12. Checklist
 
-- [ ] Code is organized by slice: `domain.go`, `ports.go`, `usecase.go`,
-      `http.go`, `postgres.go`, `module.go`, `queries.sql` — never by
-      technical type at the top level.
-- [ ] depguard enforces the boundary: `make ci` is green, no `nolint:depguard`.
-- [ ] `domain.go` imports only stdlib + `internal/shared`.
-- [ ] Each slice owns its tables (prefix) and its `queries.sql`; no cross-slice
-      joins, no `tenant_id`.
-- [ ] sqlc for every query; `make gen-check` is green.
-- [ ] Migrations are goose files in `migrations/`, forward-only,
-      expand/contract, run by `cmd/migrate`.
-- [ ] Use cases authorize by role + ownership; handlers are thin.
-- [ ] Every worker is idempotent, claims terminal-safe state transitions,
-      respects `ctx.Done()`, and has bounded retries.
-- [ ] Postgres holds truth; the outbox and hub are replaceable couriers.
-- [ ] Cross-slice calls go through a port/HTTP/event boundary; cross-slice
-      writes go through events.
-- [ ] Long operations return a run resource and are executed by a worker.
-- [ ] Deployment entrypoints (`cmd/api`, `cmd/worker`, `cmd/migrate`) exist
-      before any microservice.
+- [ ] Code is organized by slice, then by layer (`domain`, `application`,
+      `adapters`, `contracts`), never by technical type at the top level.
+- [ ] Architecture tests enforce the dependency rules in CI.
+- [ ] `domain` has no framework, ORM, HTTP or queue imports.
+- [ ] Each slice owns its schema and migrations; no cross-slice joins or FKs.
+- [ ] ORM for aggregates and writes; parameterized SQL for read models.
+- [ ] Vector store behind a port, tenant-scoped, rebuildable from the database.
+- [ ] Migrations are forward-only, expand/contract, run as a separate step.
+- [ ] Use cases authorize by permission + ownership using `RequestContext`;
+      controllers are thin; `{userType}` never authorizes.
+- [ ] Every job is idempotent, has a deterministic `jobId`, a lease with
+      heartbeat, a fencing/version check, retries with backoff and a DLQ.
+- [ ] Redis/Dragonfly holds coordination only; the database holds truth.
+- [ ] Redis keys follow `{app}:{env}:{slice}:{purpose}:{id}` and have TTLs.
+- [ ] Scheduled work uses leader election and enqueues small units.
+- [ ] Cross-slice calls go through `contracts/`; cross-slice writes go through
+      outbox events.
+- [ ] Long operations return `202` and are executed by batch workers.
+- [ ] Deployment modes (`api`, `worker`, `scheduler`, `migrate`) exist before
+      any microservice.
 - [ ] A slice is extracted only with a measured trigger and the readiness
       checklist complete.
-- [ ] Logs carry the actor, slice and run id; secrets never logged.
-- [ ] Provider keys are encrypted at rest and never returned in a response.
+- [ ] Logs, traces and metrics carry `correlationId`, `tenantId` and `slice`.
+- [ ] Secrets are encrypted at rest and never logged.

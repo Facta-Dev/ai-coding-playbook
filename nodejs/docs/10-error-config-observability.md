@@ -5,7 +5,7 @@ deliberate cut: no OpenTelemetry in the template.
 
 ## 1. The error envelope
 
-Every non-2xx body is `{"detail": string, "code": STABLE_CODE}` — stable codes
+Every non-2xx body is `{"error": {"code": STABLE_CODE, "message": string}}` — stable codes
 are constants in `#shared/apperr`, domain errors carry them, and `httpx` +
 the root's error handler map them to HTTP statuses in exactly one place:
 
@@ -20,7 +20,7 @@ export const AuthRateLimit = "AUTH_RATE_LIMITED"; // → 429
 
 Rules: adapters never invent codes; use cases throw `AppError` (or map thrown
 values through `from()`); the envelope is written only by the `httpx`
-helpers — grep for `"detail"` and you find one definition
+helpers — grep for `"error"` and you find one definition
 (`platform/httpx.ts`), one writer (`setErrorHandler` + `setNotFoundHandler`
 at the root; unmatched paths answer the same 404 envelope). Client code keys
 on the _code_, not the message.
