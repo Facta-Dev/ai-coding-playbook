@@ -185,6 +185,33 @@ Runbook: `ai-coding-playbook/CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md`.
 Rollout (2026-11-08): enyo/enyo-platform, deino, talos,
 staxis, everythink_platform, transportation-bank, v0ss, ctx0/nest, ctx0/ctx0.
 
+On the Anthropic provider (no Ollama endpoint) `configure-repo.sh` appends this
+variant instead, under its own marker; a repo that already carries either
+marker is left alone:
+
+```markdown
+<!-- model-routing:anthropic -->
+## Model routing (Claude Code + Anthropic)
+
+Playbook: `ai-coding-playbook/PLAYBOOK_CLAUDE_CODE.md` (agents: model/effort).
+Native advisor: `CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md` §7.
+
+- Native tier aliases: `opus` = escalation, `sonnet` = workhorse (the default
+  in `~/.claude/settings.json`), `haiku` = cheap digging. A bare `claude` stays
+  on `sonnet`.
+- Subagent `model:` follows the playbook: reasoning-heavy roles (architecture,
+  security, curation) `opus`, execution roles `sonnet`, mapping/search `haiku`;
+  use `inherit` where the organization may restrict `availableModels`.
+- Consult the `advisor` agent before locking a plan, when the same error
+  reappears twice, and before declaring a task done. Pass concrete context
+  (plan, diff, test output) — not the whole repo. The native advisor
+  (`claude --advisor opus`, `"advisorModel": "opus"` or `/advisor`) may replace
+  it when the main model supports it.
+- Escalate with `/model opus` for design decisions or after two failed
+  attempts; return to `sonnet` when the task is done.
+- All code, comments, tests, specs, and documentation are generated in English.
+```
+
 ## 7. Native `--advisor` — Anthropic only
 
 `claude --model sonnet --advisor opus` exists (experimental, docs

@@ -9,11 +9,13 @@
 #
 # Usage:
 #   bash scripts/claude-kit/configure-repo.sh <repo-path> [--kit=NAME]
-#        [--check] [--dry-run]
+#        [--provider=ollama|anthropic|auto] [--check] [--dry-run]
 #     <repo-path   repository root (must be a git work tree)
 #     --kit=NAME   also install that stack kit: golang|nodejs|python|rust|java|
 #                  extension|desktop|frontend-mobile|mobile-android|mobile-ios|
 #                  frontend|cli
+#     --provider=P routing block variant: ollama|anthropic|auto (default auto:
+#                  ollama when 127.0.0.1:11434 answers, else anthropic)
 #     --check      verify the repo, write nothing; exit 1 on drift
 #     --dry-run    print the diff it would apply, write nothing
 #
@@ -30,6 +32,7 @@ ROUTING_DOC="$ROOT_DIR/CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md"
 
 REPO=""
 KIT=""
+PROVIDER="auto"
 CHECK=0
 DRY_RUN=0
 
@@ -37,6 +40,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --kit=*)   KIT="${1#--kit=}"; shift;;
     --kit)     KIT="${2:-}"; shift 2;;
+    --provider=*) PROVIDER="${1#--provider=}"; shift;;
+    --provider)   PROVIDER="${2:-}"; shift 2;;
     --check)   CHECK=1; shift;;
     --dry-run) DRY_RUN=1; shift;;
     -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
@@ -59,18 +64,31 @@ REPO_ROOT="$(git -C "$REPO" rev-parse --show-toplevel 2>/dev/null)" \
   || die "not a git repository: $REPO"
 REPO="$REPO_ROOT"
 
-MARKER='<!-- model-routing:ollama -->'
 CLAUDE_MD="$REPO/CLAUDE.md"
 DOTCLAUDE="$REPO/.claude"
 SETTINGS="$DOTCLAUDE/settings.json"
 GITIGNORE="$REPO/.gitignore"
 BACKUP_DIR="$DOTCLAUDE/backups/configure-$(date -u +%Y-%m-%d)"
 
+# Routing block variant: ollama when a local endpoint answers, else anthropic
+# (same detection as bootstrap.sh).
+case "$PROVIDER" in
+  auto)
+    if command -v curl >/dev/null 2>&1 \
+       && curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1
+    then PROVIDER=ollama; else PROVIDER=anthropic; fi;;
+  ollama|anthropic) ;;
+  *) die "unknown provider '$PROVIDER' (ollama|anthropic|auto)";;
+esac
+MARKER="<!-- model-routing:$PROVIDER -->"
+# A repo already carrying either variant counts as configured.
+MARKER_ANY='<!-- model-routing:'
+
 # The routing block, verbatim from the runbook (section 6). Extracted at run
 # time so the two files can never drift apart.
 [[ -f "$ROUTING_DOC" ]] || die "routing runbook not found: $ROUTING_DOC"
-ROUTING_BLOCK="$(awk '/^<!-- model-routing:ollama -->$/{f=1;print;next} f&&/^```$/{exit} f{print}' "$ROUTING_DOC")"
-[[ -n "$ROUTING_BLOCK" ]] || die "no model-routing block in $ROUTING_DOC"
+ROUTING_BLOCK="$(awk -v m="$MARKER" '$0==m{f=1;print;next} f&&/^```$/{exit} f{print}' "$ROUTING_DOC")"
+[[ -n "$ROUTING_BLOCK" ]] || die "no $MARKER block in $ROUTING_DOC"
 
 # Project-scope deny list. User-scope rules anchor // or ~; a project
 # settings.json resolves them from the repo root (PLAYBOOK_CLAUDE_CODE A.6).
@@ -147,7 +165,7 @@ fi
 
 # 2. CLAUDE.md: the routing block, only when the marker is absent.
 PLAN_CLAUDE_MD=""
-if [[ -f "$CLAUDE_MD" ]] && grep -qF "$MARKER" "$CLAUDE_MD"; then
+if [[ -f "$CLAUDE_MD" ]] && grep -qF "$MARKER_ANY" "$CLAUDE_MD"; then
   PLAN_CLAUDE_MD="skip"
 else
   if [[ -f "$CLAUDE_MD" ]]; then
