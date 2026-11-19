@@ -3,6 +3,15 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-19 — 1.2.3
+
+### Added
+- `NEW_UPDATE_PLAYBOOK.md`: the delta-first runbook for adding a playbook,
+  a kit or a Beautiful repository, and for refreshing the series when
+  Anthropic changes Claude Code, the model line, the API or the Agent Skills
+  standard. Includes the impact matrix, the token-budget context pack and the
+  change-record template.
+
 ## 2026-11-19 — 1.2.0
 
 ### Changed

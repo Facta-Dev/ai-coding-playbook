@@ -1,6 +1,6 @@
 ---
 id: MASTER_PART3
-version: 1.1.0
+version: 1.1.1
 status: active
 last_reviewed: 2026-11-19
 review_cadence_days: 30
@@ -197,6 +197,10 @@ Never choose a platform only for the AI-generation experience: choose for runtim
 ### 9.5 Improvement loop for the set
 
 Capture → triage → promote (`PLAYBOOK_CLAUDE_CODE_PART2` §13) applies to playbooks: corrections and review overturns that point to a missing/ambiguous rule become **proposals** against a playbook, are linted, reviewed by the owner, and merged with a version bump; recurring defects become upstream controls (tests, hooks, lint rules) rather than longer prose.
+
+The concrete runbook for adding a playbook, a kit or a Beautiful repository,
+and for the Anthropic refresh loop, is
+[`NEW_UPDATE_PLAYBOOK.md`](NEW_UPDATE_PLAYBOOK.md).
 
 ---
 

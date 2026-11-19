@@ -361,6 +361,10 @@ A repo belongs here when it is actively worked on. To add one:
    and confirm with `--check`; then run [`kit_check.py`](scripts/claude-kit/kit_check.py) and confirm the repo
    carries no user-scope duplicate of a plugin command or agent.
 
+The full runbook — add a playbook, add a kit, add a Beautiful repository, or
+refresh the series after an Anthropic change — is
+[`NEW_UPDATE_PLAYBOOK.md`](NEW_UPDATE_PLAYBOOK.md).
+
 ## 6. License
 
 MIT — see [`LICENSE`](LICENSE). The Agent Skills adapted from MIT-licensed
