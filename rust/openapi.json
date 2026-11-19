@@ -4,8 +4,8 @@
     "title": "<app> API",
     "description": "<app> · example vertical slice (widget CRUD + auth seam).",
     "license": {
-      "name": "Proprietary",
-      "identifier": "Proprietary"
+      "name": "MIT",
+      "identifier": "MIT"
     },
     "version": "0.1.0"
   },
