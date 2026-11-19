@@ -275,6 +275,13 @@ shape (`check-skill`, `check-examples`, `check-lints` or the native
 equivalent). The playbooks are the contract; these repositories are the
 enforcement and the worked examples for frontier models.
 
+The relationship is **1:n and bidirectional**: this repository is the single
+normative source (the 1), and these twelve repositories are the implementations
+(the n). The playbook governs each implementation; a gap found in an
+implementation is reported back into the playbook. The normative rule, the two
+directions and the registry are in
+[`PLAYBOOK_MASTER_PART3.md` §12](PLAYBOOK_MASTER_PART3.md).
+
 | Playbook | Companion repo(s) | Stack |
 | --- | --- | --- |
 | [`PLAYBOOK_BACKEND.md`](PLAYBOOK_BACKEND.md) | [beautifulgo](https://github.com/Facta-Dev/beautifulgo), [beautifulnodejs](https://github.com/Facta-Dev/beautifulnodejs), [beautifulpython](https://github.com/Facta-Dev/beautifulpython), [beautifulrust](https://github.com/Facta-Dev/beautifulrust) | Go, Node.js/TypeScript, Python, Rust |
@@ -292,7 +299,8 @@ The shared contracts — [`PLAYBOOK_URLS.md`](PLAYBOOK_URLS.md), [`PLAYBOOK_TEST
 apply across the series: every companion repo carries the same three-skill
 shape, the same "unbreakable contract" wording, and a CI workflow, and every
 rule it enforces cites the playbook it comes from. All repositories are public
-under <https://github.com/Facta-Dev> and link to each other as siblings. The
+under <https://github.com/Facta-Dev> and link to each other as the 1:n series
+described in [`PLAYBOOK_MASTER_PART3.md` §12](PLAYBOOK_MASTER_PART3.md). The
 twelve companion repositories are also listed under skills in [§4.1](#41-skills-and-factory-packs).
 
 
@@ -355,6 +363,5 @@ A repo belongs here when it is actively worked on. To add one:
 
 ## 6. License
 
-Proprietary, all rights reserved — see [`LICENSE`](LICENSE). The Agent Skills
-adapted from MIT-licensed upstreams keep their MIT notices in each
-`CREDITS.md`.
+MIT — see [`LICENSE`](LICENSE). The Agent Skills adapted from MIT-licensed
+upstreams keep their MIT notices in each `CREDITS.md`.

@@ -1,8 +1,8 @@
 ---
 id: MASTER_PART3
-version: 1.0.0
+version: 1.1.0
 status: active
-last_reviewed: 2026-11-16
+last_reviewed: 2026-11-19
 review_cadence_days: 30
 owner: architecture + engineering-productivity
 depends_on: [MASTER]
@@ -10,7 +10,7 @@ depends_on: [MASTER]
 
 # PLAYBOOK_MASTER_PART3 — Master playbook: the constitution of the playbook set and the Claude Code operating model (part 3)
 
-> Part 3 of 3. Main entry: [`PLAYBOOK_MASTER.md`](PLAYBOOK_MASTER.md). Covers: 6. Standard graphs (recipes) … Appendix G — Glossary.
+> Part 3 of 3. Main entry: [`PLAYBOOK_MASTER.md`](PLAYBOOK_MASTER.md). Covers: 6. Standard graphs (recipes) … 12. The 1:n series relationship … Appendix G — Glossary.
 
 ## 6. Standard graphs (recipes)
 
@@ -251,6 +251,74 @@ Suggested rollout: M1 (week 0) → M2 (weeks 1–2) → M3 in warn (weeks 3–4)
 - [ ] Review overturn rate, escaped defects, cost per accepted change, queue age reviewed; thresholds recalibrated.
 - [ ] Kit audit (`doctor`, `/doctor` prompt checks, skills usage), retire unused components, refresh evals.
 - [ ] Permission/entitlement/vendor/dependency registers reviewed; DR/restore and access-review drills done.
+
+---
+
+## 12. The 1:n series relationship (`ai-coding-playbook` ↔ Beautiful)
+
+The project is one set with two roles:
+
+- **1** — this repository, `ai-coding-playbook`. It owns the normative
+  contract: the master, the platform playbooks, the shared contracts, the
+  kits and the reference implementations.
+- **n** — the twelve `Beautiful*` repositories. Each is one stack-specific
+  implementation: the skills, lints, tests and examples that make the
+  contract executable.
+
+The relationship is **bidirectional**. Both directions are rules, not
+courtesies.
+
+### 12.1 The 1 → n direction (the playbook governs the implementations)
+
+- The master is the single source of the contract. A Beautiful repository
+  implements it and never redefines it.
+- A contract change in this repository opens an impact review across the n
+  before release. The change is complete only when every implementation
+  either conforms or records a dated, owned exception.
+- Every new implementation is added to the registry in §12.3 and to
+  `README.md` §3.4 in the same change.
+- This repository does not embed a Beautiful repository's stack-specific
+  code; it links to it as evidence.
+
+### 12.2 The n → 1 direction (the implementations feed the playbook)
+
+- Each Beautiful repository cites `PLAYBOOK_MASTER.md`, its stack playbook
+  and the shared contracts in `README.md` and in
+  `.claude/rules/playbooks.md`. It does not keep a divergent copy of a
+  contract.
+- A gap found while implementing — a rule that cannot be tested, a lint that
+  cannot be configured, a missing invariant — is reported upstream as an
+  issue or a patch to this repository, never patched silently in the
+  implementation.
+- A change proposed by a Beautiful repository is accepted only when the
+  playbook it changes is updated here in the same change and the other n
+  implementations are checked for impact.
+
+### 12.3 The registry (the n)
+
+| Implementation | Stack | Stack playbook |
+|---|---|---|
+| [`beautifulgo`](https://github.com/Facta-Dev/beautifulgo) | Go | `PLAYBOOK_GOLANG.md` |
+| [`beautifulnodejs`](https://github.com/Facta-Dev/beautifulnodejs) | Node.js + TypeScript | `PLAYBOOK_NODEJS.md` |
+| [`beautifulpython`](https://github.com/Facta-Dev/beautifulpython) | Python | `PLAYBOOK_PYTHON.md` |
+| [`beautifulrust`](https://github.com/Facta-Dev/beautifulrust) | Rust | `PLAYBOOK_RUST.md` |
+| [`beautiful-j2ee`](https://github.com/Facta-Dev/beautiful-j2ee) | Java / Jakarta EE 11 | `PLAYBOOK_JAVA_J2EE.md` |
+| [`beautifulreact`](https://github.com/Facta-Dev/beautifulreact) | React 19 + TypeScript | `PLAYBOOK_FRONTEND.md` |
+| [`beautifulextension`](https://github.com/Facta-Dev/beautifulextension) | Chrome MV3 + TypeScript | `PLAYBOOK_CHROME_EXTENSION.md` |
+| [`beautifulcli`](https://github.com/Facta-Dev/beautifulcli) | TypeScript CLI/TUI | `PLAYBOOK_CLI.md` |
+| [`beautifulreactnative`](https://github.com/Facta-Dev/beautifulreactnative) | React Native + Expo | `PLAYBOOK_FRONTEND_MOBILE.md` |
+| [`beautifulqt`](https://github.com/Facta-Dev/beautifulqt) | Qt 6 + C++20 | `PLAYBOOK_DESKTOP_QT.md` |
+| [`beautifulandroid`](https://github.com/Facta-Dev/beautifulandroid) | Kotlin + Jetpack Compose | `PLAYBOOK_MOBILE_ANDROID_KOTLIN.md` |
+| [`beautifulios`](https://github.com/Facta-Dev/beautifulios) | Swift 6 + SwiftUI | `PLAYBOOK_MOBILE_IOS_SWIFT.md` |
+
+A row without a live repository is a broken link and fails the master
+checklist. A repository that is not in the table is not an implementation.
+
+**Licensing.** Both sides are MIT-licensed. The MIT license of each
+repository covers its own contents; the adapted third-party skills keep
+their notices in `CREDITS.md`. The cross-repo rule is about the contract,
+not the license: the MIT license permits a copy of a playbook file, but a
+divergent copy is still a contract defect.
 
 ---
 

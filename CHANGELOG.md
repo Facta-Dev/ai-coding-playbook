@@ -3,6 +3,16 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-19 — 1.2.0
+
+### Changed
+- The set is MIT-licensed: `LICENSE` now grants the standard MIT permissions
+  instead of the previous proprietary terms.
+- `PLAYBOOK_MASTER.md` §12 defines the 1:n relationship with the twelve
+  Beautiful-series implementations. The rule is bidirectional: the playbook
+  governs the implementations, and implementation gaps are reported back into
+  the playbook. The registry lists all twelve.
+
 ## 2026-11-17 — 1.1.0
 
 ### Changed

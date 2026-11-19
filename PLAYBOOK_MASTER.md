@@ -1,8 +1,8 @@
 ---
 id: MASTER
-version: 1.0.0
+version: 1.1.0
 status: active
-last_reviewed: 2026-11-16
+last_reviewed: 2026-11-19
 review_cadence_days: 30
 owner: architecture + engineering-productivity
 depends_on: [URLS, BACKEND, SECURITY, TESTS, AUDIT, CLAUDE_CODE]
@@ -21,7 +21,7 @@ sibling part.
 |---|---|---|
 | 1 | [`PLAYBOOK_MASTER.md`](PLAYBOOK_MASTER.md) | 1. The playbook set … 3. Cross-playbook invariants (the constitution) |
 | 2 | [`PLAYBOOK_MASTER_PART2.md`](PLAYBOOK_MASTER_PART2.md) | 4. The Claude Code operating model … 5. Applying the kit to the playbook set |
-| 3 | [`PLAYBOOK_MASTER_PART3.md`](PLAYBOOK_MASTER_PART3.md) | 6. Standard graphs (recipes) … Appendix G — Glossary |
+| 3 | [`PLAYBOOK_MASTER_PART3.md`](PLAYBOOK_MASTER_PART3.md) | 6. Standard graphs (recipes) … 12. The 1:n series relationship … Appendix G — Glossary |
 
 This is the **entry point** of the ai-coding-playbook project. It does three things:
 
@@ -56,6 +56,10 @@ The rules that carry the whole file:
    not forgotten.
 10. **Measure the whole system** (cost per accepted change, escaped defects, review
     queue age, hook violations), not only token counts.
+11. **The series is 1:n and bidirectional.** This repository is the single source
+    of the contract; each Beautiful repo is an implementation. A contract change
+    is not done until the n are checked; an implementation gap is not closed
+    until it lands here. The rule and the registry are in §12.
 
 > Verification note (as of 2026-11-16). Claude Code facts below come from the official
 > documentation (best-practices, subagents, skills, hooks, memory, worktrees, parallel
