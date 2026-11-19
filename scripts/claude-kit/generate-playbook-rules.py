@@ -19,61 +19,73 @@ ROOT = Path(__file__).resolve().parents[2]
 
 KITS: dict[str, dict[str, object]] = {
     "golang": {
+        "implementation": "beautifulgo",
         "paths": ["cmd/**", "internal/**", "migrations/**", "specs/**"],
         "arch": "PLAYBOOK_BACKEND.md",
         "stack": "PLAYBOOK_GOLANG.md",
     },
     "rust": {
+        "implementation": "beautifulrust",
         "paths": ["crates/**", "migrations/**", "specs/**"],
         "arch": "PLAYBOOK_BACKEND.md",
         "stack": "PLAYBOOK_RUST.md",
     },
     "nodejs": {
+        "implementation": "beautifulnodejs",
         "paths": ["src/**", "migrations/**", "specs/**"],
         "arch": "PLAYBOOK_BACKEND.md",
         "stack": "PLAYBOOK_NODEJS.md",
     },
     "python": {
+        "implementation": "beautifulpython",
         "paths": ["src/**", "migrations/**", "specs/**"],
         "arch": "PLAYBOOK_BACKEND.md",
         "stack": "PLAYBOOK_PYTHON.md",
     },
     "java": {
+        "implementation": "beautiful-j2ee",
         "paths": ["src/**", "specs/**"],
         "arch": "PLAYBOOK_BACKEND.md",
         "stack": "PLAYBOOK_JAVA_J2EE.md",
     },
     "extension": {
+        "implementation": "beautifulextension",
         "paths": ["entrypoints/**", "src/**", "packages/**", "managed-schema.json"],
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": "PLAYBOOK_CHROME_EXTENSION.md",
     },
     "desktop": {
+        "implementation": "beautifulqt",
         "paths": ["src/**", "packages/**", "cmake/**"],
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": "PLAYBOOK_DESKTOP_QT.md",
     },
     "frontend-mobile": {
+        "implementation": "beautifulreactnative",
         "paths": ["app/**", "src/**", "packages/**"],
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": "PLAYBOOK_FRONTEND_MOBILE.md",
     },
     "mobile-android": {
+        "implementation": "beautifulandroid",
         "paths": ["app/**", "src/**"],
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": "PLAYBOOK_MOBILE_ANDROID_KOTLIN.md",
     },
     "mobile-ios": {
+        "implementation": "beautifulios",
         "paths": ["Sources/**", "Tests/**", "Packages/**"],
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": "PLAYBOOK_MOBILE_IOS_SWIFT.md",
     },
     "frontend": {
+        "implementation": "beautifulreact",
         "paths": ["src/**", "tests/**"],
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": None,
     },
     "cli": {
+        "implementation": "beautifulcli",
         "paths": ["src/**", "tests/**"],
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": "PLAYBOOK_CLI.md",
@@ -94,6 +106,7 @@ def render(kit: str, spec: dict[str, object]) -> str:
     assert isinstance(paths, list)
     arch = str(spec["arch"])
     stack = spec.get("stack")
+    implementation = str(spec["implementation"])
     lines = [
         "---",
         "paths:",
@@ -128,6 +141,21 @@ def render(kit: str, spec: dict[str, object]) -> str:
             "",
             "If a rule here contradicts a playbook, the playbook is the contract:",
             "change it in the same PR, then re-copy it into the kit.",
+            "",
+            "## Cross-repo relationship (1:n)",
+            "",
+            f"This kit is part of the **1** (`ai-coding-playbook`); its Beautiful",
+            f"counterpart is [`{implementation}`](https://github.com/Facta-Dev/{implementation}),",
+            "one of the **n** implementations of the same contract.",
+            "",
+            "- **1 → n**: a contract change in this kit's playbooks requires an impact",
+            "  check in the Beautiful counterpart and the other implementations before",
+            "  release.",
+            "- **n → 1**: a gap found in the Beautiful implementation is reported here as",
+            "  an issue or a patch; it is not patched silently there.",
+            "",
+            "The normative rule and the registry are in",
+            "[`PLAYBOOK_MASTER_PART3.md` §12](https://github.com/Facta-Dev/ai-coding-playbook/blob/main/PLAYBOOK_MASTER_PART3.md).",
             "",
         ]
     )
