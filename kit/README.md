@@ -10,6 +10,7 @@ versioned files. `scripts/claude-kit/install-user-kit.sh` copies it into
 | `agents/*.md` | user-owned content, repo-canonical (`advisor`, `kit-curator`, `playbook-reviewer`, `playbook-curator`) |
 | `skills/*/SKILL.md` | user-owned content, repo-canonical (8 SDD + audit skills) |
 | `templates/sdd/*.md` | user-owned content, repo-canonical |
+| `rules/*.md` | managed user rules (always-loaded; e.g. `memory-ops.md` — memory-first protocol backed by the `knowledge-sync` PostToolUse hook in `scripts/hooks/`) |
 | `settings.fragment.json` | managed — base fragment (default model + deny list), merged into `settings.json` on every machine |
 | `settings.ollama.json` | managed — Ollama-only fragment (tier aliases, endpoint, subagent model), merged when Ollama is the provider |
 

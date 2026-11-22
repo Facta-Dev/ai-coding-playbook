@@ -158,6 +158,14 @@ for f in "$KIT_DIR"/templates/sdd/*.md; do
   install_file "$f" "templates/sdd/$(basename "$f")"
 done
 
+# Always-loaded rules shipped by the kit (e.g. memory-ops: memory-first
+# protocol, consulted before grep/read). install_file resolves to
+# $TARGET/rules/<name>.md and skips user-owned existing copies.
+for f in "$KIT_DIR"/rules/*.md; do
+  [[ -e "$f" ]] || continue
+  install_file "$f" "rules/$(basename "$f")"
+done
+
 # The kit-audit skill and the kit-curator agent invoke this validator by path.
 install_file "$SCRIPT_DIR/kit_check.py" "scripts/kit_check.py"
 

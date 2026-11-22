@@ -28,6 +28,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# knowledge-sync: the generic memory-first rule ships at kit/rules/ and the
+# PostToolUse sync hook at <kit>/scripts/hooks/ (copied into every repo by the
+# kit installer). $CLAUDE_PROJECT_DIR is expanded by Claude Code at runtime.
+SYNC_HOOK_CMD='bash "$CLAUDE_PROJECT_DIR/scripts/hooks/knowledge-sync.sh"'
 ROUTING_DOC="$ROOT_DIR/CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md"
 
 REPO=""
@@ -190,16 +194,19 @@ else
   PLAN_DOTREADME="$WORK/dotclaude-readme.md"
 fi
 
-# 4. permissions.deny merged into .claude/settings.json. Deny only: allow,
-#    env, model and hooks keys are left untouched.
+# 4. permissions.deny + the knowledge-sync PostToolUse hook merged into
+#    .claude/settings.json. Deny only: allow, env, model keys are left
+#    untouched; hooks get NO entries removed and the knowledge-sync entry
+#    is appended only when its exact command string is absent (idempotent).
 #    $1 = file to merge into (defaults to the repo's settings.json).
 merge_deny() {
-  python3 - "${1:-$SETTINGS}" "$WORK/settings.json" "${DENY_RULES[@]}" <<'PY'
+  python3 - "${1:-$SETTINGS}" "$WORK/settings.json" "${DENY_RULES[@]}" "$SYNC_HOOK_CMD" <<'PY'
 import json, sys
 from collections import OrderedDict
 
 target, planned = sys.argv[1], sys.argv[2]
 rules = sys.argv[3:]
+hook_cmd = sys.argv[4]
 
 try:
     with open(target) as fh:
@@ -225,6 +232,35 @@ changed = False
 for rule in rules:
     if rule not in deny:
         deny.append(rule)
+        changed = True
+
+if hook_cmd:
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        hooks = OrderedDict()
+        settings["hooks"] = hooks
+    post = hooks.get("PostToolUse")
+    if not isinstance(post, list):
+        post = []
+    present = any(
+        isinstance(hook, dict) and hook.get("command") == hook_cmd
+        for entry in post
+        if isinstance(entry, dict)
+        for hook in entry.get("hooks", [])
+    )
+    if not present:
+        post.append(
+            OrderedDict(
+                [
+                    ("matcher", "Write|Edit|MultiEdit|NotebookEdit"),
+                    (
+                        "hooks",
+                        [{"type": "command", "command": hook_cmd}],
+                    ),
+                ]
+            )
+        )
+        hooks["PostToolUse"] = post
         changed = True
 
 with open(planned, "w") as fh:
@@ -334,9 +370,15 @@ if [[ "$CHECK" -eq 1 ]]; then
     note_drift ".claude/README.md missing"
   fi
   if [[ "$MERGE_STATUS" == "unchanged" && -f "$SETTINGS" ]]; then
-    say "ok   permissions.deny in .claude/settings.json"
+    say "ok   permissions.deny + knowledge-sync hook in .claude/settings.json"
   else
-    note_drift "permissions.deny incomplete in .claude/settings.json"
+    note_drift "permissions.deny / knowledge-sync hook incomplete in .claude/settings.json"
+  fi
+  KIT_RULE="$ROOT_DIR/kit/rules/memory-ops.md"
+  if [[ -f "$KIT_RULE" && -f "$DOTCLAUDE/rules/memory-ops.md" ]] && diff -q "$KIT_RULE" "$DOTCLAUDE/rules/memory-ops.md" >/dev/null; then
+    say "ok   .claude/rules/memory-ops.md"
+  else
+    note_drift ".claude/rules/memory-ops.md missing"
   fi
   if [[ -f "$GITIGNORE" ]] && diff -q "$GITIGNORE" "$WORK/gitignore" >/dev/null; then
     say "ok   .gitignore entries"
@@ -389,9 +431,21 @@ if [[ "$MERGE_STATUS" == "changed" ]]; then
   fi
   mkdir -p "$DOTCLAUDE"
   cp "$WORK/settings.json" "$SETTINGS"
-  note_touched ".claude/settings.json (permissions.deny)"
+  note_touched ".claude/settings.json (permissions.deny / knowledge-sync hook)"
 else
-  note_skipped ".claude/settings.json (permissions.deny present)"
+  note_skipped ".claude/settings.json (deny + hook present)"
+fi
+
+# knowledge-sync rule -> repo .claude/rules/ (generic; kit-owned copy).
+KIT_RULE="$ROOT_DIR/kit/rules/memory-ops.md"
+if [[ -f "$KIT_RULE" ]]; then
+  if [[ -f "$DOTCLAUDE/rules/memory-ops.md" ]] && diff -q "$KIT_RULE" "$DOTCLAUDE/rules/memory-ops.md" >/dev/null; then
+    note_skipped ".claude/rules/memory-ops.md (present)"
+  else
+    mkdir -p "$DOTCLAUDE/rules"
+    cp -f "$KIT_RULE" "$DOTCLAUDE/rules/memory-ops.md"
+    note_touched ".claude/rules/memory-ops.md"
+  fi
 fi
 
 if [[ -f "$GITIGNORE" ]] && diff -q "$GITIGNORE" "$WORK/gitignore" >/dev/null; then
