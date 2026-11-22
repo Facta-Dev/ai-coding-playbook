@@ -166,6 +166,27 @@ run "$SCRIPT_DIR/install-cost-tracker.sh" --dir="$DIR" $DRYFLAG
 run "$SCRIPT_DIR/install-ai-tools.sh" $DRYFLAG
 run "$SCRIPT_DIR/configure-repo.sh" "$PLAYBOOK_ROOT" --provider="$PROVIDER_FINAL" $DRYFLAG
 
+# --- 4.5 wire every cloned working-set repo --------------------------------------
+# The rules are not optional extras: every repo that uses the playbook gets the
+# same wiring (memory-ops rule + knowledge-sync/rtk hooks + kit files). Product
+# repos resolve their language kit; skill packs get the generic wiring.
+declare -A KIT_MAP=(
+  [beautifulpython]=python [beautifulrust]=rust [beautifulgo]=golang
+  [beautifulnodejs]=nodejs [beautiful-j2ee]=java
+  [beautifulelectron]=desktop-electron [beautifulextension]=extension
+  [beautifulqt]=desktop [beautifulreactnative]=frontend-mobile
+  [beautifulandroid]=mobile-android [beautifulios]=mobile-ios
+  [beautifulreact]=frontend [beautifulcli]=cli
+)
+for repopath in "$DIR"/*/; do
+  repo="${repopath%/}"
+  [[ -d "$repo/.git" ]] || continue
+  base="$(basename "$repo")"
+  kitarg=""
+  [[ -n "${KIT_MAP[$base]:-}" ]] && kitarg="--kit=${KIT_MAP[$base]}"
+  run "$SCRIPT_DIR/configure-repo.sh" "$repo" $kitarg --provider="$PROVIDER_FINAL" $DRYFLAG
+done
+
 # --- 5. next steps (not automated: per-repo judgment) ------------------------------
 say ""
 say "done — path taken: $OS -> $PROVIDER_FINAL -> user kit + kit_check + baseline plugins + clone($GROUP) + skill packs + cost tracker + ai tools + playbook self-config"
