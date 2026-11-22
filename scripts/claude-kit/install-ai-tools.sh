@@ -91,9 +91,34 @@ PY
 }
 
 install_rtk() {
-  if command -v rtk >/dev/null 2>&1; then
-    say "rtk $(rtk --version 2>/dev/null | awk '{print $2}') on PATH"
+  if command -v rtk >/dev/null 2>&1 && rtk --version >/dev/null 2>&1; then
+    say "rtk $(rtk --version 2>/dev/null | awk '{print $2}') on PATH (working)"
   else
+    # The npm wrapper is only a shim: it looks up a prebuilt platform package
+    # (@terrain-ai/rtk-<os>-<arch>). Upstream publishes none for linux, so on
+    # a Linux box the wrapper exits 1 with "no prebuilt binary" on every call
+    # and the PreToolUse hook dies silently. The REAL upstream ships musl/gnu
+    # tarballs — install the binary directly on linux, npm wrapper elsewhere.
+    local arch="" asset=""
+    case "$(uname -m)" in x86_64) arch=x86_64 ;; aarch64|arm64) arch=aarch64 ;; esac
+    if [[ "$(uname -s)" == "Linux" && -n "$arch" ]] && ! command -v rtk >/dev/null 2>&1; then
+      if command -v gh >/dev/null 2>&1; then
+        local rel tag tmp
+        rel=$(gh api repos/rtk-ai/rtk/releases/latest --jq .tag_name 2>/dev/null || true)
+        tag="${rel:-v1.2.1}"
+        tmp="$(mktemp -d)/rtk.tar.gz"
+        if gh release download "$tag" --repo rtk-ai/rtk \
+             --pattern "rtk-${arch}-unknown-linux-musl.tar.gz" \
+             --dir "$(dirname "$tmp")" >/dev/null 2>&1 \
+           && tar -xzf "$(dirname "$tmp")/rtk-${arch}-unknown-linux-musl.tar.gz" \
+                -C "$(dirname "$tmp")" rtk 2>/dev/null; then
+          install -m 755 "$(dirname "$tmp")/rtk" "$HOME/.local/bin/rtk"
+          say "rtk $(rtk --version 2>/dev/null | awk '{print $2}') installed from rtk-ai/rtk release (linux musl)"
+        else
+          warn "could not download rtk linux binary — falling back to the npm wrapper"
+        fi
+      fi
+    fi
     if ! command -v npm >/dev/null 2>&1; then
       if command -v apt-get >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
         run sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y npm
@@ -108,7 +133,13 @@ install_rtk() {
       warn "npm still missing after install — rtk not installed"
       return
     fi
-    run npm install -g @terrain-ai/rtk
+    if ! command -v rtk >/dev/null 2>&1; then
+      run npm install -g @terrain-ai/rtk
+    fi
+    if ! rtk --version >/dev/null 2>&1; then
+      warn "rtk on PATH is a non-working platform shim (no prebuilt binary for $(uname -s)-$(uname -m)) — rtk hook NOT wired"
+      return
+    fi
   fi
 
   if grep -q '"rtk hook claude"' "$SETTINGS" 2>/dev/null; then
