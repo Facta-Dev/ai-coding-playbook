@@ -33,12 +33,13 @@ Each skill is one Markdown file at `.claude/skills/<slug>/SKILL.md`. The file op
 - bad division
 - missing body section
 - literal placeholder leak
+- name differs from directory slug (Claude Code refuses '<', '>', hidden or blank-like characters)
 - CRLF line endings
 - empty frontmatter
 
 ## Field Semantics
 
-- `name`: display name; carries the `<app>` placeholder (e.g. `<app> Ownership Author`).
+- `name`: the skill slug; must equal the directory name in kebab-case (e.g. `name: ownership-author`). Claude Code refuses a name holding `<`, `>`, hidden or blank-like characters, or over 256 characters.
 - `description`: one-line workflow summary; carries the `<app>` placeholder, naming the surface the skill reviews or scaffolds.
 - `division`: one of the Allowed Divisions above; maps the skill to the agent division it composes with.
 

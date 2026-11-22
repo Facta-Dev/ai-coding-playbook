@@ -80,6 +80,12 @@ lint_file() {
   for field in "${REQUIRED_FM[@]}"; do
     grep -qE "^${field}:" <<< "$fm" || { echo "ERROR $file: missing frontmatter field '${field}'" >&2; errors=$((errors+1)); }
   done
+  local skill_slug skill_name
+  skill_slug="$(basename "$(dirname "$file")")"
+  skill_name="$(get_field name "$file")"
+  if [[ -n "$skill_name" && "$skill_name" != "$skill_slug" ]]; then
+    echo "ERROR $file: frontmatter name '$skill_name' must equal the directory slug '$skill_slug' (Claude Code refuses '<', '>', hidden or blank-like characters)" >&2; errors=$((errors+1))
+  fi
   local div; div="$(get_field division "$file")"
   if [[ -n "$div" ]]; then
     local ok=0

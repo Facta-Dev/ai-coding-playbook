@@ -33,6 +33,7 @@ Each skill is one Markdown file at `.claude/skills/<slug>/SKILL.md`. The file op
 - bad division
 - missing body section
 - literal placeholder leak
+- name differs from directory slug (Claude Code refuses '<', '>', hidden or blank-like characters)
 - CRLF line endings
 - empty frontmatter
 

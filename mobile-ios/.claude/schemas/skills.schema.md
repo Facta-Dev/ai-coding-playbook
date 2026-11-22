@@ -33,6 +33,7 @@ Each skill is one directory under `.claude/skills/<slug>/` holding a `SKILL.md`.
 - bad division
 - missing body section
 - literal placeholder leak
+- name differs from directory slug (Claude Code refuses '<', '>', hidden or blank-like characters)
 - CRLF line endings
 - empty frontmatter
 

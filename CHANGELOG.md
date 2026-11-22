@@ -3,6 +3,18 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-22 — 1.3.2
+
+### Fixed
+- Skill frontmatter `name` is now the kebab-case directory slug
+  (`name: add-handler`), not the `<app> Add Handler` display title. Claude Code
+  refuses a name holding `<`, `>`, hidden or blank-like characters or over 256
+  chars, so a copy installed before `rename.sh` ran loaded as a refused name;
+  the display title stays in the `# ` heading and the description.
+- `scripts/lint-skills.sh` (all 13 kits) errors when `name` differs from the
+  skill directory; `skills.schema.md` documents the mode.
+- Mirror repos under `work/beautiful*` carry the same fix.
+
 ## 2026-11-22 — 1.3.1
 
 ### Added
