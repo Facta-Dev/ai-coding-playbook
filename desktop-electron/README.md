@@ -79,7 +79,7 @@ only process that touches Electron's privileged surface — keeps it thin), a
 
 ## Prerequisites
 
-- **Node 24+** (`engines.node >=24`) and **pnpm 11** (`packageManager: pnpm@11`).
+- **Node 24+** (`engines.node >=24`) and **pnpm 11** (`packageManager: pnpm@11.10.0`).
 - **Electron 45** (Chromium 156, Node 24; released 2026-10-20) — the binary is
   a dev dep; set `ELECTRON_SKIP_BINARY_DOWNLOAD=1` to install without it (the
   gates do not need the binary; e2e and packaging do).

@@ -1,10 +1,16 @@
 # pnpm 11 settings for the Electron template.
 #
+# Electron Forge's package-manager check requires a hoisted node_modules when
+# the package manager is pnpm. The template still ships no lockfile;
+# scripts/rename.sh deletes it in the instantiated copy.
+nodeLinker: hoisted
+
 # pnpm refuses to run dependency build scripts unless they are explicitly
-# approved. These are the only two the template needs: esbuild builds Vite's
-# bundler binary, and electron-winstaller is a Forge maker dependency. The
-# Electron binary itself is never downloaded by the default gate
-# (ELECTRON_SKIP_BINARY_DOWNLOAD=1 in scripts/verify-template.sh).
+# approved. These are the only three the template needs: electron downloads
+# the runtime binary, esbuild builds Vite's bundler binary, and
+# electron-winstaller is a Forge maker dependency. The default gate sets
+# ELECTRON_SKIP_BINARY_DOWNLOAD=1; e2e and packaging need the binary.
 allowBuilds:
+  electron: true
   esbuild: true
   electron-winstaller: true

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "dist/main/index.cjs",
   "description": "<app> — Electron desktop client (Electron 45, TypeScript, React).",
   "engines": {
     "node": ">=24"
