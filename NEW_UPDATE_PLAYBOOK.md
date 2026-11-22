@@ -349,14 +349,14 @@ the owner classifies it.
 4. Build the docs bundle and create the release with the install-tree assets:
 
    ```bash
-   tar -czf /tmp/facta-playbook-vX.Y.Z-docs.tar.gz \
+   tar -czf /tmp/ai-coding-playbook-vX.Y.Z-docs.tar.gz \
      PLAYBOOK_*.md manifest.json CHANGELOG.md LICENSE verify-register.md \
      README.md CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md \
      docs/architecture/install-decision-tree.workflow.{json,html,png} \
      docs/adr/*.md
    gh release create vX.Y.Z --target main \
      --notes-file /tmp/release-notes.md \
-     /tmp/facta-playbook-vX.Y.Z-docs.tar.gz \
+     /tmp/ai-coding-playbook-vX.Y.Z-docs.tar.gz \
      docs/architecture/install-decision-tree.workflow.html \
      docs/architecture/install-decision-tree.workflow.png
    ```
