@@ -3,6 +3,14 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-22 — 1.3.4
+
+### Fixed
+- `install-ai-tools.sh` installs an `rg` shim at `~/.local/bin/rg` when
+  ripgrep resolves only as a Claude Code shell function: `rtk rg` spawns a
+  process and died with `No such file or directory` on every rewritten grep.
+  Skipped when a real `rg` binary is on PATH; idempotent; `--dry-run` aware.
+
 ## 2026-11-22 — 1.3.3
 
 ### Added

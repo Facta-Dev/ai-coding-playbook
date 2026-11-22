@@ -90,6 +90,44 @@ PY
   [[ -f "$SETTINGS" ]] && chmod 600 "$SETTINGS" 2>/dev/null || true
 }
 
+ensure_rg_shim() {
+  # Claude Code ships ripgrep as a shell function (exec -a rg <claude>), so
+  # process-spawning tools (rtk rg) find no `rg` on PATH and die with ENOENT.
+  # Install a shim only when no real binary resolves; a packaged ripgrep wins.
+  if type -P rg >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "+ install rg shim at ~/.local/bin/rg (no ripgrep binary on PATH)"
+    return 0
+  fi
+  local shim="$HOME/.local/bin/rg"
+  if [[ -e "$shim" ]]; then
+    say "rg shim already present"
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  cat > "$shim" <<'SH'
+#!/bin/bash
+# rg shim: Claude Code ships ripgrep as a shell function (exec -a rg <claude>),
+# so process-spawning tools (rtk) see no `rg` on PATH. Mirror that fallback.
+versions="$HOME/.local/share/claude/versions"
+if [[ -d "$versions" ]]; then
+  latest="$(ls -1 "$versions" | sort -V | tail -1)"
+  if [[ -x "$versions/$latest" ]]; then
+    exec -a rg "$versions/$latest" "$@"
+  fi
+fi
+if [[ -x "$HOME/.local/bin/claude" ]]; then
+  exec -a rg "$HOME/.local/bin/claude" "$@"
+fi
+echo "rg shim: no claude binary found to provide ripgrep" >&2
+exit 127
+SH
+  chmod +x "$shim"
+  say "rg shim installed at $shim (rtk needs a spawnable rg)"
+}
+
 install_rtk() {
   if command -v rtk >/dev/null 2>&1 && rtk --version >/dev/null 2>&1; then
     say "rtk $(rtk --version 2>/dev/null | awk '{print $2}') on PATH (working)"
@@ -367,7 +405,7 @@ install_knowledge_sync() {
   fi
 }
 
-want rtk                 && install_rtk
+want rtk                 && { install_rtk; ensure_rg_shim; }
 want graphify            && install_graphify
 want understand-anything && install_understand_anything
 want codegraph           && install_codegraph
