@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "FACTA Playbook — install decision tree",
+    "title": "AI Coding Playbook — install decision tree",
     "quality_profile": "showcase",
     "output": "install-decision-tree.workflow.html",
     "legend": {

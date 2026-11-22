@@ -1,4 +1,4 @@
-# FACTA Playbook — how we work
+# AI Coding Playbook — how we work
 
 This repo is the operating contract: **which plugins to run, which playbook
 governs each kind of implementation, and which repositories make up the
