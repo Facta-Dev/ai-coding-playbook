@@ -129,7 +129,6 @@ pnpm test                         # vitest run
 pnpm build                        # four vite bundles: main, preload, core, renderer
 pnpm evals                        # node --test: .claude contract register, offline
 pnpm package                      # electron-forge package (needs the Electron binary)
-make package                      # same through the Makefile
 make fuses APP=out/<name>         # read the fuse table from a packaged app
 make ci                           # typecheck + lint + test + build + evals
 bash scripts/verify-template.sh   # template factory: stages a renamed copy,
