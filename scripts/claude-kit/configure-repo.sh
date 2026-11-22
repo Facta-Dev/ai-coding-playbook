@@ -380,6 +380,12 @@ if [[ "$CHECK" -eq 1 ]]; then
   else
     note_drift ".claude/rules/memory-ops.md missing"
   fi
+  KIT_HOOK="$ROOT_DIR/scripts/hooks/knowledge-sync.sh"
+  if [[ -f "$KIT_HOOK" && -f "$REPO/scripts/hooks/knowledge-sync.sh" ]] && cmp -s "$KIT_HOOK" "$REPO/scripts/hooks/knowledge-sync.sh"; then
+    say "ok   scripts/hooks/knowledge-sync.sh"
+  else
+    note_drift "scripts/hooks/knowledge-sync.sh missing"
+  fi
   if [[ -f "$GITIGNORE" ]] && diff -q "$GITIGNORE" "$WORK/gitignore" >/dev/null; then
     say "ok   .gitignore entries"
   else
@@ -445,6 +451,21 @@ if [[ -f "$KIT_RULE" ]]; then
     mkdir -p "$DOTCLAUDE/rules"
     cp -f "$KIT_RULE" "$DOTCLAUDE/rules/memory-ops.md"
     note_touched ".claude/rules/memory-ops.md"
+  fi
+fi
+
+# knowledge-sync hook script -> repo scripts/hooks/ (kit-owned; refreshed with
+# the kit version, unlike guard-bash which is user-owned after first install).
+KIT_HOOK="$ROOT_DIR/scripts/hooks/knowledge-sync.sh"
+if [[ -f "$KIT_HOOK" ]]; then
+  REPO_HOOK="$REPO/scripts/hooks/knowledge-sync.sh"
+  if [[ -f "$REPO_HOOK" ]] && cmp -s "$KIT_HOOK" "$REPO_HOOK"; then
+    note_skipped "scripts/hooks/knowledge-sync.sh (present)"
+  else
+    mkdir -p "$REPO/scripts/hooks"
+    cp -f "$KIT_HOOK" "$REPO_HOOK"
+    chmod +x "$REPO_HOOK"
+    note_touched "scripts/hooks/knowledge-sync.sh"
   fi
 fi
 
