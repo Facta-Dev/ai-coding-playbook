@@ -101,10 +101,8 @@ a plugin component into `~/.claude`: it shadows the plugin agent by name and
 bills its description every turn.
 
 Stack and craft skill packs install on top of the baseline through
-[`scripts/claude-kit/install-skill-packs.sh`](scripts/claude-kit/install-skill-packs.sh): [`beautiful-go`](https://github.com/Facta-Dev/beautifulgo),
-[`beautiful-nodejs`](https://github.com/Facta-Dev/beautifulnodejs),
-[`beautiful-python`](https://github.com/Facta-Dev/beautifulpython),
-[`beautiful-rust`](https://github.com/Facta-Dev/beautifulrust),
+[`scripts/claude-kit/install-skill-packs.sh`](scripts/claude-kit/install-skill-packs.sh): the thirteen
+[Beautiful-series packs](#34-the-beautiful-series),
 [`mattpocock-skills`](https://github.com/mattpocock/skills),
 `motionsites-web-builder`, the six
 [`garden-skills`](https://github.com/Facta-Dev/garden-skills) plugins,

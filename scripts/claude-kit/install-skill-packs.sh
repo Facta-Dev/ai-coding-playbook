@@ -27,6 +27,7 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DIR="$HOME/work"
 REMOTE=1
 DRY_RUN=0
@@ -58,6 +59,7 @@ PACKS=(
   "beautiful-j2ee|beautiful-j2ee|beautiful-j2ee"
   "beautifulextension|beautiful-extension|beautiful-extension"
   "beautifulqt|beautiful-qt|beautiful-qt"
+  "beautifulelectron|beautiful-electron|beautiful-electron"
   "beautifulreactnative|beautiful-reactnative|beautiful-reactnative"
   "beautifulandroid|beautiful-android|beautiful-android"
   "beautifulios|beautiful-ios|beautiful-ios"
@@ -71,10 +73,10 @@ PACKS=(
 )
 
 if [[ "$SELF_TEST" -eq 1 ]]; then
-  python3 - "$DIR" "${PACKS[@]}" <<'PY'
+  python3 - "$DIR" "$SCRIPT_DIR/../../install/repos.txt" "${PACKS[@]}" <<'PY'
 import json, os, sys
-root, rows = sys.argv[1], sys.argv[2:]
-bad = checked = 0
+root, inventory, rows = sys.argv[1], sys.argv[2], sys.argv[3:]
+bad = checked = missing = 0
 for row in rows:
     repo, market, plugins = row.split("|")
     path = os.path.join(root, repo, ".claude-plugin", "marketplace.json")
@@ -90,6 +92,27 @@ for row in rows:
         if plugin not in names:
             print(f"FAIL {repo}: plugin {plugin} not in marketplace.json")
             bad = 1
+
+# Reverse drift: a cloned inventory repo shipping a marketplace manifest must
+# have a row. `ponytail` is the documented exception (baseline enables it).
+listed = {row.split("|")[0] for row in rows}
+inventory_repos = set()
+try:
+    for line in open(inventory):
+        line = line.strip()
+        parts = line.split("|")
+        if line and not line.startswith("#") and len(parts) >= 2:
+            inventory_repos.add(parts[1].split("/")[-1])
+except OSError:
+    pass
+for repo in sorted(inventory_repos):
+    path = os.path.join(root, repo, ".claude-plugin", "marketplace.json")
+    if not os.path.isfile(path) or repo in listed or repo == "ponytail":
+        continue
+    print(f"FAIL {repo}: marketplace.json present but no PACKS row")
+    bad = missing = 1
+if not missing:
+    print("self-test: every cloned pack with a marketplace has a PACKS row")
 print(f"self-test: {checked} marketplace(s) checked")
 sys.exit(bad)
 PY

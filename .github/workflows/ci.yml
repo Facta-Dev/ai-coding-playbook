@@ -28,7 +28,7 @@ jobs:
         run: python3 scripts/claude-kit/kit_check.py --self-test
       - name: Instruction budget in every kit
         run: |
-          for kit in golang rust nodejs python java extension desktop frontend-mobile mobile-android mobile-ios frontend cli; do
+          for kit in golang rust nodejs python java extension desktop desktop-electron frontend-mobile mobile-android mobile-ios frontend cli; do
             bash scripts/instruction-budget.sh "$kit"
           done
       - name: Shell syntax
