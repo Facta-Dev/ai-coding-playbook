@@ -3,6 +3,21 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-22 — 1.3.3
+
+### Added
+- `kit/hooks/codegraph_gate.py`: a PreToolUse `Read|Bash` gate. The first Read
+  of an indexed file is denied once per session with the exact
+  `codegraph node -p <root> -f <rel>` call; the first `rg|grep|ag` for an
+  indexed symbol with `codegraph explore`. Deny-once marker per session, a
+  60-denies cap, fail-open without an index, `CODEGRAPH_GATE=off` kill switch.
+- `kit/agents/code-scout.md` and `kit/skills/recon/SKILL.md`: reconnaissance
+  agent returning a <=300-token digest from CodeGraph + Graphify, plus the
+  skill that delegates to it.
+- `install-ai-tools.sh` copies the gate into `~/.claude/hooks/` and merges the
+  hook entry into `settings.json` only where codegraph is installed;
+  `install-user-kit.sh` copies `kit/hooks/*` with the rest of the kit.
+
 ## 2026-11-22 — 1.3.2
 
 ### Fixed

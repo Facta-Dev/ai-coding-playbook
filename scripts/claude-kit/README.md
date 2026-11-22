@@ -12,7 +12,7 @@ python3 and the standard shell. Every script takes `--flag=value` or `--flag val
 | `clone-repos.sh` | `--group=selected\|core\|tools\|reference\|all` (default `selected`), `--dir=DIR`, `--depth=N`, `--dry-run` | 0 cloned/skipped, 1 a clone failed |
 | `install-skill-packs.sh` | `--dir=DIR`, `--local`, `--remote`, `--only=NAME[,NAME]`, `--dry-run`, `--self-test` | 0 installed/skipped, 1 an install failed |
 | `install-cost-tracker.sh` | `--dir=DIR`, `--settings-only`, `--no-settings`, `--dry-run` | 0 installed/skipped, 1 install or settings merge failed |
-| `install-ai-tools.sh` | `--only=rtk,graphify,understand-anything,codegraph`, `--dry-run` | 0 installed/verified, 1 install or merge failed |
+| `install-ai-tools.sh` | `--only=rtk,graphify,understand-anything,codegraph`, `--dry-run`; installs the codegraph gate hook when codegraph is present | 0 installed/verified, 1 install or merge failed |
 | `configure-repo.sh` | `<repo-path>`, `--kit=golang\|nodejs\|python\|rust\|java\|extension\|desktop\|desktop-electron\|frontend-mobile\|mobile-android\|mobile-ios\|frontend\|cli`, `--provider=ollama\|anthropic\|auto`, `--check`, `--dry-run` | 0 ok, 1 drift or error |
 | `kit_check.py` | `--root=DIR`, `--json`, `--self-test` | 0 clean, 1 warnings, 2 errors |
 | `check-playbook-copies.sh` | `--self-test` | 0 all copies mirror the root, 1 drift/missing/extra copy |

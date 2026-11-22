@@ -166,6 +166,14 @@ for f in "$KIT_DIR"/rules/*.md; do
   install_file "$f" "rules/$(basename "$f")"
 done
 
+# PreToolUse helpers shipped by the kit: codegraph_gate.py routes source reads
+# and symbol greps through the code graph. install-ai-tools.sh wires it into
+# settings.json, and only on machines where codegraph is installed.
+for f in "$KIT_DIR"/hooks/*; do
+  [[ -e "$f" ]] || continue
+  install_file "$f" "hooks/$(basename "$f")"
+done
+
 # The kit-audit skill and the kit-curator agent invoke this validator by path.
 install_file "$SCRIPT_DIR/kit_check.py" "scripts/kit_check.py"
 

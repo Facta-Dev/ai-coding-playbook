@@ -105,10 +105,9 @@ def check_skills(root: Path) -> int:
         count += 1
         meta, text = frontmatter(skill)
         if meta.get("name") != skill.parent.name:
-            # Language-kit templates carry a <app> placeholder that rename.sh
-            # substitutes at scaffold time; not a defect in the template.
-            level = "warn" if "<" in meta.get("name", "") else "error"
-            add(level, "skills", f"{skill.parent.name}: frontmatter name != directory name")
+            # Claude Code refuses a name holding <, >, hidden/blank-like chars,
+            # or over 256 chars; the safe rule is slug == directory name.
+            add("error", "skills", f"{skill.parent.name}: frontmatter name != directory name")
         desc = meta.get("description", "")
         if not desc:
             add("error", "skills", f"{skill.parent.name}: missing description")

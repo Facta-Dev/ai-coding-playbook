@@ -7,9 +7,10 @@ versioned files. `scripts/claude-kit/install-user-kit.sh` copies it into
 | Path | Ownership |
 | --- | --- |
 | `CLAUDE.md` | user-owned content, repo-canonical |
-| `agents/*.md` | user-owned content, repo-canonical (`advisor`, `kit-curator`, `playbook-reviewer`, `playbook-curator`) |
-| `skills/*/SKILL.md` | user-owned content, repo-canonical (8 SDD + audit skills) |
+| `agents/*.md` | user-owned content, repo-canonical (`advisor`, `kit-curator`, `playbook-reviewer`, `playbook-curator`, `code-scout`) |
+| `skills/*/SKILL.md` | user-owned content, repo-canonical (8 SDD + audit + `recon`) |
 | `templates/sdd/*.md` | user-owned content, repo-canonical |
+| `hooks/*` | managed helper scripts copied to `~/.claude/hooks/`; `codegraph_gate.py` is wired as a PreToolUse `Read|Bash` hook by `install-ai-tools.sh` (deny-once with the exact `codegraph node`/`explore` call; fail-open without an index) |
 | `rules/*.md` | managed user rules (always-loaded; e.g. `memory-ops.md` — memory-first protocol backed by the `knowledge-sync` PostToolUse hook in `scripts/hooks/`) |
 | `settings.fragment.json` | managed — base fragment (default model + deny list), merged into `settings.json` on every machine |
 | `settings.ollama.json` | managed — Ollama-only fragment (tier aliases, endpoint, subagent model), merged when Ollama is the provider |

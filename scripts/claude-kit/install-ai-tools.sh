@@ -221,6 +221,29 @@ install_codegraph() {
   else
     run codegraph install --target=claude --location=global --yes
   fi
+  # Gate: route source reads and symbol greps through the graph instead of
+  # reading whole files. Shipped in kit/hooks, wired only where codegraph runs.
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "+ cp -f $ROOT_DIR/kit/hooks/codegraph_gate.py $CLAUDE_DIR/hooks/"
+    echo "+ merge the codegraph gate hook into $SETTINGS"
+    return
+  fi
+  mkdir -p "$CLAUDE_DIR/hooks"
+  if [[ -f "$ROOT_DIR/kit/hooks/codegraph_gate.py" ]]; then
+    cp -f "$ROOT_DIR/kit/hooks/codegraph_gate.py" "$CLAUDE_DIR/hooks/codegraph_gate.py"
+    chmod +x "$CLAUDE_DIR/hooks/codegraph_gate.py"
+    say "install-codegraph: gate installed"
+  else
+    warn "install-codegraph: kit/hooks/codegraph_gate.py missing — gate not installed"
+    FAILED=1
+    return
+  fi
+  if grep -q 'codegraph_gate.py' "$SETTINGS" 2>/dev/null; then
+    say "install-codegraph: gate hook already wired"
+  else
+    merge_codegraph_gate_hook
+    say "install-codegraph: gate hook wired"
+  fi
 }
 
 merge_knowledge_sync_hook() {
@@ -263,6 +286,51 @@ with open(path, "w") as fh:
     json.dump(target, fh, indent=2)
     fh.write("\n")
 print("install-ai-tools: merged the knowledge-sync hook into %s" % path)
+PY
+  [[ -f "$SETTINGS" ]] && chmod 600 "$SETTINGS" 2>/dev/null || true
+}
+
+merge_codegraph_gate_hook() {
+  # Wire the codegraph gate: denies the first Read of an indexed file and the
+  # first grep for an indexed symbol, pointing at `codegraph node`/`explore`.
+  # Idempotent on the exact command; the script fails open when the index or
+  # python3 is absent, so the hook is safe on any machine.
+  python3 - "$SETTINGS" <<'PY' || FAILED=1
+import json, os, shutil, sys, datetime, time
+path = sys.argv[1]
+cmd = "python3 " + os.path.expanduser("~/.claude/hooks/codegraph_gate.py")
+try:
+    with open(path) as fh:
+        target = json.load(fh)
+except FileNotFoundError:
+    target = {}
+except (OSError, ValueError) as exc:
+    sys.exit("install-ai-tools: ERROR — invalid settings.json: %s" % exc)
+
+groups = target.setdefault("hooks", {}).setdefault("PreToolUse", [])
+if any(entry.get("command") == cmd
+       for group in groups if isinstance(group, dict)
+       for entry in group.get("hooks", []) if isinstance(entry, dict)):
+    print("install-ai-tools: codegraph gate hook already configured")
+    sys.exit(0)
+
+if not os.path.exists(os.path.expanduser("~/.claude/hooks/codegraph_gate.py")):
+    sys.exit("install-ai-tools: ERROR — ~/.claude/hooks/codegraph_gate.py missing; "
+             "install the hook script before merging settings")
+
+groups.append({"matcher": "Read|Bash",
+               "hooks": [{"type": "command", "command": cmd}]})
+if os.path.exists(path):
+    stamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%SZ")
+    backup = os.path.join(os.path.expanduser("~/.claude"), "backups",
+                          "settings-pre-codegraph-gate-%d.json" % int(time.time()))
+    os.makedirs(os.path.dirname(backup), exist_ok=True)
+    shutil.copy2(path, backup)
+    os.chmod(backup, 0o600)
+with open(path, "w") as fh:
+    json.dump(target, fh, indent=2)
+    fh.write("\n")
+print("install-ai-tools: merged the codegraph gate hook into %s" % path)
 PY
   [[ -f "$SETTINGS" ]] && chmod 600 "$SETTINGS" 2>/dev/null || true
 }
