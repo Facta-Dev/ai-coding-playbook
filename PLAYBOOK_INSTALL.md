@@ -19,7 +19,7 @@ costs zero model tokens; the model is only asked to make judgment calls.
 tree — OS (Linux / macOS / WSL2, with native Windows stopped at the gate) and
 provider (a reachable local Ollama endpoint picks the Ollama path; anything
 else the Anthropic path) — then chains the steps below with the matching
-settings merge. `--dry-run` prints the plan. The steps remain runnable by
+settings merge, and finally configures the playbook checkout itself. `--dry-run` prints the plan. The steps remain runnable by
 hand; this file is the install path only.
 
 Companions:
@@ -33,9 +33,12 @@ contain) and [CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md](CLAUDE_CODE_ROUTING_MODELS_O
 
 | Step | Executed by | Model tokens |
 | --- | --- | --- |
+| Install missing prerequisites | shell (`install-prereqs.sh`) | 0 |
 | Clone the playbook and your project | shell (`clone-repos.sh`) | 0 |
 | Install the user-scope kit | shell (`install-user-kit.sh`) | 0 |
-| Install the skill packs and the cost tracker | shell (`install-skill-packs.sh`, `install.sh`) | 0 |
+| Install the baseline plugins (README §2) | shell (`install-plugins.sh`) | 0 |
+| Install the skill packs and the cost tracker | shell (`install-skill-packs.sh`, `install-cost-tracker.sh`) | 0 |
+| Install the code-intelligence and token tools | shell (`install-ai-tools.sh`) | 0 |
 | Configure each repository | shell (`configure-repo.sh`) | 0 |
 | Validate and probe | shell (`kit_check.py`) + one cheap-tier probe | 0 + ≤1 cheap probe |
 | Judgment calls (which kit, which group, when to escalate) | model | charged to the tier that makes them |
@@ -73,6 +76,11 @@ Target: a full bootstrap with **zero model calls**; at most one cheap-tier probe
 | python3 | 3.9+ (stdlib only) | `python3 --version` |
 | rtk | optional (token-saving shell proxy) | `rtk --version` |
 
+The bootstrap installs any missing prerequisite first (`install-prereqs.sh`):
+`apt-get` with passwordless sudo on Linux, Homebrew on macOS. It installs
+`git`, `curl`, `python3`, Node.js/npm and Claude Code (through npm) when absent;
+it never installs `ollama` and never authenticates `gh`.
+
 `gh auth status` must report a logged-in account with repo scope before
 cloning anything private; `gh auth login` when it does not.
 
@@ -98,7 +106,8 @@ cloning anything private; `gh auth login` when it does not.
 
    It installs `kit/CLAUDE.md`, `kit/agents`, `kit/skills` and `kit/templates/sdd` into `~/.claude/`, and **never overwrites user-owned files**: an existing destination is skipped, not replaced. Backups land in `~/.claude/backups/install-<UTC timestamp>/`.
 
-   It also merges the settings fragments into `~/.claude/settings.json`. By default it detects a local Ollama endpoint: reachable, it merges `kit/settings.fragment.json` plus `kit/settings.ollama.json` (tier env + endpoint); not reachable, only the base fragment (no endpoint pinning, `--provider=anthropic` does the same by hand). Both merge the `model: sonnet` default and the `permissions.deny` list. Existing keys win; the installer warns when `model` is not `sonnet`, because a bare `claude` then runs the escalation model. `--no-settings` skips the merge entirely.
+   It also merges the settings fragments into `~/.claude/settings.json`. By default it detects a local Ollama endpoint: reachable, it merges `kit/settings.fragment.json` plus `kit/settings.ollama.json` (tier env + endpoint); not reachable, only the base fragment (no endpoint pinning, `--provider=anthropic` does the same by hand). Both merge the `model: sonnet` default, `tui: fullscreen` (the right-side diff
+panel) and the `permissions.deny` list. Existing keys win; the installer warns when `model` is not `sonnet`, because a bare `claude` then runs the escalation model. `--no-settings` skips the merge entirely.
 
 3. Validate the user scope:
 
@@ -111,13 +120,24 @@ cloning anything private; `gh auth login` when it does not.
    under `agents`, `skills`, `rules`, `always_loaded_bytes`, `claude_md_lines`,
    `collision_warnings`. Always-loaded bytes must stay under 20,480 B.
 
-4. Lock down the control plane:
+4. Lock down the control plane (the installer does this after writing
+   `settings.json`; the command is only needed for a hand-built file):
 
    ```bash
    chmod 600 ~/.claude/settings.json
    ```
 
-5. Optional dedupe (remove user copies of plugin components):
+5. The bootstrap also configures the playbook checkout itself:
+
+   ```bash
+   bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/ai-coding-playbook --provider=ollama
+   ```
+
+   It adds the routing block (when neither marker is present),
+   `.claude/README.md`, the project deny list and the `.gitignore` entries.
+   Idempotent; `--check` verifies the checkout without writing.
+
+6. Optional dedupe (remove user copies of plugin components):
 
    ```bash
    python3 ~/ai-coding-playbook/scripts/claude-kit/dedupe_plugins.py            # dry run
@@ -126,6 +146,18 @@ cloning anything private; `gh auth login` when it does not.
 
    The dry run lists what would move into `~/.claude/backups/dedupe-<UTC timestamp>/`.
    Nothing is deleted; `--restore` puts it back.
+
+The baseline plugins (README §2) install and enable in one step:
+
+```bash
+bash ~/ai-coding-playbook/scripts/claude-kit/install-plugins.sh --dry-run
+bash ~/ai-coding-playbook/scripts/claude-kit/install-plugins.sh
+```
+
+It registers each marketplace only when needed and installs with `--scope user`,
+which writes the `enabledPlugins` entry, so install and configuration are the
+same step. `nanobanana@creding-plugins` has no public marketplace source, so it
+stays a per-user addition.
 
 ---
 
@@ -224,16 +256,19 @@ One row per repository, in this shape:
 | --- | --- | --- |
 | `<stack>-skills` | `<stack>-skills` | `<stack>-skills` |
 | `<skills-repo>` | `<marketplace>` | `<plugin-a>`, `<plugin-b>` |
-| `<cost-tracker>` | — (`install.sh`) | `bash ~/work/<cost-tracker>/install.sh` |
+| `<cost-tracker>` | — (`install.sh`) | `bash ~/ai-coding-playbook/scripts/claude-kit/install-cost-tracker.sh` |
 
 The pack list lives in the script (`PACKS`), one row per repository:
 `repo|marketplace|comma-separated plugins`. That table is the source of truth
 for what the installer installs.
 
-`install.sh` runs the tool's own test suite, copies its package, status-line
-script, price table and command/hook files into `$CLAUDE_CONFIG_DIR` (default
-`~/.claude`), then prints the `statusLine` and per-event hook JSON to merge
-into `settings.json` by hand. It never edits your settings.
+`install-cost-tracker.sh` runs the tracker's own `install.sh` (tests included),
+then merges its `statusLine` and per-event hooks into `settings.json`. It
+appends a hook entry instead of replacing one (an existing `rtk` hook stays),
+keeps a `statusLine` that points at another command, backs up the settings
+first, and is idempotent; `--settings-only` re-wires an existing install and
+`--no-settings` leaves the file untouched. The bootstrap runs it after the
+clones, so a fresh machine needs no manual settings edit.
 
 Rules:
 
@@ -259,6 +294,32 @@ Rules:
 
 ---
 
+### 4.2 Code-intelligence and token tools
+
+```bash
+bash ~/ai-coding-playbook/scripts/claude-kit/install-ai-tools.sh --dry-run   # verify
+bash ~/ai-coding-playbook/scripts/claude-kit/install-ai-tools.sh             # install
+bash ~/ai-coding-playbook/scripts/claude-kit/install-ai-tools.sh --only=graphify
+```
+
+Idempotent: a tool already present is verified, not reinstalled. The bootstrap
+runs it after the cost tracker.
+
+| Tool | Installed by | Configuration it writes |
+| --- | --- | --- |
+| `rtk` | `npm i -g @terrain-ai/rtk`, or a binary on `PATH` | `~/.claude/RTK.md`, the `@RTK.md` import, the `PreToolUse` hook, `chmod 600` |
+| `graphify` | `pipx install graphifyy` then `graphify install` | `~/.claude/skills/graphify/SKILL.md` and a `CLAUDE.md` section |
+| `understand-anything` | `claude plugin marketplace add Egonex-AI/Understand-Anything`, then `plugin install` | `enabledPlugins` and the marketplace entry |
+| `codegraph` | the vendor `install.sh` (self-contained bundle) then `codegraph install` | `mcpServers.codegraph`, `permissions.allow`, the `CODEGRAPH` `CLAUDE.md` block |
+
+**Order matters.** `graphify install` rewrites `~/.claude/CLAUDE.md` and drops
+blocks it does not own; the script runs it before CodeGraph and only while the
+skill is missing, so the `CODEGRAPH` block survives. Installing by hand: run
+Graphify first.
+
+These tools, the cost tracker and the kit all edit the same control plane;
+every script backs up `settings.json` and merges instead of replacing.
+
 ## 5. Verify the install
 
 All zero-token, except one cheap-tier probe.
@@ -267,12 +328,15 @@ All zero-token, except one cheap-tier probe.
 # 1. user scope: 0 clean / 1 warnings / 2 errors
 python3 ~/ai-coding-playbook/scripts/claude-kit/kit_check.py; echo "exit=$?"
 
-# 2. per repo: nothing to write, nothing missing
+# 2. AI tools: installed and wired, nothing written
+bash ~/ai-coding-playbook/scripts/claude-kit/install-ai-tools.sh --dry-run
+
+# 3. per repo: nothing to write, nothing missing
 bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app --check
 
-# 3. always-loaded bytes, inside a session
+# 4. always-loaded bytes, inside a session
 #    /context        -> reports the always-loaded footprint
-# 4. session health, inside a session
+# 5. session health, inside a session
 #    /doctor
 ```
 

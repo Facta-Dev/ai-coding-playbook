@@ -31,6 +31,10 @@ MODELS = {"opus", "sonnet", "haiku", "inherit", "fable"}
 HOOK_PATH = re.compile(r"(?:python3?|bash|sh|node)\s+(~?/[^\s\"']+)")
 MD_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 SKIP_LINK = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//|#)", re.I)
+# Vendor skills installed by install-ai-tools.sh. The 500-line cap governs the
+# skills this kit authors, so an oversized vendor body is a warning, not an
+# error that would block the bootstrap.
+VENDOR_SKILLS = {"graphify"}
 
 findings: list[tuple[str, str, str]] = []
 
@@ -112,7 +116,8 @@ def check_skills(root: Path) -> int:
             add("error", "skills", f"{skill.parent.name}: description + when_to_use over 1536 chars")
         lines = len(body_of(text).splitlines())
         if lines >= 500:
-            add("error", "skills", f"{skill.parent.name}: body is {lines} lines (cap 500)")
+            level = "warn" if skill.parent.name in VENDOR_SKILLS else "error"
+            add(level, "skills", f"{skill.parent.name}: body is {lines} lines (cap 500)")
         elif lines > 150:
             add("warn", "skills", f"{skill.parent.name}: body is {lines} lines (target < 150)")
         tools = meta.get("allowed-tools", "")

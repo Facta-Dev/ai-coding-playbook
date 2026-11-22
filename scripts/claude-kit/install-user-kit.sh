@@ -251,6 +251,7 @@ PY
       mv "$RENDERED" "$TARGET"
       say "merge ${FRAGMENTS[*]} -> $TARGET"
     fi
+    chmod 600 "$TARGET" 2>/dev/null || true
   fi
 else
   say "skip settings merge (--no-settings)"

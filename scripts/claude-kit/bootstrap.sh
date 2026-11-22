@@ -22,11 +22,16 @@
 #        |    default still applies; native `--advisor` available (runbook §7)
 #        |
 #   SCOPE?
+#        |- prereqs         install-prereqs.sh (git, curl, python3, node/npm, claude)
 #        |- user kit        install-user-kit.sh [--provider=...]
 #        |- kit check       kit_check.py (0 errors required)
+#        |- baseline plugins install-plugins.sh (README §2 set)
 #        |- working set     clone-repos.sh --group=<group>
 #        |- skill packs     install-skill-packs.sh
-#        '- afterwards      per-repo configure, cost tracker, probes
+#        |- cost tracker    install-cost-tracker.sh (files + statusLine/hooks)
+#        |- ai tools        install-ai-tools.sh (rtk, graphify, understand-anything, codegraph)
+#        |- self-config     configure-repo.sh <playbook checkout> (idempotent)
+#        '- afterwards      per-repo configure of your projects, probes
 #
 # The provider branch only changes which settings env is merged; everything
 # downstream is identical shell work (zero model tokens).
@@ -47,6 +52,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 KIT_DIR="$(cd "$SCRIPT_DIR/../../kit" && pwd)"
+PLAYBOOK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 PROVIDER="auto"
 GROUP="selected"
@@ -104,18 +110,22 @@ case "$OS_NAME" in
 esac
 say "os: $OS"
 
-# --- 2. prereq checks ------------------------------------------------------------
-for tool in git python3 claude; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    echo "bootstrap: missing prerequisite: $tool" >&2
-    case "$tool" in
-      claude) echo "bootstrap:   install per https://code.claude.com/docs (npm install -g @anthropic-ai/claude-code)" >&2;;
-      *)      echo "bootstrap:   install the standard package for your OS" >&2;;
-    esac
-    exit 1
-  fi
-done
-say "prereqs: git $(git --version | awk '{print $3}'), python3 $(python3 --version | awk '{print $2}'), claude $(claude --version 2>/dev/null | awk '{print $1}')"
+# --- 2. prerequisites: install what is missing, then verify ----------------------
+DRYFLAG=""
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  DRYFLAG="--dry-run"
+fi
+
+run "$SCRIPT_DIR/install-prereqs.sh" $DRYFLAG
+if [[ "$DRY_RUN" -eq 0 ]]; then
+  for tool in git python3 claude; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      echo "bootstrap: prerequisite still missing after install-prereqs.sh: $tool" >&2
+      exit 1
+    fi
+  done
+fi
+say "prereqs: git $(command -v git >/dev/null && git --version | awk '{print $3}' || echo '?'), python3 $(command -v python3 >/dev/null && python3 --version | awk '{print $2}' || echo '?'), claude $(command -v claude >/dev/null && claude --version 2>/dev/null | awk '{print $1}' || echo '?')"
 
 # --- 3. provider branch -----------------------------------------------------------
 detect_ollama() {
@@ -136,10 +146,6 @@ esac
 
 # --- 4. the install chain ----------------------------------------------------------
 KIT_CHECK="$SCRIPT_DIR/kit_check.py"
-DRYFLAG=""
-if [[ "$DRY_RUN" -eq 1 ]]; then
-  DRYFLAG="--dry-run"
-fi
 
 run "$SCRIPT_DIR/install-user-kit.sh" --provider="$PROVIDER_FINAL" $DRYFLAG
 if [[ "$DRY_RUN" -eq 0 ]]; then
@@ -153,17 +159,17 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     exit 1
   fi
 fi
+run "$SCRIPT_DIR/install-plugins.sh" $DRYFLAG
 run "$SCRIPT_DIR/clone-repos.sh" --group="$GROUP" --dir="$DIR" $DRYFLAG
 run "$SCRIPT_DIR/install-skill-packs.sh" --dir="$DIR" $DRYFLAG
+run "$SCRIPT_DIR/install-cost-tracker.sh" --dir="$DIR" $DRYFLAG
+run "$SCRIPT_DIR/install-ai-tools.sh" $DRYFLAG
+run "$SCRIPT_DIR/configure-repo.sh" "$PLAYBOOK_ROOT" --provider="$PROVIDER_FINAL" $DRYFLAG
 
 # --- 5. next steps (not automated: per-repo judgment) ------------------------------
-TRACKER="$DIR/claude-code-cli-cost-tracker"
 say ""
-say "done — path taken: $OS -> $PROVIDER_FINAL -> user kit + kit_check + clone($GROUP) + skill packs"
+say "done — path taken: $OS -> $PROVIDER_FINAL -> user kit + kit_check + baseline plugins + clone($GROUP) + skill packs + cost tracker + ai tools + playbook self-config"
 say "next steps (manual or per-repo):"
-if [[ -d "$TRACKER" ]]; then
-  echo "  1. cost tracker:  bash $TRACKER/install.sh"
-fi
-echo "  2. wire repos:    bash $SCRIPT_DIR/configure-repo.sh ~/work/<repo> --kit=<golang|nodejs|python|rust|java|extension|desktop|desktop-electron|frontend-mobile|mobile-android|mobile-ios|frontend|cli>"
-echo "  3. verify:        python3 $SCRIPT_DIR/kit_check.py; claude -p probes per the routing runbook §9"
-echo "  4. in-session:    /context and /doctor"
+echo "  1. wire repos:    bash $SCRIPT_DIR/configure-repo.sh ~/work/<repo> --kit=<golang|nodejs|python|rust|java|extension|desktop|desktop-electron|frontend-mobile|mobile-android|mobile-ios|frontend|cli>"
+echo "  2. verify:        python3 $SCRIPT_DIR/kit_check.py; claude -p probes per the routing runbook §9"
+echo "  3. in-session:    /context and /doctor"

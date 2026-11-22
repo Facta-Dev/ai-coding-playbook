@@ -3,6 +3,44 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-22 — 1.3.1
+
+### Added
+- `scripts/claude-kit/install-cost-tracker.sh`: installs the cost tracker and
+  merges its status line and per-event hooks into `settings.json`, appending
+  hook entries instead of replacing existing ones (`rtk` stays) and keeping a
+  status line that points elsewhere. Idempotent, backed up; `--settings-only`,
+  `--no-settings` and `--dry-run`.
+- `bootstrap.sh` runs it as the last install step, so a fresh machine wires
+  the cost tracker with no manual settings edit.
+- `scripts/claude-kit/install-prereqs.sh`: verifies `git`, `curl`, `python3`,
+  Node.js/npm and Claude Code, installing what is missing with `apt-get`
+  (passwordless sudo) or Homebrew; runs first in `bootstrap.sh`. `--dry-run`.
+- `install-ai-tools.sh` installs npm when RTK needs it and npm is absent.
+- `scripts/claude-kit/install-plugins.sh`: registers and installs the README §2
+  baseline plugins (`ecc`, `ponytail`, `rust-analyzer-lsp`,
+  `claude-model-router-hook`) at user scope, which writes the
+  `enabledPlugins` entry; idempotent, with `--only=` and `--dry-run`.
+  `nanobanana@creding-plugins` has no public source and stays per-user.
+- `bootstrap.sh` runs it after the kit check.
+- `scripts/claude-kit/install-ai-tools.sh`: installs and wires the
+  code-intelligence and token tools — `rtk` (hook + `RTK.md`), `graphify`
+  (skill), `understand-anything` (plugin) and `codegraph` (MCP server) —
+  idempotently, with `--only=` and `--dry-run`. Runs Graphify before CodeGraph
+  because `graphify install` rewrites `CLAUDE.md`.
+- `bootstrap.sh` runs it after the cost tracker.
+- `bootstrap.sh` configures the playbook checkout itself with
+  `configure-repo.sh` (routing block, `.claude/README.md`, project deny list,
+  `.gitignore` entries), so the checkout a user installs from is wired too.
+
+### Changed
+- The base settings fragment sets `"tui": "fullscreen"`, so the fullscreen
+  renderer (and its right-side `/diff` panel) is the default on a new install.
+- `install-user-kit.sh` locks `settings.json` to mode 600 after the merge.
+- `kit_check.py`: an oversized vendor skill (`graphify`, installed by
+  `install-ai-tools.sh`) warns instead of erroring, so the validator no longer
+  blocks the bootstrap on a skill this kit does not author.
+
 ## 2026-11-22 — 1.3.0
 
 ### Added
