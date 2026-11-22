@@ -26,7 +26,8 @@ set -euo pipefail
 
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 SETTINGS="$CLAUDE_DIR/settings.json"
-ONLY="rtk,graphify,understand-anything,codegraph"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ONLY="rtk,graphify,understand-anything,codegraph,knowledge-sync"
 DRY_RUN=0
 FAILED=0
 
@@ -191,9 +192,86 @@ install_codegraph() {
   fi
 }
 
+merge_knowledge_sync_hook() {
+  # Append the knowledge-sync PostToolUse hook; idempotent on the exact
+  # command string. The hook script must exist before this runs — kit_check
+  # flags settings hook commands that point at a missing file.
+  python3 - "$SETTINGS" <<'PY' || FAILED=1
+import json, os, shutil, sys, datetime, time
+path = sys.argv[1]
+cmd = "bash " + os.path.expanduser("~/.claude/hooks/knowledge-sync.sh")
+try:
+    with open(path) as fh:
+        target = json.load(fh)
+except FileNotFoundError:
+    target = {}
+except (OSError, ValueError) as exc:
+    sys.exit("install-ai-tools: ERROR — invalid settings.json: %s" % exc)
+
+groups = target.setdefault("hooks", {}).setdefault("PostToolUse", [])
+if any(entry.get("command") == cmd
+       for group in groups if isinstance(group, dict)
+       for entry in group.get("hooks", []) if isinstance(entry, dict)):
+    print("install-ai-tools: knowledge-sync hook already configured")
+    sys.exit(0)
+
+if not os.path.exists(os.path.expanduser("~/.claude/hooks/knowledge-sync.sh")):
+    sys.exit("install-ai-tools: ERROR — ~/.claude/hooks/knowledge-sync.sh missing; "
+             "install the hook script before merging settings")
+
+groups.append({"matcher": "Write|Edit|MultiEdit|NotebookEdit",
+               "hooks": [{"type": "command", "command": cmd}]})
+if os.path.exists(path):
+    stamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%SZ")
+    backup = os.path.join(os.path.expanduser("~/.claude"), "backups",
+                          "settings-pre-knowledge-sync-%d.json" % int(time.time()))
+    os.makedirs(os.path.dirname(backup), exist_ok=True)
+    shutil.copy2(path, backup)
+    os.chmod(backup, 0o600)
+with open(path, "w") as fh:
+    json.dump(target, fh, indent=2)
+    fh.write("\n")
+print("install-ai-tools: merged the knowledge-sync hook into %s" % path)
+PY
+  [[ -f "$SETTINGS" ]] && chmod 600 "$SETTINGS" 2>/dev/null || true
+}
+
+# install_knowledge_sync — memory-first rule + post-edit codegraph/graphify sync hook.
+install_knowledge_sync() {
+  mkdir -p "$CLAUDE_DIR/rules" "$CLAUDE_DIR/hooks"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "+ cp -f $ROOT_DIR/kit/rules/memory-ops.md $CLAUDE_DIR/rules/"
+    echo "+ cp -f $ROOT_DIR/scripts/hooks/knowledge-sync.sh $CLAUDE_DIR/hooks/"
+    echo "+ merge the knowledge-sync hook into $SETTINGS"
+    return
+  fi
+  if [[ -f "$ROOT_DIR/kit/rules/memory-ops.md" ]]; then
+    cp -f "$ROOT_DIR/kit/rules/memory-ops.md" "$CLAUDE_DIR/rules/memory-ops.md"
+    say "install-knowledge-sync: rule installed"
+  else
+    warn "install-knowledge-sync: kit/rules/memory-ops.md missing — rule not installed"
+    FAILED=1
+  fi
+  if [[ -f "$ROOT_DIR/scripts/hooks/knowledge-sync.sh" ]]; then
+    cp -f "$ROOT_DIR/scripts/hooks/knowledge-sync.sh" "$CLAUDE_DIR/hooks/knowledge-sync.sh"
+    chmod +x "$CLAUDE_DIR/hooks/knowledge-sync.sh"
+    say "install-knowledge-sync: hook installed"
+  else
+    warn "install-knowledge-sync: scripts/hooks/knowledge-sync.sh missing — hook not installed"
+    FAILED=1
+  fi
+  if grep -q '"bash .*hooks/knowledge-sync.sh"' "$SETTINGS" 2>/dev/null; then
+    say "install-knowledge-sync: settings merged (already present)"
+  else
+    merge_knowledge_sync_hook
+    say "install-knowledge-sync: settings merged"
+  fi
+}
+
 want rtk                 && install_rtk
 want graphify            && install_graphify
 want understand-anything && install_understand_anything
 want codegraph           && install_codegraph
+want knowledge-sync      && install_knowledge_sync
 
 exit "$FAILED"
