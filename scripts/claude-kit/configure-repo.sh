@@ -32,6 +32,13 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # PostToolUse sync hook at <kit>/scripts/hooks/ (copied into every repo by the
 # kit installer). $CLAUDE_PROJECT_DIR is expanded by Claude Code at runtime.
 SYNC_HOOK_CMD='bash "$CLAUDE_PROJECT_DIR/scripts/hooks/knowledge-sync.sh"'
+# rtk: PreToolUse output compression — wired per repo only when a WORKING rtk
+# binary is on PATH (the npm shim exits 1 without a prebuilt platform binary;
+# a dead hook would error on every Bash call, the exact failure we guard).
+RTK_HOOK_CMD=""
+if command -v rtk >/dev/null 2>&1 && rtk --version >/dev/null 2>&1; then
+  RTK_HOOK_CMD="rtk hook claude"
+fi
 ROUTING_DOC="$ROOT_DIR/CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md"
 
 REPO=""
@@ -200,13 +207,14 @@ fi
 #    is appended only when its exact command string is absent (idempotent).
 #    $1 = file to merge into (defaults to the repo's settings.json).
 merge_deny() {
-  python3 - "${1:-$SETTINGS}" "$WORK/settings.json" "${DENY_RULES[@]}" "$SYNC_HOOK_CMD" <<'PY'
+  python3 - "${1:-$SETTINGS}" "$WORK/settings.json" "$(printf '%s\n' "${DENY_RULES[@]}")" "$SYNC_HOOK_CMD" "$RTK_HOOK_CMD" <<'PY'
 import json, sys
 from collections import OrderedDict
 
 target, planned = sys.argv[1], sys.argv[2]
-rules = sys.argv[3:]
+rules = sys.argv[3].split("\n")  # deny rules travel as ONE newline-joined arg
 hook_cmd = sys.argv[4]
+rtk_cmd = sys.argv[5]
 
 try:
     with open(target) as fh:
@@ -261,6 +269,37 @@ if hook_cmd:
             )
         )
         hooks["PostToolUse"] = post
+        changed = True
+
+# rtk PreToolUse output compression (same idempotency rule; only when the
+# caller passes a working binary).
+if rtk_cmd:
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        hooks = OrderedDict()
+        settings["hooks"] = hooks
+    pre = hooks.get("PreToolUse")
+    if not isinstance(pre, list):
+        pre = []
+    present = any(
+        isinstance(hook, dict) and hook.get("command") == rtk_cmd
+        for entry in pre
+        if isinstance(entry, dict)
+        for hook in entry.get("hooks", [])
+    )
+    if not present:
+        pre.append(
+            OrderedDict(
+                [
+                    ("matcher", "Bash"),
+                    (
+                        "hooks",
+                        [{"type": "command", "command": rtk_cmd}],
+                    ),
+                ]
+            )
+        )
+        hooks["PreToolUse"] = pre
         changed = True
 
 with open(planned, "w") as fh:
@@ -370,7 +409,7 @@ if [[ "$CHECK" -eq 1 ]]; then
     note_drift ".claude/README.md missing"
   fi
   if [[ "$MERGE_STATUS" == "unchanged" && -f "$SETTINGS" ]]; then
-    say "ok   permissions.deny + knowledge-sync hook in .claude/settings.json"
+    say "ok   permissions.deny + knowledge-sync/rtk hooks in .claude/settings.json"
   else
     note_drift "permissions.deny / knowledge-sync hook incomplete in .claude/settings.json"
   fi
