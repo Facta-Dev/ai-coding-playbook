@@ -3,6 +3,14 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-22 — 1.3.5
+
+### Changed
+- `kit/agents/code-scout.md`: the digest contract is now line-counted — at most
+  7 lines total, one bullet per line, no headings, no bold summary, no
+  preamble. The earlier "<=300 tokens" cap was not enforceable by the model and
+  produced 9-11 bullets plus section headers.
+
 ## 2026-11-22 — 1.3.4
 
 ### Fixed

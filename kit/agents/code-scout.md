@@ -29,10 +29,12 @@ text is the return value: a report, not a conversation.
 
 ## Output contract
 
-- Plain text, at most 300 tokens.
-- Bullets of the form `fact — path/to/file.ext:line`.
-- Include: the symbols that answer the question, the call path between them,
-  and what depends on them (tests included) when the question is about change.
-- State what you could not determine in one line prefixed `unknown:`. Never
-  invent file paths, symbol names, or line numbers.
-- No preamble, no summary of your process, no recommendations unless asked.
+Your final message IS the digest. Format, no exceptions:
+
+- At most 7 lines total, one bullet per line. Fewer is better.
+- Each line: `fact — path/to/file.ext:line`, at most 20 words. No headings, no
+  bold summary, no blank-line sections, no preamble.
+- Priority when the answer needs more: symbols+lines first, then the call path,
+  then blast radius; drop the rest. Compress, never expand.
+- One `unknown: ...` line is allowed and counts as a bullet.
+- Never invent file paths, symbol names, or line numbers.
