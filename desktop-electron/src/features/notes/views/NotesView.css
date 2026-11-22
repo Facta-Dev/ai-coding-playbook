@@ -1,0 +1,91 @@
+/* <app> — the notes view styles. Reads only ui-kit theme tokens. */
+.notes-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-l);
+  color: var(--color-text);
+}
+
+.notes-view h1 {
+  font-size: 1.375rem;
+  margin: 0;
+}
+
+.notes-view__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+}
+
+.notes-view__item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  padding: var(--space-s) var(--space-m);
+}
+
+.notes-view__item-title {
+  font-size: var(--font-size-m);
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.notes-view__item-body {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--color-text-muted);
+}
+
+.notes-view__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  padding: var(--space-m);
+}
+
+.notes-view__label {
+  font-size: var(--font-size-s);
+  font-weight: 600;
+}
+
+.notes-view__input {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-s);
+  padding: var(--space-s);
+  font: inherit;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.notes-view__input--body {
+  resize: vertical;
+}
+
+.notes-view__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.notes-view__input:disabled {
+  opacity: 0.6;
+}
+
+.notes-view__error {
+  margin: 0;
+  color: var(--color-danger);
+}
+
+/* The ui-kit button lands last in the form column. */
+.notes-view__form .ui-kit-button {
+  align-self: flex-start;
+  margin-top: var(--space-s);
+}

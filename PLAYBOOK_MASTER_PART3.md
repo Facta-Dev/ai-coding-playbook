@@ -163,7 +163,7 @@ Never choose a platform only for the AI-generation experience: choose for runtim
 
 | Class | Playbooks | Cadence | Trigger events |
 |---|---|---|---|
-| **Fast** | MASTER, CLAUDE_CODE, FRONTEND_MOBILE, ANDROID, IOS, DESKTOP_QT, CHROME_EXTENSION, CLI | 30–60 days | New Claude Code/RN/Expo/Android/Xcode/Qt/Chrome releases; store policy changes |
+| **Fast** | MASTER, CLAUDE_CODE, FRONTEND_MOBILE, ANDROID, IOS, DESKTOP_QT, DESKTOP_ELECTRON, CHROME_EXTENSION, CLI | 30–60 days | New Claude Code/RN/Expo/Android/Xcode/Qt/Chrome/Electron releases; store policy changes |
 | **Medium** | SECURITY, AUDIT, JAVA_J2EE, FRONTEND | 90 days | OWASP/standard revisions, regulation dates, runtime releases |
 | **Slow** | URLS, BACKEND, TESTS | 180 days | Architecture decisions, extraction events |
 
@@ -265,7 +265,7 @@ The project is one set with two roles:
 - **1** — this repository, `ai-coding-playbook`. It owns the normative
   contract: the master, the platform playbooks, the shared contracts, the
   kits and the reference implementations.
-- **n** — the twelve `Beautiful*` repositories. Each is one stack-specific
+- **n** — the thirteen `Beautiful*` repositories. Each is one stack-specific
   implementation: the skills, lints, tests and examples that make the
   contract executable.
 
@@ -312,6 +312,7 @@ courtesies.
 | [`beautifulcli`](https://github.com/Facta-Dev/beautifulcli) | TypeScript CLI/TUI | `PLAYBOOK_CLI.md` |
 | [`beautifulreactnative`](https://github.com/Facta-Dev/beautifulreactnative) | React Native + Expo | `PLAYBOOK_FRONTEND_MOBILE.md` |
 | [`beautifulqt`](https://github.com/Facta-Dev/beautifulqt) | Qt 6 + C++20 | `PLAYBOOK_DESKTOP_QT.md` |
+| [`beautifulelectron`](https://github.com/Facta-Dev/beautifulelectron) | Electron 45 + TypeScript | `PLAYBOOK_DESKTOP_ELECTRON.md` |
 | [`beautifulandroid`](https://github.com/Facta-Dev/beautifulandroid) | Kotlin + Jetpack Compose | `PLAYBOOK_MOBILE_ANDROID_KOTLIN.md` |
 | [`beautifulios`](https://github.com/Facta-Dev/beautifulios) | Swift 6 + SwiftUI | `PLAYBOOK_MOBILE_IOS_SWIFT.md` |
 
@@ -340,6 +341,7 @@ divergent copy is still a contract defect.
 | **FRONTEND_MOBILE** | 1 Decisions · 2 Product family · 3 Device classes and governor · 4 Architecture · 5 Monorepo and variants · 6 Navigation and deep links · 7 Onboarding/login/registration/forgot password · 8 Push · 9 Libraries · 10 Game · 11 Market · 12 Avatar · 13 Scene engines and assets · 14 Realtime and background · 15 Security and store compliance · 16 Observability · 17 Testing · 18 Build and release · 19 Governance · 20 Anti-patterns · 21 DoD |
 | **MOBILE_ANDROID_KOTLIN / MOBILE_IOS_SWIFT** | Same 21-section structure as FRONTEND_MOBILE (platform-specific content in each) |
 | **DESKTOP_QT** | 1 Decisions · 2 Platform and performance · 3 Architecture · 4 Layout · 5 Backend integration · 6 Navigation · 7 Authentication · 8 Realtime · 9 Local storage · 10 Platform integration · 11 Security · 12 Enterprise · 13 Observability · 14 Packaging and updates · 15 Testing · 16 CI/CD · 17 Governance · 18 Claude Code · 19 Anti-patterns · 20 DoD |
+| **DESKTOP_ELECTRON** | 1 Decisions · 2 Platform and performance · 3 Architecture (hexagon + slices + MVVM) · 4 Repository layout · 5 IPC and preload · 6 Backend integration · 7 Navigation and windows · 8 Authentication · 9 Realtime · 10 Local storage · 11 Platform integration · 12 Security · 13 Enterprise · 14 Observability · 15 Packaging, signing and updates · 16 Testing · 17 CI/CD · 18 Governance · 19 Claude Code · 20 Anti-patterns · 21 DoD |
 | **CHROME_EXTENSION** | 1 Decisions · 2 Platform model · 3 Architecture · 4 Directory · 5 Manifest and permissions · 6 Messaging · 7 State and migrations · 8 Service worker · 9 Content scripts · 10 UI surfaces · 11 Networking and auth · 12 Enterprise · 13 Security · 14 Privacy and store · 15 Observability · 16 Performance · 17 Testing · 18 Build and release · 19 Cross-browser · 20 Governance · 21 Claude Code · 22 Anti-patterns · 23 DoD |
 | **CLI** | 1 Decisions · 2 Product surface · 3 Architecture · 4 CLI UX contract · 5 Interactive TUI · 6 Platform specifics · 7 Backend integration · 8 Configuration and state · 9 Extensibility and agentic modules · 10 Security · 11 Performance · 12 Distribution and update · 13 Observability · 14 Testing · 15 Build and release · 16 Governance · 17 Claude Code · 18 Anti-patterns · 19 DoD |
 | **JAVA_J2EE** | 1 Decisions · 2 Runtime selection · 3 Architecture · 4 Layout · 5 Data layer · 6 Services layer · 7 Batch and coordination · 8 Presentation · 9 Security · 10 Observability and performance · 11 Build and deployment · 12 Testing · 13 Migration and upgrade · 14 Governance · 15 Anti-patterns · 16 DoD |

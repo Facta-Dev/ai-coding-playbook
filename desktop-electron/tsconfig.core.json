@@ -1,0 +1,11 @@
+// <app> — core worker process (utilityProcess). A second Node surface: same
+// rules as the main process, its own program. Infrastructure and feature
+// application/adapters code is pulled in through the container's imports;
+// renderer-only files (views, view models) are never part of this program.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/core", "src/contracts", "src/shared-kernel"]
+}

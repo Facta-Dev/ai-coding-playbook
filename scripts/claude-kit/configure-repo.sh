@@ -12,8 +12,8 @@
 #        [--provider=ollama|anthropic|auto] [--check] [--dry-run]
 #     <repo-path   repository root (must be a git work tree)
 #     --kit=NAME   also install that stack kit: golang|nodejs|python|rust|java|
-#                  extension|desktop|frontend-mobile|mobile-android|mobile-ios|
-#                  frontend|cli
+#                  extension|desktop|desktop-electron|frontend-mobile|
+#                  mobile-android|mobile-ios|frontend|cli
 #     --provider=P routing block variant: ollama|anthropic|auto (default auto:
 #                  ollama when 127.0.0.1:11434 answers, else anthropic)
 #     --check      verify the repo, write nothing; exit 1 on drift
@@ -56,7 +56,7 @@ die() { echo "configure-repo: ERROR — $*" >&2; exit 1; }
 [[ -n "$REPO" ]] || die "repo path required"
 [[ -d "$REPO" ]] || die "no such directory: $REPO"
 if [[ -n "$KIT" && ! -d "$ROOT_DIR/$KIT" ]]; then
-  die "unknown kit '$KIT' (golang|nodejs|python|rust|java|extension|desktop|frontend-mobile|mobile-android|mobile-ios|frontend|cli)"
+  die "unknown kit '$KIT' (golang|nodejs|python|rust|java|extension|desktop|desktop-electron|frontend-mobile|mobile-android|mobile-ios|frontend|cli)"
 fi
 
 # The repo root is the git work tree root, not the path as typed.

@@ -89,6 +89,7 @@ The rules that carry the whole file:
 | **MOBILE_ANDROID_KOTLIN** | `PLAYBOOK_MOBILE_ANDROID_KOTLIN.md` | Native Android, Kotlin/Compose, same variants | client | fast | Android native |
 | **MOBILE_IOS_SWIFT** | `PLAYBOOK_MOBILE_IOS_SWIFT.md` | Native iOS, Swift 6/SwiftUI in code, same variants | client | fast | iOS native |
 | **DESKTOP_QT** | `PLAYBOOK_DESKTOP_QT.md` | Qt desktop, Windows/Linux/macOS, old hardware, SSE/WebSocket | client | fast | Desktop app |
+| **DESKTOP_ELECTRON** | `PLAYBOOK_DESKTOP_ELECTRON.md` | Electron desktop, Windows/Linux/macOS, TypeScript, sandboxed renderers, typed IPC, SSE/WebSocket (split into `_PART<n>` companions) | client | fast | Desktop app |
 | **CHROME_EXTENSION** | `PLAYBOOK_CHROME_EXTENSION.md` | MV3 TypeScript, enterprise policy, SW lifecycle | client | fast | Browser extension |
 | **CLI** | `PLAYBOOK_CLI.md` | Cross-platform CLI/TUI in Claude-Code style, headless modes, updates | client/tool | fast | Terminal product |
 | **JAVA_J2EE** | `PLAYBOOK_JAVA_J2EE.md` | Java 25 + Jakarta EE 11→12 backend on our architecture | backend stack | medium | Java backends |
@@ -111,7 +112,7 @@ entry per part.
                  ▼                   ▼                             ▼
         FOUNDATION (always)     PROCESS (how we work)        CLIENT / STACK PLAYBOOKS
    URLS ── BACKEND ── SECURITY      CLAUDE_CODE                     FRONTEND ─► FRONTEND_MOBILE ─► ANDROID, IOS
-        ╲     │      ╱                │                                  DESKTOP_QT · CHROME_EXTENSION · CLI
+        ╲     │      ╱                │                                  DESKTOP_QT · DESKTOP_ELECTRON · CHROME_EXTENSION · CLI
          TESTS ── AUDIT ◄────────── evidence                             JAVA_J2EE (backend stack)
 ```
 
@@ -143,7 +144,7 @@ Order of authority (highest first):
 4. **URLS**.
 5. **BACKEND**.
 6. **TESTS**, **AUDIT**.
-7. **Client/stack playbooks** (FRONTEND*, MOBILE_*, DESKTOP_QT, CHROME_EXTENSION, CLI, JAVA_J2EE).
+7. **Client/stack playbooks** (FRONTEND*, MOBILE_*, DESKTOP_QT, DESKTOP_ELECTRON, CHROME_EXTENSION, CLI, JAVA_J2EE).
 8. **CLAUDE_CODE** (kit/process; it governs *how* work is done, not *what* the product must satisfy).
 9. **Project-local conventions** (ADRs, per-slice `CLAUDE.md`).
 
@@ -173,11 +174,11 @@ method and an owner. Changing one is a MASTER version bump with a changelog entr
 | I-7 | **Idempotent mutations** (`Idempotency-Key`) and idempotent batch/jobs (deterministic `jobId`, fencing, DB unique constraints); Redis/Dragonfly coordinates, **the DB is the truth** | BACKEND §5–§6 | concurrency suite |
 | I-8 | **Long operations** answer `202` + operation resource; no blocked connections | BACKEND §6, FRONTEND §6 | e2e/contract |
 | I-9 | **Correlation**: `X-Correlation-Id` generated at the user action and propagated across HTTP, queues, events, push payloads and logs | SECURITY §14, all clients | observability assertions |
-| I-10 | **Events**: transactional outbox; at-least-once; consumers idempotent; versioned envelopes; **realtime** is optional and degradable (`auto|websocket|sse|polling|off`), snapshot + stream, resume, resync | BACKEND §5/§7, DESKTOP_QT_PART2 §8 | realtime conformance suite |
+| I-10 | **Events**: transactional outbox; at-least-once; consumers idempotent; versioned envelopes; **realtime** is optional and degradable (`auto|websocket|sse|polling|off`), snapshot + stream, resume, resync | BACKEND §5/§7, DESKTOP_QT_PART2 §8, DESKTOP_ELECTRON_PART2 §9 | realtime conformance suite |
 | I-11 | **Client contract parity**: generated SDKs/DTOs from OpenAPI; generated route builders from the shared route table; shared permission catalog; shared i18n keys; hand-written paths/DTOs forbidden | FRONTEND §3, each client | parity tests |
-| I-12 | **Device tiers and budgets**: `low|mid|high`, measured not assumed, runtime quality governor, floor-device testing; budgets calibrated per product | FRONTEND_MOBILE §3, DESKTOP_QT §2, CLI_PART2 §11 | device-pool perf gates |
+| I-12 | **Device tiers and budgets**: `low|mid|high`, measured not assumed, runtime quality governor, floor-device testing; budgets calibrated per product | FRONTEND_MOBILE §3, DESKTOP_QT §2, DESKTOP_ELECTRON §2, CLI_PART2 §11 | device-pool perf gates |
 | I-13 | **Push is a channel, not a data path**: minimal payloads, categories/channels, validated deep links, fetch after tap, reconcile on foreground | FRONTEND_MOBILE_PART2 §8 (+ Android/iOS §8) | push suite |
-| I-14 | **Managed policy + kill switch + diagnostics bundle** on every shipped client (extension, desktop, CLI, mobile via remote config) | CHROME_EXTENSION_PART2 §12, DESKTOP_QT_PART2 §12, CLI_PART2 §8 | policy suites |
+| I-14 | **Managed policy + kill switch + diagnostics bundle** on every shipped client (extension, desktop, CLI, mobile via remote config) | CHROME_EXTENSION_PART2 §12, DESKTOP_QT_PART2 §12, DESKTOP_ELECTRON_PART2 §13, CLI_PART2 §8 | policy suites |
 | I-15 | **Secrets and keys**: never in code, images, logs, bundles; OS keystore on clients; envelope encryption for tenant provider keys (write-only everywhere) | SECURITY §8, §13 | secrets scans; log-redaction tests |
 | I-16 | **Supply chain**: lockfiles, frozen installs, cooldown for fresh versions, SCA/SBOM, signed artifacts, pinned CI actions, provenance | SECURITY §11 | CI gates |
 | I-17 | **Sensitive data classes**: location, microphone/voice, camera/face-derived, tenant lead data, provider keys are *Restricted*: consent, minimization, retention, deletion cascade | AUDIT §13, SECURITY §8 | privacy suite |

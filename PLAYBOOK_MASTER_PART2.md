@@ -310,6 +310,7 @@ Product repositories **vendor the set at a pinned version** (submodule, subtree 
 | `android/**` | MOBILE_ANDROID_KOTLIN (+ FRONTEND_MOBILE for contracts/flows) |
 | `ios/**` | MOBILE_IOS_SWIFT (+ FRONTEND_MOBILE) |
 | `apps/desktop/**` (Qt) | DESKTOP_QT |
+| `apps/desktop-electron/**` | DESKTOP_ELECTRON, FRONTEND (MVVM), SECURITY |
 | `apps/extension/**` | CHROME_EXTENSION, FRONTEND (extension section) |
 | `apps/cli/**` | CLI |
 | `backend-java/**` | JAVA_J2EE, BACKEND, SECURITY (Language profiles) |

@@ -1,0 +1,15 @@
+// <app> — test program (vitest units + platform suites). Extends the build
+// options; src and tests are checked as one program so the tests see the
+// same types the surfaces ship, and the e2e-free platform suites (architecture,
+// contracts) can read the whole tree. DOM is on because the program includes
+// the renderer sources; the node types cover the main/platform suites.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src", "tests"],
+  "exclude": ["dist", "dist-*", "out", "node_modules", "tests/e2e"]
+}

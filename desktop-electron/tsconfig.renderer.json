@@ -1,0 +1,16 @@
+// <app> — Chromium renderer. The only program with the DOM: the renderer
+// views, the ui-kit, the view models and the feature slices the views reach
+// (their domain/application code comes along through imports). Its types
+// declare no Node surface at all — renderer code that needs platform access
+// goes through the preload bridge (src/renderer/core-port.ts), never through
+// process or node:*.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client"]
+  },
+  "include": ["src/renderer", "src/ui-kit", "src/features"],
+  "exclude": ["src/features/**/adapters"]
+}

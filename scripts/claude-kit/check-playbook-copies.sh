@@ -29,7 +29,7 @@ SHARED=(
   PLAYBOOK_CLAUDE_CODE.md
 )
 
-CLIENT_KITS=(extension desktop frontend-mobile mobile-android mobile-ios frontend cli)
+CLIENT_KITS=(extension desktop desktop-electron frontend-mobile mobile-android mobile-ios frontend cli)
 BACKEND_KITS=(golang rust nodejs python java)
 
 # The stack playbook each kit ships next to the shared contracts. Frontend and
@@ -38,6 +38,7 @@ stack_for() {
   case "$1" in
     extension)       echo PLAYBOOK_CHROME_EXTENSION.md ;;
     desktop)         echo PLAYBOOK_DESKTOP_QT.md ;;
+    desktop-electron) echo PLAYBOOK_DESKTOP_ELECTRON.md ;;
     frontend-mobile) echo PLAYBOOK_FRONTEND_MOBILE.md ;;
     mobile-android)  echo PLAYBOOK_MOBILE_ANDROID_KOTLIN.md ;;
     mobile-ios)      echo PLAYBOOK_MOBILE_IOS_SWIFT.md ;;
@@ -71,7 +72,7 @@ expected_for() {
   # The visual client kits ship the shared frontend contract in addition to
   # their own platform playbook.
   case "$kit" in
-    extension|desktop|frontend-mobile|mobile-android|mobile-ios) emit PLAYBOOK_FRONTEND.md ;;
+    extension|desktop|desktop-electron|frontend-mobile|mobile-android|mobile-ios) emit PLAYBOOK_FRONTEND.md ;;
   esac
   [[ -n "$stack" ]] && emit "$stack"
 }

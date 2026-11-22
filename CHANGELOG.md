@@ -3,6 +3,26 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-22 — 1.3.0
+
+### Added
+- `PLAYBOOK_DESKTOP_ELECTRON.md` and its `_PART` companions: the Electron
+  (TypeScript) playbook, from the two-process trust model and the typed IPC
+  envelope to Forge packaging, fuses, signing and the per-platform test matrix.
+- The `desktop-electron` kit: a runnable Electron 45 + Vite + TypeScript
+  template mirroring the `desktop` kit (main/core/preload/renderer, hexagonal
+  slices, contracts, evals, `.claude` plane, verify pipeline).
+- The `beautifulelectron` Beautiful-series implementation: skills
+  (`electron-best-practices`, `electron-review`, `electron-port`), the drop-in
+  ESLint lint unit with the `lints/check/` violation harness, examples, tests
+  and the five Beautiful gates.
+- `verify-register.md`: V-ELECTRON-1/2/3 (Electron 45 stack, support cadence,
+  `net.WebSocket`/startup snapshot/ASAR integrity and fuses), owner
+  `client-platform`, due 2027-03-31.
+
+### Changed
+- The Beautiful-series registry counts thirteen implementations (was twelve).
+
 ## 2026-11-19 — 1.2.3
 
 ### Added

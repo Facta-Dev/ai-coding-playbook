@@ -60,6 +60,12 @@ KITS: dict[str, dict[str, object]] = {
         "arch": "PLAYBOOK_FRONTEND.md",
         "stack": "PLAYBOOK_DESKTOP_QT.md",
     },
+    "desktop-electron": {
+        "implementation": "beautifulelectron",
+        "paths": ["src/**", "packages/**", "vite.*.config.ts", "forge.config.ts"],
+        "arch": "PLAYBOOK_FRONTEND.md",
+        "stack": "PLAYBOOK_DESKTOP_ELECTRON.md",
+    },
     "frontend-mobile": {
         "implementation": "beautifulreactnative",
         "paths": ["app/**", "src/**", "packages/**"],

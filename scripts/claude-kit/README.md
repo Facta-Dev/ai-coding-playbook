@@ -9,7 +9,7 @@ python3 and the standard shell. Every script takes `--flag=value` or `--flag val
 | `install-user-kit.sh` | `--dry-run`, `--force`, `--no-settings`, `--provider=ollama\|anthropic\|auto`, `--dest=DIR` | 0 ok, 1 error |
 | `clone-repos.sh` | `--group=selected\|core\|tools\|reference\|all` (default `selected`), `--dir=DIR`, `--depth=N`, `--dry-run` | 0 cloned/skipped, 1 a clone failed |
 | `install-skill-packs.sh` | `--dir=DIR`, `--local`, `--remote`, `--only=NAME[,NAME]`, `--dry-run`, `--self-test` | 0 installed/skipped, 1 an install failed |
-| `configure-repo.sh` | `<repo-path>`, `--kit=golang\|nodejs\|python\|rust\|java\|extension\|desktop\|frontend-mobile\|mobile-android\|mobile-ios\|frontend\|cli`, `--provider=ollama\|anthropic\|auto`, `--check`, `--dry-run` | 0 ok, 1 drift or error |
+| `configure-repo.sh` | `<repo-path>`, `--kit=golang\|nodejs\|python\|rust\|java\|extension\|desktop\|desktop-electron\|frontend-mobile\|mobile-android\|mobile-ios\|frontend\|cli`, `--provider=ollama\|anthropic\|auto`, `--check`, `--dry-run` | 0 ok, 1 drift or error |
 | `kit_check.py` | `--root=DIR`, `--json`, `--self-test` | 0 clean, 1 warnings, 2 errors |
 | `check-playbook-copies.sh` | `--self-test` | 0 all copies mirror the root, 1 drift/missing/extra copy |
 | `generate-playbook-rules.py` | `--check` | 0 rules current, 1 drift |

@@ -1,0 +1,35 @@
+// <app> — base TypeScript options shared by the per-target programs.
+//
+// Electron typechecks as four separate surfaces (main, core worker, preload,
+// renderer) plus the test program, and each surface sees a different lib and
+// a different globals set. Per-target configurations keep it that way: the
+// main and core programs must not see window/document, and the renderer must
+// not see process or node:* built-ins (PLAYBOOK_DESKTOP_ELECTRON §2, §3).
+// Everything structural — strictness, module targets, path aliases — lives
+// here so the per-target files stay short.
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023"],
+    "paths": {
+      "@platform/*": ["./src/platform/*"],
+      "@features/*": ["./src/features/*"],
+      "@shared/*": ["./src/shared-kernel/*"],
+      "@contracts/*": ["./src/contracts/*"]
+    },
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "exclude": ["dist", "dist-*", "out", "node_modules"]
+}

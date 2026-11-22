@@ -10,7 +10,7 @@ re-reading the whole repository. It covers three jobs:
 
 The rule is **delta, not corpus**: open the source that changed, the one
 playbook section mapped to it, and the affected kit or Beautiful skill. Do not
-read all 38 playbooks or all 12 Beautiful repositories to make one change.
+read all 41 playbooks or all 13 Beautiful repositories to make one change.
 
 ## 0. The context pack (read this, then stop)
 
@@ -39,7 +39,7 @@ If a task needs a file not on this list, name the reason in the change record
 - **1** = this repository, `ai-coding-playbook`. It owns the normative
   contract: the master, the platform playbooks, the shared contracts, the
   kits and the reference implementations.
-- **n** = the twelve `Beautiful*` repositories, one per stack. Each one
+- **n** = the thirteen `Beautiful*` repositories, one per stack. Each one
   implements the contract and never redefines it.
 - The normative rule is [`PLAYBOOK_MASTER_PART3.md` §12](PLAYBOOK_MASTER_PART3.md);
   the registry is §12.3.
@@ -116,7 +116,7 @@ python3 scripts/playbook-lint.py
 
 Fix the lint errors before touching a kit or a Beautiful repo. The lint also
 checks cross-references and the manifest; a broken anchor is cheaper to fix
-here than in twelve downstream repositories.
+here than in thirteen downstream repositories.
 
 ### 2.4 If it is a shared contract
 
@@ -325,7 +325,7 @@ the owner classifies it.
 ### 5.5 Do not
 
 - Do not read all 38 playbooks to answer one Anthropic change.
-- Do not read all 12 Beautiful repos for a stack-specific change.
+- Do not read all 13 Beautiful repos for a stack-specific change.
 - Do not patch a contract in a Beautiful repo and leave the playbook behind.
 - Do not copy a shared contract into a kit by hand; copy it byte-identically
   and let the check prove it.

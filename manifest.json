@@ -1,7 +1,7 @@
 {
   "set": "ai-coding-playbook",
   "manifestVersion": 1,
-  "updated": "2026-11-19",
+  "updated": "2026-11-22",
   "alwaysLoad": [
     "MASTER#3"
   ],
@@ -688,6 +688,82 @@
           "desktop",
           "cmake",
           "signing"
+        ]
+      }
+    },
+    {
+      "id": "DESKTOP_ELECTRON",
+      "file": "PLAYBOOK_DESKTOP_ELECTRON.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "FRONTEND",
+        "SECURITY"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/**",
+          "packages/**",
+          "forge.config.ts",
+          "vite.*.config.ts"
+        ],
+        "keywords": [
+          "electron",
+          "desktop",
+          "ipc",
+          "fuses"
+        ]
+      }
+    },
+    {
+      "id": "DESKTOP_ELECTRON_PART2",
+      "file": "PLAYBOOK_DESKTOP_ELECTRON_PART2.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "DESKTOP_ELECTRON"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/**",
+          "packages/**",
+          "forge.config.ts",
+          "vite.*.config.ts"
+        ],
+        "keywords": [
+          "electron",
+          "desktop",
+          "ipc",
+          "fuses"
+        ]
+      }
+    },
+    {
+      "id": "DESKTOP_ELECTRON_PART3",
+      "file": "PLAYBOOK_DESKTOP_ELECTRON_PART3.md",
+      "version": "1.0.0",
+      "layer": "client",
+      "volatility": "fast",
+      "owner": "client-platform",
+      "depends_on": [
+        "DESKTOP_ELECTRON"
+      ],
+      "appliesTo": {
+        "paths": [
+          "src/**",
+          "packages/**",
+          "forge.config.ts",
+          "vite.*.config.ts"
+        ],
+        "keywords": [
+          "electron",
+          "desktop",
+          "ipc",
+          "fuses"
         ]
       }
     },

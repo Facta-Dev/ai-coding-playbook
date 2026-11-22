@@ -1,0 +1,11 @@
+// <app> — sandboxed preload bridge. No DOM (the sandbox has none) and no
+// other Electron surface: the preload program typechecks only the bridge and
+// the contracts it serializes. It must never see renderer internals or core
+// internals — see dependency-cruiser (no-preload-to-renderer, no-preload-to-core).
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/preload", "src/contracts", "src/shared-kernel"]
+}

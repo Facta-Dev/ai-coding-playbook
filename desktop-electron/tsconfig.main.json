@@ -1,0 +1,21 @@
+// <app> — main process (Electron main). Node surface, no DOM: the main
+// process never sees window or document, and its program declares only the
+// Node types it is allowed to touch. The build configs are typechecked here
+// too: they run in Node and need the same globals set.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "src/main",
+    "src/contracts",
+    "src/shared-kernel",
+    "forge.config.ts",
+    "vite.main.config.ts",
+    "vite.preload.config.ts",
+    "vite.core.config.ts",
+    "vite.renderer.config.ts",
+    "vitest.config.ts"
+  ]
+}

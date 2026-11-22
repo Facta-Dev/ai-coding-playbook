@@ -15,6 +15,7 @@ selected|Facta-Dev/beautifulnodejs|Node.js skill pack
 selected|Facta-Dev/beautiful-j2ee|Java/J2EE backend skill pack
 selected|Facta-Dev/beautifulextension|Chrome extension skill pack
 selected|Facta-Dev/beautifulqt|Qt desktop skill pack
+selected|Facta-Dev/beautifulelectron|Electron desktop skill pack
 selected|Facta-Dev/beautifulreactnative|React Native skill pack
 selected|Facta-Dev/beautifulandroid|Android skill pack
 selected|Facta-Dev/beautifulios|iOS skill pack
