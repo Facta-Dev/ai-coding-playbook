@@ -32,6 +32,11 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # PostToolUse sync hook at <kit>/scripts/hooks/ (copied into every repo by the
 # kit installer). $CLAUDE_PROJECT_DIR is expanded by Claude Code at runtime.
 SYNC_HOOK_CMD='bash "$CLAUDE_PROJECT_DIR/scripts/hooks/knowledge-sync.sh"'
+# cost-sync: Stop hook — per-model token sums for this repo in .claude/costs.json
+# (the claude-code-cli-cost-tracker billing core; advisor/subagent/workflow
+# turns included). Wired at Stop beside knowledge-sync so every response ends
+# with fresh indexes and a fresh cost file.
+COST_HOOK_CMD='bash "$CLAUDE_PROJECT_DIR/scripts/hooks/cost-sync.sh"'
 # rtk: PreToolUse output compression — wired per repo only when a WORKING rtk
 # binary is on PATH (the npm shim exits 1 without a prebuilt platform binary;
 # a dead hook would error on every Bash call, the exact failure we guard).
@@ -78,6 +83,7 @@ REPO="$REPO_ROOT"
 CLAUDE_MD="$REPO/CLAUDE.md"
 DOTCLAUDE="$REPO/.claude"
 SETTINGS="$DOTCLAUDE/settings.json"
+MEMORY_MD="$REPO/MEMORY.md"
 GITIGNORE="$REPO/.gitignore"
 BACKUP_DIR="$DOTCLAUDE/backups/configure-$(date -u +%Y-%m-%d)"
 
@@ -123,6 +129,7 @@ GITIGNORE_ENTRIES=(
   '.claude/install-state.json'
   '.claude/backups/'
   '.claude/logs/'
+  '.claude/costs.json'
 )
 
 DOTCLAUDE_README="$(cat <<'EOF'
@@ -201,13 +208,43 @@ else
   PLAN_DOTREADME="$WORK/dotclaude-readme.md"
 fi
 
+# 3b. MEMORY.md: seed the repo's durable memory when absent. User-owned once
+#     created — never overwritten, so a premise written by hand stays intact.
+PLAN_MEMORY=""
+if [[ -f "$MEMORY_MD" ]]; then
+  PLAN_MEMORY="skip"
+else
+  printf '%s\n' \
+    "# MEMORY.md — $(basename "$REPO")" \
+    "" \
+    "Durable operational memory for this repo: decisions, constraints and" \
+    "pointers. One fact per line under the right heading; no transcripts, no" \
+    "secrets." \
+    "" \
+    "## Protocol" \
+    "" \
+    'This repo follows the memory-ops rule (`.claude/rules/memory-ops.md`):' \
+    'for structural questions consult the indexes before grep/read — CodeGraph' \
+    '(`.codegraph/`, `codegraph explore "<question>"`) and Graphify' \
+    '(`graphify-out/graph.json`, `graphify query "<question>"`). The' \
+    "knowledge-sync hook keeps both fresh after edits." \
+    "" \
+    "## Decisions" \
+    "" \
+    "## Constraints" \
+    "" \
+    "## Pointers" \
+    > "$WORK/memory.md"
+  PLAN_MEMORY="$WORK/memory.md"
+fi
+
 # 4. permissions.deny + the knowledge-sync PostToolUse hook merged into
 #    .claude/settings.json. Deny only: allow, env, model keys are left
 #    untouched; hooks get NO entries removed and the knowledge-sync entry
 #    is appended only when its exact command string is absent (idempotent).
 #    $1 = file to merge into (defaults to the repo's settings.json).
 merge_deny() {
-  python3 - "${1:-$SETTINGS}" "$WORK/settings.json" "$(printf '%s\n' "${DENY_RULES[@]}")" "$SYNC_HOOK_CMD" "$RTK_HOOK_CMD" <<'PY'
+  python3 - "${1:-$SETTINGS}" "$WORK/settings.json" "$(printf '%s\n' "${DENY_RULES[@]}")" "$SYNC_HOOK_CMD" "$RTK_HOOK_CMD" "$COST_HOOK_CMD" <<'PY'
 import json, sys
 from collections import OrderedDict
 
@@ -215,6 +252,7 @@ target, planned = sys.argv[1], sys.argv[2]
 rules = sys.argv[3].split("\n")  # deny rules travel as ONE newline-joined arg
 hook_cmd = sys.argv[4]
 rtk_cmd = sys.argv[5]
+cost_cmd = sys.argv[6]
 
 try:
     with open(target) as fh:
@@ -270,6 +308,25 @@ if hook_cmd:
         )
         hooks["PostToolUse"] = post
         changed = True
+
+# Stop hooks: refresh the indexes and persist the repo's per-model token sums
+# after every response. Same idempotency rule (exact command string).
+if hook_cmd or cost_cmd:
+    stop = hooks.get("Stop")
+    if not isinstance(stop, list):
+        stop = []
+    present = {
+        entry.get("hooks", [{}])[0].get("command")
+        for entry in stop
+        if isinstance(entry, dict) and entry.get("hooks")
+    }
+    for command in (hook_cmd, cost_cmd):
+        if command and command not in present:
+            stop.append(OrderedDict([("hooks", [OrderedDict([("type", "command"),
+                                                             ("command", command)])])]))
+            changed = True
+    if stop:
+        hooks["Stop"] = stop
 
 # rtk PreToolUse output compression (same idempotency rule; only when the
 # caller passes a working binary).
@@ -408,6 +465,11 @@ if [[ "$CHECK" -eq 1 ]]; then
   else
     note_drift ".claude/README.md missing"
   fi
+  if [[ "$PLAN_MEMORY" == "skip" ]]; then
+    say "ok   MEMORY.md"
+  else
+    note_drift "MEMORY.md missing (memory-ops seed)"
+  fi
   if [[ "$MERGE_STATUS" == "unchanged" && -f "$SETTINGS" ]]; then
     say "ok   permissions.deny + knowledge-sync/rtk hooks in .claude/settings.json"
   else
@@ -424,6 +486,12 @@ if [[ "$CHECK" -eq 1 ]]; then
     say "ok   scripts/hooks/knowledge-sync.sh"
   else
     note_drift "scripts/hooks/knowledge-sync.sh missing"
+  fi
+  KIT_COST_HOOK="$ROOT_DIR/scripts/hooks/cost-sync.sh"
+  if [[ -f "$KIT_COST_HOOK" && -f "$REPO/scripts/hooks/cost-sync.sh" ]] && cmp -s "$KIT_COST_HOOK" "$REPO/scripts/hooks/cost-sync.sh"; then
+    say "ok   scripts/hooks/cost-sync.sh"
+  else
+    note_drift "scripts/hooks/cost-sync.sh missing"
   fi
   if [[ -f "$GITIGNORE" ]] && diff -q "$GITIGNORE" "$WORK/gitignore" >/dev/null; then
     say "ok   .gitignore entries"
@@ -447,6 +515,7 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
   [[ -n "$KIT_INSTALLER" ]] && say "would run bash $KIT_INSTALLER --targets=claude,claude-project --dest=$REPO"
   [[ "$PLAN_CLAUDE_MD" != "skip" ]] && print_diff "CLAUDE.md" "$CLAUDE_MD" "$PLAN_CLAUDE_MD"
   [[ "$PLAN_DOTREADME" != "skip" ]] && print_diff ".claude/README.md" "$DOTCLAUDE/README.md" "$PLAN_DOTREADME"
+  [[ "$PLAN_MEMORY" != "skip" ]] && print_diff "MEMORY.md" "$MEMORY_MD" "$PLAN_MEMORY"
   print_diff ".claude/settings.json" "$SETTINGS" "$WORK/settings.json"
   print_diff ".gitignore" "$GITIGNORE" "$WORK/gitignore"
   say "done — dry run, nothing written"
@@ -466,6 +535,13 @@ else
   mkdir -p "$DOTCLAUDE"
   cp "$PLAN_DOTREADME" "$DOTCLAUDE/README.md"
   note_touched ".claude/README.md"
+fi
+
+if [[ "$PLAN_MEMORY" == "skip" ]]; then
+  note_skipped "MEMORY.md (exists)"
+else
+  cp "$PLAN_MEMORY" "$MEMORY_MD"
+  note_touched "MEMORY.md (memory-ops seed)"
 fi
 
 if [[ "$MERGE_STATUS" == "changed" ]]; then
@@ -505,6 +581,19 @@ if [[ -f "$KIT_HOOK" ]]; then
     cp -f "$KIT_HOOK" "$REPO_HOOK"
     chmod +x "$REPO_HOOK"
     note_touched "scripts/hooks/knowledge-sync.sh"
+  fi
+fi
+
+KIT_COST_HOOK="$ROOT_DIR/scripts/hooks/cost-sync.sh"
+if [[ -f "$KIT_COST_HOOK" ]]; then
+  REPO_COST_HOOK="$REPO/scripts/hooks/cost-sync.sh"
+  if [[ -f "$REPO_COST_HOOK" ]] && cmp -s "$KIT_COST_HOOK" "$REPO_COST_HOOK"; then
+    note_skipped "scripts/hooks/cost-sync.sh (present)"
+  else
+    mkdir -p "$REPO/scripts/hooks"
+    cp -f "$KIT_COST_HOOK" "$REPO_COST_HOOK"
+    chmod +x "$REPO_COST_HOOK"
+    note_touched "scripts/hooks/cost-sync.sh"
   fi
 fi
 

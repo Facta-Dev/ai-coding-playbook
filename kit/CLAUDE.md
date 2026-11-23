@@ -23,7 +23,9 @@ A bare `claude` must stay on `sonnet`.
   reappears twice, and before declaring a task done. Pass concrete context
   (plan, diff, test output), never "investigate the repo".
 - Check spend with `/cccost` or `/ecc:cost-report` when a session feels heavy;
-  prefer one focused session per topic over one long mixed one.
+  the Stop hook keeps the repo's per-model token totals — the primary
+  performance signal — in `.claude/costs.json`.
+  Prefer one focused session per topic over one long mixed one.
 
 ## Memory hygiene
 

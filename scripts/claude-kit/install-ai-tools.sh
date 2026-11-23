@@ -9,6 +9,8 @@
 #   graphify             knowledge graph skill (/graphify)
 #   understand-anything  Claude Code plugin (/understand)
 #   codegraph            MCP code graph (codegraph_explore)
+#   claudectx            context/token audit CLI
+#   codebase-memory      local code-memory MCP (overlaps CodeGraph; plugin route)
 #
 # Order matters: `graphify install` rewrites ~/.claude/CLAUDE.md and drops
 # blocks it does not own, so Graphify runs before CodeGraph and only while its
@@ -16,8 +18,9 @@
 #
 # Usage:
 #   bash scripts/claude-kit/install-ai-tools.sh [--only=LIST] [--dry-run]
-#     --only=    comma list of rtk,graphify,understand-anything,codegraph
-#                (default: all four)
+#     --only=    comma list of rtk,graphify,understand-anything,codegraph,
+#                claudectx,codebase-memory
+#                (default: all six)
 #     --dry-run  print the commands, change nothing
 #
 # Exit 0 = installed/verified, 1 = an install or the settings merge failed.
@@ -27,7 +30,7 @@ set -euo pipefail
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 SETTINGS="$CLAUDE_DIR/settings.json"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ONLY="rtk,graphify,understand-anything,codegraph,knowledge-sync"
+ONLY="rtk,graphify,understand-anything,codegraph,claudectx,codebase-memory,knowledge-sync"
 DRY_RUN=0
 FAILED=0
 
@@ -234,6 +237,150 @@ install_understand_anything() {
   run claude plugin install understand-anything@understand-anything --scope user -y
 }
 
+install_claudectx() {
+  # Context audit. Install only: `claudectx optimize --apply` rewrites
+  # CLAUDE.md, .claudeignore and hooks — a human runs that, never the bootstrap.
+  if command -v claudectx >/dev/null 2>&1; then
+    say "claudectx $(claudectx --version 2>/dev/null | awk '{print $NF}') on PATH (working)"
+    return
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    warn "claudectx needs npm — install Node.js/npm, then re-run"
+    return
+  fi
+  run npm install -g claudectx
+  [[ "$DRY_RUN" -eq 1 ]] && return
+  command -v claudectx >/dev/null 2>&1 \
+    || warn "claudectx not on PATH after install — check the npm global prefix"
+}
+
+install_codebase_memory() {
+  # Overlaps CodeGraph (both build a code graph). Native release + one
+  # mcpServers entry only: the plugin route clones the vendor's ~380 MB repo
+  # (the marketplace clone times out on a first install), and the vendor's own
+  # `install` wires hooks and instructions beyond the MCP server.
+  if ! command -v codebase-memory-mcp >/dev/null 2>&1; then
+    local asset
+    case "$(uname -s)-$(uname -m)" in
+      Linux-x86_64)  asset=codebase-memory-mcp-linux-amd64.tar.gz ;;
+      Linux-aarch64) asset=codebase-memory-mcp-linux-arm64.tar.gz ;;
+      Darwin-x86_64) asset=codebase-memory-mcp-darwin-amd64.tar.gz ;;
+      Darwin-arm64)  asset=codebase-memory-mcp-darwin-arm64.tar.gz ;;
+      *) warn "codebase-memory: no prebuilt release for $(uname -s)-$(uname -m)"; return;;
+    esac
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "+ curl -fsSL https://github.com/DeusData/codebase-memory-mcp/releases/latest/download/$asset | tar -xz -C \$HOME/.local/bin codebase-memory-mcp"
+      echo "+ merge mcpServers.codebase-memory-mcp (env CBM_STARTUP_TIMEOUT_MS=90000) into \$HOME/.claude.json"
+      echo "+ set env.MCP_TIMEOUT=180000 in \$HOME/.claude/settings.json when absent"
+      return
+    fi
+    local tmp; tmp="$(mktemp -d)"
+    if curl -fsSL --max-time 600 \
+         "https://github.com/DeusData/codebase-memory-mcp/releases/latest/download/$asset" \
+         -o "$tmp/$asset" \
+       && tar -xzf "$tmp/$asset" -C "$tmp" codebase-memory-mcp; then
+      mkdir -p "$HOME/.local/bin"
+      install -m 755 "$tmp/codebase-memory-mcp" "$HOME/.local/bin/codebase-memory-mcp"
+      say "codebase-memory-mcp $(codebase-memory-mcp --version 2>/dev/null | awk '{print $2}') installed"
+    else
+      warn "codebase-memory: release download failed"
+      FAILED=1
+      return
+    fi
+  fi
+  local binpath
+  binpath="$(command -v codebase-memory-mcp 2>/dev/null || true)"
+  [[ -n "$binpath" ]] || binpath="$HOME/.local/bin/codebase-memory-mcp"
+  if [[ ! -x "$binpath" ]]; then
+    warn "codebase-memory: binary not executable at $binpath"
+    FAILED=1
+    return
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "+ merge mcpServers.codebase-memory-mcp (env CBM_STARTUP_TIMEOUT_MS=90000) into \$HOME/.claude.json"
+    echo "+ set env.MCP_TIMEOUT=180000 in \$HOME/.claude/settings.json when absent"
+    return
+  fi
+  # The vendor release SHA-256-hashes its own 331 MB executable image on every
+  # start before it opens the daemon socket (~8 s warm, ~25 s cold on a CPU
+  # without SHA-NI), so Claude Code's default 30 s MCP deadline loses the race
+  # (upstream: persist the fingerprint cache keyed by stat identity). Widen
+  # both deadlines; the server's stays below Claude Code's so it never gives up
+  # first. Existing MCP_TIMEOUT values are left alone.
+  python3 - "$HOME/.claude.json" "$binpath" "$SETTINGS" <<'PY' || FAILED=1
+import json, os, shutil, sys, time
+
+cfg_path, binpath, settings_path = sys.argv[1], sys.argv[2], sys.argv[3]
+
+
+def load(path):
+    try:
+        with open(path) as fh:
+            return json.load(fh)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as exc:
+        sys.exit("install-ai-tools: ERROR — invalid %s: %s" % (path, exc))
+
+
+def save(path, data):
+    if os.path.exists(path):
+        stamp = time.strftime("%Y%m%d-%H%M%SZ", time.gmtime())
+        backup = os.path.join(os.path.expanduser("~/.claude/backups"),
+                              "install-" + stamp, os.path.basename(path))
+        os.makedirs(os.path.dirname(backup), exist_ok=True)
+        shutil.copy2(path, backup)
+    with open(path, "w") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+
+
+# MCP registration + the server's own admission deadline.
+data = load(cfg_path)
+servers = data.setdefault("mcpServers", {})
+entry = servers.setdefault("codebase-memory-mcp", {})
+if not isinstance(entry, dict):
+    entry = {}
+    servers["codebase-memory-mcp"] = entry
+env = entry.get("env")
+if not isinstance(env, dict):
+    env = {}
+    entry["env"] = env
+changed = False
+if entry.get("command") != binpath:
+    entry["command"] = binpath
+    changed = True
+if not isinstance(entry.get("args"), list):
+    entry["args"] = []
+    changed = True
+if env.get("CBM_STARTUP_TIMEOUT_MS") != "90000":
+    env["CBM_STARTUP_TIMEOUT_MS"] = "90000"
+    changed = True
+if changed:
+    save(cfg_path, data)
+    print("install-ai-tools: registered mcpServers.codebase-memory-mcp (CBM_STARTUP_TIMEOUT_MS=90000)")
+else:
+    print("install-ai-tools: codebase-memory MCP already registered")
+
+# Claude Code's MCP connect deadline (default 30000 ms).
+settings = load(settings_path)
+senv = settings.get("env")
+if not isinstance(senv, dict):
+    senv = {}
+    settings["env"] = senv
+if "MCP_TIMEOUT" not in senv:
+    senv["MCP_TIMEOUT"] = "180000"
+    save(settings_path, settings)
+    os.chmod(settings_path, 0o600)
+    print("install-ai-tools: env.MCP_TIMEOUT=180000 merged into %s" % settings_path)
+elif senv.get("MCP_TIMEOUT") != "180000":
+    print("install-ai-tools: MCP_TIMEOUT already %s (left as is)" % senv.get("MCP_TIMEOUT"))
+else:
+    print("install-ai-tools: MCP_TIMEOUT already 180000")
+PY
+  say "codebase-memory-mcp registered (MCP loads on the next session)"
+}
+
 install_codegraph() {
   if ! command -v codegraph >/dev/null 2>&1; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -409,6 +556,8 @@ want rtk                 && { install_rtk; ensure_rg_shim; }
 want graphify            && install_graphify
 want understand-anything && install_understand_anything
 want codegraph           && install_codegraph
+want claudectx           && install_claudectx
+want codebase-memory     && install_codebase_memory
 want knowledge-sync      && install_knowledge_sync
 
 exit "$FAILED"

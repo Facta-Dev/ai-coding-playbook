@@ -29,7 +29,8 @@
 #        |- working set     clone-repos.sh --group=<group>
 #        |- skill packs     install-skill-packs.sh
 #        |- cost tracker    install-cost-tracker.sh (files + statusLine/hooks)
-#        |- ai tools        install-ai-tools.sh (rtk, graphify, understand-anything, codegraph)
+#        |- ai tools        install-ai-tools.sh (rtk, graphify, understand-anything,
+#        |                   codegraph, claudectx, codebase-memory)
 #        |- self-config     configure-repo.sh <playbook checkout> (idempotent)
 #        '- afterwards      per-repo configure of your projects, probes
 #

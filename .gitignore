@@ -4,3 +4,5 @@ CLAUDE.local.md
 .claude/backups/
 .claude/logs/
 __pycache__/
+.claude/costs.json
+graphify-out/

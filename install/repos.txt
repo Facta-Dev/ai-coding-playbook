@@ -39,6 +39,8 @@ core|Facta-Dev/ai-coding-playbook|Operating contract: playbooks, routing, instal
 tools|Facta-Dev/aws-ec2-setup|Declarative Ubuntu infrastructure stack (PostgreSQL 17 + pgvector)
 tools|Facta-Dev/claude-code-cli-cost-tracker|Cost tracking for the claude CLI
 tools|matiasbaglieri/terrain|Agent tooling: read/grep, skills and codegraph wiring
+tools|horilla/claudectx|Context audit CLI: what loads into each session and what it costs
+tools|DeusData/codebase-memory-mcp|Local code-memory MCP (overlaps CodeGraph; plugin route)
 tools|Facta-Dev/OmniRoute|Model and gateway routing dashboard
 tools|contextzero/repomix|Private working copy of yamadashy/repomix
 

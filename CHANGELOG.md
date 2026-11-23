@@ -3,6 +3,42 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-22 — 1.3.6
+
+### Added
+- `install-ai-tools.sh` now installs six tools by default: the previous four
+  plus `claudectx` (`npm install -g claudectx`, context audit; the script never
+  runs `optimize --apply`) and `codebase-memory` (the
+  `DeusData/codebase-memory-mcp` prebuilt release installed to
+  `~/.local/bin`, plus one `mcpServers` entry in `~/.claude.json`). The plugin
+  route is not used: the marketplace clone of the vendor's ~380 MB repo times
+  out, and the vendor's `install` also writes hooks and instructions.
+  `--only=` still selects a subset.
+- `configure-repo.sh` seeds `MEMORY.md` when absent: the memory-ops protocol
+  plus Decisions/Constraints/Pointers headings. User-owned after creation —
+  never overwritten, so a hand-written premise stays intact; `--check` reports
+  it as drift until seeded.
+- `install/repos.txt` lists `horilla/claudectx` and
+  `DeusData/codebase-memory-mcp` under `tools`, so the working set clones both.
+- `PLAYBOOK_INSTALL.md` §4.2 documents the six-tool default.
+- `install-ai-tools.sh --only=codebase-memory` now sets the deadlines that the
+  vendor's 331 MB self-hash needs: `CBM_STARTUP_TIMEOUT_MS=90000` in the
+  server's `env` and `env.MCP_TIMEOUT=180000` in `~/.claude/settings.json`
+  (only when absent, idempotent, backed up). Without them the default 30 s MCP
+  connect deadline loses the race against an 8–25 s startup hash.
+- `scripts/hooks/cost-sync.sh`: Stop hook that bills the session transcript
+  with the claude-code-cli-cost-tracker package and persists this repo's
+  per-model sums (turns, input/output/cache and total tokens with USD
+  alongside — token count is the performance signal; advisor, subagent and
+  Workflow turns included) to `.claude/costs.json`. `configure-repo.sh` ships
+  it, wires it on `Stop` beside `knowledge-sync.sh` (both indexes refresh at
+  the end of every response), and ignores the file in `.gitignore`.
+- `configure-repo.sh` now also seeds `MEMORY.md` and ships the Stop hooks;
+  the docs' per-repo list matches the actual writes.
+- The tracker's live meter now globs `subagents/**/*.jsonl` recursively, so
+  Workflow agent transcripts bill into the status line too (both the
+  `~/.claude` install and the `work/` clone are patched).
+
 ## 2026-11-22 — 1.3.5
 
 ### Changed

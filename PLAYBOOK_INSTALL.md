@@ -223,8 +223,19 @@ The script is idempotent and does exactly this:
 
 - appends the `<!-- model-routing:ollama -->` or `<!-- model-routing:anthropic -->` block (`--provider=ollama|anthropic|auto`, default auto-detects Ollama like `bootstrap.sh`) to the repo's `CLAUDE.md` **only when neither marker is present** (text: `CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md §6`);
 - writes `.claude/README.md` pointing at the playbooks instead of restating them;
-- merges **only** `permissions.deny` into the repo's `.claude/settings.json` (never `allow`, never hooks, never `env`);
-- appends `.gitignore` entries: `CLAUDE.local.md`, `.claude/settings.local.json`, `.claude/install-state.json`, `.claude/backups/`, `.claude/logs/`;
+- seeds `MEMORY.md` when absent (memory-ops protocol + Decisions/Constraints/
+  Pointers headings); user-owned after creation, never overwritten;
+- merges `permissions.deny` plus three hook entries into the repo's
+  `.claude/settings.json` — never `allow`, never `env`:
+  `PostToolUse` → `knowledge-sync.sh` (index refresh after edits),
+  `PreToolUse` → `rtk hook claude` (when a working rtk exists), and
+  `Stop` → `knowledge-sync.sh` + `cost-sync.sh` (index refresh and per-model
+  token sums after every response);
+- ships `scripts/hooks/knowledge-sync.sh` and `scripts/hooks/cost-sync.sh`
+  (kit-owned, refreshed with the kit) and `.claude/rules/memory-ops.md`;
+- appends `.gitignore` entries: `CLAUDE.local.md`, `.claude/settings.local.json`,
+  `.claude/install-state.json`, `.claude/backups/`, `.claude/logs/`,
+  `.claude/costs.json`;
 - with `--kit`, runs that kit's own `scripts/install-claude-runtime.sh`.
 
 `--check` verifies the repo without writing anything; `--dry-run` prints the diff it would apply.
@@ -270,6 +281,14 @@ first, and is idempotent; `--settings-only` re-wires an existing install and
 `--no-settings` leaves the file untouched. The bootstrap runs it after the
 clones, so a fresh machine needs no manual settings edit.
 
+Per repo, the kit's `cost-sync.sh` Stop hook bills the session transcript with
+the tracker's own package (message-id dedupe, per-turn model prices; advisor,
+subagent and Workflow transcripts included) and writes the running per-model
+sums to `.claude/costs.json` — turns, input/output/cache and total tokens
+(token count is the performance metric) plus USD for each model, and the
+per-session breakdown. The file is gitignored: it is a
+local cost record, not a commit.
+
 Rules:
 
 - **Plugins are registered, never copied.** `~/.claude/skills/<pack>/` would
@@ -311,6 +330,25 @@ runs it after the cost tracker.
 | `graphify` | `pipx install graphifyy` then `graphify install` | `~/.claude/skills/graphify/SKILL.md` and a `CLAUDE.md` section |
 | `understand-anything` | `claude plugin marketplace add Egonex-AI/Understand-Anything`, then `plugin install` | `enabledPlugins` and the marketplace entry |
 | `codegraph` | the vendor `install.sh` (self-contained bundle) then `codegraph install` | `mcpServers.codegraph`, `permissions.allow`, the `CODEGRAPH` `CLAUDE.md` block |
+| `claudectx` | `npm install -g claudectx`, or `npx claudectx` with no install | nothing on install; `analyze`/`report` are read-only, `optimize --apply` edits `CLAUDE.md`, `.claudeignore` and hooks and backs up to `~/.claudectx/backups/` |
+| `codebase-memory` | the vendor's prebuilt release tarball (`gh release download` or the `releases/latest/download/<os>-<arch>.tar.gz` URL), then a `mcpServers` entry | `~/.claude.json` → `mcpServers.codebase-memory-mcp` (`CBM_STARTUP_TIMEOUT_MS=90000`); `~/.claude/settings.json` → `env.MCP_TIMEOUT=180000` when absent |
+
+**The six together.** The default set installs all six; `--only=` selects a
+subset when a machine must skip one. `claudectx` is the context audit
+(`npx claudectx analyze` prints what is loading and what it costs) — the
+script installs the CLI and never runs a mutating command. `codebase-memory`
+overlaps CodeGraph (both build a code graph): the script installs the binary
+plus the single MCP entry and never runs the vendor's own `install` (it also
+wires hooks and instructions), and the plugin route is avoided because its
+marketplace clone of the ~380 MB repo times out. **Startup workaround:** the
+vendor release SHA-256-hashes its own ~331 MB image on every start (~8 s warm,
+~25 s cold without SHA-NI) before opening the daemon socket, so Claude Code's
+default 30 s MCP deadline loses the race; the installer sets
+`CBM_STARTUP_TIMEOUT_MS=90000` on the server and `MCP_TIMEOUT=180000` on Claude
+Code (leaving an existing value alone) so both deadlines outlast the hash. The
+upstream fix is to persist the fingerprint cache keyed by the executable's
+stat identity. Drop the tool from a machine with
+`--only=rtk,graphify,understand-anything,codegraph` when CodeGraph suffices.
 
 **Order matters.** `graphify install` rewrites `~/.claude/CLAUDE.md` and drops
 blocks it does not own; the script runs it before CodeGraph and only while the
