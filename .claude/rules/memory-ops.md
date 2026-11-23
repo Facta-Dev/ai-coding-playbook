@@ -1,6 +1,7 @@
 # Memory-first: codegraph / graphify / repo memories before grep
 
 - STRUCTURAL questions about code in a repo with a `.codegraph/` index: your UserPromptSubmit hook already injects `<codegraph_context>` — treat it as the primary source; if absent or insufficient, run ONE `codegraph explore "<symbols or question>"` (or `codegraph impact` / `affected` for blast radius / test impact) BEFORE grep/find/Read. Do NOT re-read files the context already showed verbatim.
+- A PreToolUse gate enforces this rule: the first Read of an indexed file, and the first `rg|grep` for an indexed symbol, are denied once per session with the exact `codegraph node`/`explore` call; the retry passes. Make the graph call instead of fighting the deny.
 - Architecture, doc, or cross-file-relationship questions in a repo with `graphify-out/graph.json`: query graphify first (`graphify query "<question>" / path / explain / affected`) — see the `/graphify` skill. Grep only the residue.
 - Repo operational memories: consult the repo `MEMORY.md` (if present) and `docs/changelog/` before re-deriving history or process facts.
 - Keep indexes fresh: the knowledge-sync hook runs `codegraph sync` + `graphify update` in the background after edits (PostToolUse) and again when each response ends (Stop hook) — never re-index manually inside a turn; if `codegraph status` reports stale after edits, run `codegraph sync -q` once.

@@ -3,6 +3,19 @@
 All notable changes to the playbook set. The format follows Keep a Changelog;
 the set uses semantic versioning per playbook and a dated entry per change.
 
+## 2026-11-23 — 1.3.7
+
+### Changed
+- Provider selection is explicit, never detected: `bootstrap.sh`,
+  `install-user-kit.sh` and `configure-repo.sh` now require
+  `--provider=ollama|anthropic`; `--provider=auto` is rejected and no local
+  endpoint is probed. The two paths write different settings env and routing
+  blocks, so the machine (or the operator) must say which one it is.
+- `kit/rules/memory-ops.md` now also documents the PreToolUse gate (the first
+  Read of an indexed file or grep for an indexed symbol is denied once with the
+  exact CodeGraph call) and travels to every configured repo with the rest of
+  the rule.
+
 ## 2026-11-22 — 1.3.6
 
 ### Added

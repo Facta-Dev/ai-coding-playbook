@@ -5,15 +5,15 @@ python3 and the standard shell. Every script takes `--flag=value` or `--flag val
 
 | Script | Flags | Exit |
 | --- | --- | --- |
-| `bootstrap.sh` | `--provider=ollama\|anthropic\|auto` (default auto), `--group=`, `--dir=DIR`, `--dry-run` | 0 ok, 1 precondition missing or a step failed |
+| `bootstrap.sh` | `--provider=ollama\|anthropic` (required), `--group=`, `--dir=DIR`, `--dry-run` | 0 ok, 1 precondition missing or a step failed |
 | `install-prereqs.sh` | `--dry-run` | 0 every required tool present/installed, 1 one is still missing |
-| `install-user-kit.sh` | `--dry-run`, `--force`, `--no-settings`, `--provider=ollama\|anthropic\|auto`, `--dest=DIR` | 0 ok, 1 error |
+| `install-user-kit.sh` | `--dry-run`, `--force`, `--no-settings`, `--provider=ollama\|anthropic` (required unless `--no-settings`), `--dest=DIR` | 0 ok, 1 error |
 | `install-plugins.sh` | `--only=LIST`, `--dry-run` | 0 installed/skipped, 1 an install failed |
 | `clone-repos.sh` | `--group=selected\|core\|tools\|reference\|all` (default `selected`), `--dir=DIR`, `--depth=N`, `--dry-run` | 0 cloned/skipped, 1 a clone failed |
 | `install-skill-packs.sh` | `--dir=DIR`, `--local`, `--remote`, `--only=NAME[,NAME]`, `--dry-run`, `--self-test` | 0 installed/skipped, 1 an install failed |
 | `install-cost-tracker.sh` | `--dir=DIR`, `--settings-only`, `--no-settings`, `--dry-run` | 0 installed/skipped, 1 install or settings merge failed |
 | `install-ai-tools.sh` | `--only=rtk,graphify,understand-anything,codegraph,claudectx,codebase-memory`, `--dry-run`; installs the codegraph gate hook when codegraph is present | 0 installed/verified, 1 install or merge failed |
-| `configure-repo.sh` | `<repo-path>`, `--kit=golang\|nodejs\|python\|rust\|java\|extension\|desktop\|desktop-electron\|frontend-mobile\|mobile-android\|mobile-ios\|frontend\|cli`, `--provider=ollama\|anthropic\|auto`, `--check`, `--dry-run` | 0 ok, 1 drift or error |
+| `configure-repo.sh` | `<repo-path>`, `--kit=golang\|nodejs\|python\|rust\|java\|extension\|desktop\|desktop-electron\|frontend-mobile\|mobile-android\|mobile-ios\|frontend\|cli`, `--provider=ollama\|anthropic` (required), `--check`, `--dry-run` | 0 ok, 1 drift or error |
 | `kit_check.py` | `--root=DIR`, `--json`, `--self-test` | 0 clean, 1 warnings, 2 errors |
 | `check-playbook-copies.sh` | `--self-test` | 0 all copies mirror the root, 1 drift/missing/extra copy |
 | `generate-playbook-rules.py` | `--check` | 0 rules current, 1 drift |

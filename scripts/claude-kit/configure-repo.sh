@@ -14,8 +14,8 @@
 #     --kit=NAME   also install that stack kit: golang|nodejs|python|rust|java|
 #                  extension|desktop|desktop-electron|frontend-mobile|
 #                  mobile-android|mobile-ios|frontend|cli
-#     --provider=P routing block variant: ollama|anthropic|auto (default auto:
-#                  ollama when 127.0.0.1:11434 answers, else anthropic)
+#     --provider=P routing block variant: ollama|anthropic (required; the
+#                  provider is never auto-detected)
 #     --check      verify the repo, write nothing; exit 1 on drift
 #     --dry-run    print the diff it would apply, write nothing
 #
@@ -48,7 +48,7 @@ ROUTING_DOC="$ROOT_DIR/CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md"
 
 REPO=""
 KIT=""
-PROVIDER="auto"
+PROVIDER=""
 CHECK=0
 DRY_RUN=0
 
@@ -87,15 +87,12 @@ MEMORY_MD="$REPO/MEMORY.md"
 GITIGNORE="$REPO/.gitignore"
 BACKUP_DIR="$DOTCLAUDE/backups/configure-$(date -u +%Y-%m-%d)"
 
-# Routing block variant: ollama when a local endpoint answers, else anthropic
-# (same detection as bootstrap.sh).
+# Routing block variant: the caller chooses, never a probe.
 case "$PROVIDER" in
-  auto)
-    if command -v curl >/dev/null 2>&1 \
-       && curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1
-    then PROVIDER=ollama; else PROVIDER=anthropic; fi;;
   ollama|anthropic) ;;
-  *) die "unknown provider '$PROVIDER' (ollama|anthropic|auto)";;
+  "") die "--provider is required: choose ollama or anthropic (no auto-detection)";;
+  auto) die "--provider=auto is not supported; choose ollama or anthropic";;
+  *) die "unknown provider '$PROVIDER' (ollama|anthropic)";;
 esac
 MARKER="<!-- model-routing:$PROVIDER -->"
 # A repo already carrying either variant counts as configured.

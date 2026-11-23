@@ -17,8 +17,7 @@ costs zero model tokens; the model is only asked to make judgment calls.
 
 **Entry point: `bash scripts/claude-kit/bootstrap.sh`** walks the decision
 tree — OS (Linux / macOS / WSL2, with native Windows stopped at the gate) and
-provider (a reachable local Ollama endpoint picks the Ollama path; anything
-else the Anthropic path) — then chains the steps below with the matching
+provider (explicit `--provider=ollama|anthropic`; nothing is probed) — then chains the steps below with the matching
 settings merge, and finally configures the playbook checkout itself. `--dry-run` prints the plan. The steps remain runnable by
 hand; this file is the install path only.
 
@@ -97,16 +96,16 @@ cloning anything private; `gh auth login` when it does not.
 2. Install the user-scope kit:
 
    ```bash
-   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --dry-run   # preview
-   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh             # install
-   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --force      # overwrite installer-owned files
-   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --no-settings # leave settings.json untouched
-   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --provider=anthropic  # no Ollama env
+   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --provider=ollama --dry-run   # preview (Ollama)
+   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --provider=ollama             # install on an Ollama machine
+   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --provider=anthropic          # install on an Anthropic/gateway machine
+   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --provider=ollama --force     # overwrite installer-owned files
+   bash ~/ai-coding-playbook/scripts/claude-kit/install-user-kit.sh --no-settings                 # leave settings.json untouched
    ```
 
    It installs `kit/CLAUDE.md`, `kit/agents`, `kit/skills` and `kit/templates/sdd` into `~/.claude/`, and **never overwrites user-owned files**: an existing destination is skipped, not replaced. Backups land in `~/.claude/backups/install-<UTC timestamp>/`.
 
-   It also merges the settings fragments into `~/.claude/settings.json`. By default it detects a local Ollama endpoint: reachable, it merges `kit/settings.fragment.json` plus `kit/settings.ollama.json` (tier env + endpoint); not reachable, only the base fragment (no endpoint pinning, `--provider=anthropic` does the same by hand). Both merge the `model: sonnet` default, `tui: fullscreen` (the right-side diff
+   It also merges the settings fragments into `~/.claude/settings.json`. The provider is an explicit decision, never a detection: `--provider=ollama` merges `kit/settings.fragment.json` plus `kit/settings.ollama.json` (tier env + endpoint); `--provider=anthropic` merges only the base fragment (no endpoint pinning). Both merge the `model: sonnet` default, `tui: fullscreen` (the right-side diff
 panel) and the `permissions.deny` list. Existing keys win; the installer warns when `model` is not `sonnet`, because a bare `claude` then runs the escalation model. `--no-settings` skips the merge entirely.
 
 3. Validate the user scope:
@@ -205,8 +204,8 @@ this repository.
 
 ```bash
 bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app \
-  --kit=golang --dry-run
-bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app --kit=golang
+  --provider=ollama --kit=golang --dry-run
+bash ~/ai-coding-playbook/scripts/claude-kit/configure-repo.sh ~/work/my-app --provider=ollama --kit=golang
 ```
 
 `--kit=` is one of `golang`, `nodejs`, `python`, `rust`, `java`, `extension`,
@@ -221,7 +220,7 @@ contract is `PLAYBOOK_CLAUDE_CODE_PART3.md` §21; the gate meanings are
 
 The script is idempotent and does exactly this:
 
-- appends the `<!-- model-routing:ollama -->` or `<!-- model-routing:anthropic -->` block (`--provider=ollama|anthropic|auto`, default auto-detects Ollama like `bootstrap.sh`) to the repo's `CLAUDE.md` **only when neither marker is present** (text: `CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md §6`);
+- appends the `<!-- model-routing:ollama -->` or `<!-- model-routing:anthropic -->` block (`--provider=ollama|anthropic`, required — the provider is never auto-detected) to the repo's `CLAUDE.md` **only when neither marker is present** (text: `CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md §6`);
 - writes `.claude/README.md` pointing at the playbooks instead of restating them;
 - seeds `MEMORY.md` when absent (memory-ops protocol + Decisions/Constraints/
   Pointers headings); user-owned after creation, never overwritten;

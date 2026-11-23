@@ -11,13 +11,13 @@
 #        |- Linux / macOS / WSL2  -> continue
 #        |- native Windows        -> stop: install WSL2 and re-run inside it
 #        |
-#   PROVIDER?
-#        |- Ollama endpoint answers at 127.0.0.1:11434 -> OLLAMA path
+#   PROVIDER? (explicit --provider; there is never an auto-detection)
+#        |- --provider=ollama      -> OLLAMA path
 #        |    settings env: tier aliases (opus/sonnet/haiku -> Ollama cloud
 #        |    models), endpoint + the fixed literal token `ollama`, cheap
 #        |    subagent routing. Verify with the probes in section 9 of
 #        |    CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md.
-#        |- otherwise (Anthropic login or gateway)     -> ANTHROPIC path
+#        |- --provider=anthropic   -> ANTHROPIC path (Anthropic login or gateway)
 #        |    settings env: none (no endpoint pinning); the `model: sonnet`
 #        |    default still applies; native `--advisor` available (runbook §7)
 #        |
@@ -38,10 +38,10 @@
 # downstream is identical shell work (zero model tokens).
 #
 # Usage:
-#   bash scripts/claude-kit/bootstrap.sh [--provider=ollama|anthropic|auto]
+#   bash scripts/claude-kit/bootstrap.sh --provider=ollama|anthropic [other flags]
 #        [--group=selected|core|tools|reference|all]
 #        [--dir=DIR] [--dry-run]
-#     --provider=   force the provider branch (default: auto-detect Ollama)
+#     --provider=   required: ollama or anthropic (no auto-detection)
 #     --group=      clone-repos group (default: selected)
 #     --dir=        working-set root (default: ~/work)
 #     --dry-run     print the plan, run nothing
@@ -55,7 +55,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 KIT_DIR="$(cd "$SCRIPT_DIR/../../kit" && pwd)"
 PLAYBOOK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-PROVIDER="auto"
+PROVIDER=""
 GROUP="selected"
 DIR="$HOME/work"
 DRY_RUN=0
@@ -73,6 +73,22 @@ while [[ $# -gt 0 ]]; do
     *) echo "bootstrap: unknown arg '$1'" >&2; exit 1;;
   esac
 done
+
+# The provider is a decision, not a detection: the two paths write different
+# settings env (Ollama tier aliases + endpoint vs. base fragment only), so a
+# machine must say which one it is before anything is installed.
+case "$PROVIDER" in
+  ollama|anthropic) ;;
+  "")
+    echo "bootstrap: ERROR — choose --provider=ollama or --provider=anthropic explicitly; there is no auto-detection." >&2
+    exit 1;;
+  auto)
+    echo "bootstrap: ERROR — --provider=auto is not supported; pick ollama or anthropic explicitly." >&2
+    exit 1;;
+  *)
+    echo "bootstrap: ERROR — unknown provider '$PROVIDER' (ollama|anthropic)" >&2
+    exit 1;;
+esac
 
 say() { echo "bootstrap: $*"; }
 
@@ -128,21 +144,11 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
 fi
 say "prereqs: git $(command -v git >/dev/null && git --version | awk '{print $3}' || echo '?'), python3 $(command -v python3 >/dev/null && python3 --version | awk '{print $2}' || echo '?'), claude $(command -v claude >/dev/null && claude --version 2>/dev/null | awk '{print $1}' || echo '?')"
 
-# --- 3. provider branch -----------------------------------------------------------
-detect_ollama() {
-  command -v curl >/dev/null 2>&1 || return 1
-  curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1
-}
-
-case "$PROVIDER" in
-  auto)
-    if detect_ollama; then PROVIDER_FINAL="ollama"; else PROVIDER_FINAL="anthropic"; fi;;
-  ollama|anthropic) PROVIDER_FINAL="$PROVIDER";;
-  *) echo "bootstrap: unknown provider '$PROVIDER' (ollama|anthropic|auto)" >&2; exit 1;;
-esac
+# --- 3. provider branch (validated above; nothing is probed) --------------------
+PROVIDER_FINAL="$PROVIDER"
 case "$PROVIDER_FINAL" in
-  ollama)   say "provider: ollama (endpoint answers at 127.0.0.1:11434 — tier env will be merged)";;
-  anthropic) say "provider: anthropic (no local Ollama endpoint — base settings only)";;
+  ollama)    say "provider: ollama (tier env + endpoint will be merged)";;
+  anthropic) say "provider: anthropic (base settings only, no endpoint pinning)";;
 esac
 
 # --- 4. the install chain ----------------------------------------------------------

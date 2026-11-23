@@ -10,12 +10,12 @@
 #
 # Usage:
 #   bash scripts/claude-kit/install-user-kit.sh [--dry-run] [--force]
-#        [--no-settings] [--provider=ollama|anthropic|auto] [--dest=DIR]
+#        [--no-settings] [--provider=ollama|anthropic] [--dest=DIR]
 #     --dry-run      print the actions, change nothing
 #     --force        overwrite existing destination files (backed up)
 #     --no-settings  do not merge the settings fragments
-#     --provider=    which settings env to merge:
-#                      auto       detect a local Ollama endpoint (default)
+#     --provider=    which settings env to merge (required unless
+#                    --no-settings; never auto-detected):
 #                      ollama     merge fragment.json + ollama.json (tier
 #                                 aliases, endpoint, subagent model)
 #                      anthropic  merge fragment.json only (no env pinning)
@@ -34,7 +34,7 @@ DEST="${HOME}/.claude"
 DRY_RUN=0
 FORCE=0
 MERGE_SETTINGS=1
-PROVIDER="auto"
+PROVIDER=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -52,25 +52,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# The provider decides which env keys are merged into settings.json. A local
-# Ollama endpoint gets the tier aliases plus the endpoint env; an Anthropic
-# (or gateway) machine gets the base fragment only, so its settings carry no
-# endpoint pinning that would break its own traffic.
-detect_ollama() {
-  command -v curl >/dev/null 2>&1 || return 1
-  curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1
-}
-
+# The provider decides which env keys are merged into settings.json, and it is
+# a decision, not a detection: an Ollama machine gets the tier aliases plus the
+# endpoint env; an Anthropic (or gateway) machine gets the base fragment only,
+# so its settings carry no endpoint pinning that would break its own traffic.
 if [[ "$MERGE_SETTINGS" -eq 1 ]]; then
   case "$PROVIDER" in
-    auto)
-      if detect_ollama; then
-        PROVIDER="ollama"
-      else
-        PROVIDER="anthropic"
-      fi;;
     ollama|anthropic) ;;
-    *) echo "install-user-kit: unknown provider '$PROVIDER' (ollama|anthropic|auto)" >&2; exit 1;;
+    "")
+      echo "install-user-kit: ERROR — choose --provider=ollama or --provider=anthropic (or pass --no-settings); there is no auto-detection." >&2
+      exit 1;;
+    auto)
+      echo "install-user-kit: ERROR — --provider=auto is not supported; pick ollama or anthropic explicitly." >&2
+      exit 1;;
+    *) echo "install-user-kit: unknown provider '$PROVIDER' (ollama|anthropic)" >&2; exit 1;;
   esac
   say() { echo "install-user-kit: $*"; }
   say "provider: $PROVIDER"

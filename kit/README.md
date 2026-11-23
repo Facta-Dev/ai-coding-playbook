@@ -23,7 +23,7 @@ reinstall — do not hand-edit `~/.claude`. No secrets and no `@`-imports of
 playbooks in this directory. `settings.ollama.json` carries the Ollama
 endpoint and the fixed literal token `ollama` (not a secret), so a bare
 `claude` reaches Ollama on a fresh machine; the installer merges it only when
-a local Ollama endpoint answers (`--provider=` overrides). See
+the install passes `--provider=ollama` — the provider is never auto-detected. See
 `CLAUDE_CODE_ROUTING_MODELS_OLLAMA.md` §3.
 
 `kit/CLAUDE.md` does not import `@RTK.md`: RTK is optional machine tooling.
