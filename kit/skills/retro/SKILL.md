@@ -1,7 +1,7 @@
 ---
 name: retro
 description: Triage the lessons inbox, deduplicate entries, and propose promotions into CLAUDE.md, rules, skills, or hooks. Use at the end of a work cycle.
-when_to_use: "/retro", "review lessons", "promote recurring lessons", "weekly retro"
+when_to_use: ["/retro", "review lessons", "promote recurring lessons", "weekly retro"]
 argument-hint: [days]
 disable-model-invocation: true
 ---

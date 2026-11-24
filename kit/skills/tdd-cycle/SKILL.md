@@ -1,7 +1,7 @@
 ---
 name: tdd-cycle
 description: Run one Red-Green-Refactor slice: write the failing test first, make it pass with minimum code, then refactor. Use for each task in tasks.md.
-when_to_use: "run a tdd cycle", "/tdd-cycle [task]", "implement T-00X test-first", "red green refactor"
+when_to_use: ["run a tdd cycle", "/tdd-cycle [task]", "implement T-00X test-first", "red green refactor"]
 argument-hint: [T-00X]
 ---
 

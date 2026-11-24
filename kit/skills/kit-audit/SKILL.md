@@ -1,7 +1,7 @@
 ---
 name: kit-audit
 description: Audit the user-level Claude Code kit — validator findings, drift against enabled plugins, and context budgets — and write proposals for what needs fixing. Use after kit changes or on a schedule.
-when_to_use: "/kit-audit", "audit ~/.claude", "check kit health", "plugin drift"
+when_to_use: ["/kit-audit", "audit ~/.claude", "check kit health", "plugin drift"]
 disable-model-invocation: true
 ---
 

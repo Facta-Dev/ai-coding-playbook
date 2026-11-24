@@ -1,7 +1,7 @@
 ---
 name: spec-verify
 description: Prove traceability from acceptance criteria to tests to passing results, and produce verify.md. Use when a spec's tasks are done, before merging.
-when_to_use: "verify the spec", "/spec-verify", "is specs/<slug> done", "acceptance evidence"
+when_to_use: ["verify the spec", "/spec-verify", "is specs/<slug> done", "acceptance evidence"]
 argument-hint: <slug>
 ---
 

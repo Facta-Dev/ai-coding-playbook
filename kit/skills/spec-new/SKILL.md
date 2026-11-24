@@ -1,7 +1,7 @@
 ---
 name: spec-new
 description: Create the next spec folder from the SDD template and start it in draft status. Use when beginning new feature work, before any planning or code.
-when_to_use: "new spec", "start a feature spec", "/spec-new <slug>", "document requirements for X"
+when_to_use: ["new spec", "start a feature spec", "/spec-new <slug>", "document requirements for X"]
 argument-hint: <slug> [slice]
 disable-model-invocation: true
 ---
