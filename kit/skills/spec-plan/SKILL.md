@@ -1,7 +1,7 @@
 ---
 name: spec-plan
 description: Write plan.md for a clarified spec — architecture per layer, data model, contracts, test strategy, risks. Use between spec-clarify and spec-tasks.
-when_to_use: "plan the spec", "/spec-plan", "design specs/<slug> before implementation"
+when_to_use: ["plan the spec", "/spec-plan", "design specs/<slug> before implementation"]
 argument-hint: <slug>
 disable-model-invocation: true
 ---

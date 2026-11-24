@@ -1,7 +1,7 @@
 ---
 name: spec-clarify
 description: Resolve every open question in a spec and pass the clarity gate. Use after spec-new, before planning.
-when_to_use: "clarify the spec", "/spec-clarify", "resolve open questions in specs/<slug>"
+when_to_use: ["clarify the spec", "/spec-clarify", "resolve open questions in specs/<slug>"]
 argument-hint: <slug>
 disable-model-invocation: true
 ---

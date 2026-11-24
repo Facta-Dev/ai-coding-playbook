@@ -1,7 +1,7 @@
 ---
 name: spec-tasks
 description: Produce tasks.md — ordered, test-first, AC-referenced tasks with acceptance checks. Use after spec-plan, before the TDD loop.
-when_to_use: "break the plan into tasks", "/spec-tasks", "tasks for specs/<slug>"
+when_to_use: ["break the plan into tasks", "/spec-tasks", "tasks for specs/<slug>"]
 argument-hint: <slug>
 disable-model-invocation: true
 ---
